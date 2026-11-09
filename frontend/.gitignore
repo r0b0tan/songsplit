@@ -1,0 +1,5 @@
+.angular/
+node_modules/
+dist/
+out-tsc/
+tests/e2e/*.png

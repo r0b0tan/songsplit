@@ -1,0 +1,54 @@
+# Ein Muster ohne fuehrenden Schraegstrich greift in *jeder* Tiefe.
+# `models/` meinte die heruntergeladenen Checkpoints des Backends, nahm
+# aber auch `frontend/public/models/` mit — also die exportierten Gewichte
+# des Browserpfads samt ihrem `manifest.json`, ohne das die Oberflaeche
+# keinen Trennmodus anbietet. Was nur oben liegt, steht deshalb mit `/`
+# davor; was ueberall weg soll, ohne.
+
+/.venv/
+__pycache__/
+*.pyc
+
+# Ausgabe der Jobs: Eingabedateien und getrennte Spuren
+/data/
+
+# Heruntergeladene Modellgewichte des Backends (ca. 84 MB je Demucs-Modell)
+/models/
+
+# Die exportierten Gewichte fuer den Browser.
+#
+# Sie gehoeren nicht in die Historie, obwohl sie der oeffentliche Bau
+# braucht. Git legt jede Fassung einer Binaerdatei ganz ab und vergisst
+# keine: ein Satz kostet gepackt rund 172 MB, und jeder neue Export —
+# anderes Opset, fp16, ein korrigierter Lauf — kostet dieselbe Summe noch
+# einmal, dauerhaft. Herausnehmen liesse sich das spaeter nur durch
+# Umschreiben der Historie.
+#
+# Erzeugt werden sie mit:
+#   cd backend
+#   ../.venv/bin/python tools/export_htdemucs_onnx.py htdemucs
+#   ../.venv/bin/python tools/export_htdemucs_onnx.py htdemucs_6s
+/frontend/public/models/
+
+# Die vendorierte ONNX-Runtime, aus demselben Grund: 29 MB je Fassung,
+# und `npm run vendor:ort` holt sie in Sekunden aus node_modules. Die
+# Version steht exakt in package.json, es kann also nichts anderes
+# herauskommen als beim letzten Mal.
+#
+# Signalsmith Stretch daneben bleibt im Repo: die Datei stammt nicht aus
+# npm und entsteht durch kein Skript — waere sie weg, waere sie weg.
+/frontend/public/vendor/onnxruntime/
+
+# Eigene Testmusik
+/testmusik/
+
+# Vorlagen und Entwuerfe, nur fuer die Entwicklung hier
+/exampledata/
+
+node_modules/
+dist/
+.angular/
+out-tsc/
+
+# Logs von start.sh
+/.run/

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="songsplit">
+  <title>songsplit</title>
+  <!--
+    Dasselbe Zeichen wie in der Kopfzeile der App: fünf Balken einer
+    Wellenform auf dem Akzentfeld. Die Balken sind für die Briefmarkengröße
+    gröber als im Logo (4 von 32 Einheiten breit, also 2 px bei 16 px
+    Darstellung); darunter verschwimmt eine Wellenform zu einem Fleck.
+    Diese Datei ist die Quelle, favicon.ico und apple-touch-icon.png sind
+    daraus gerechnet — siehe tools/favicon.py.
+  -->
+  <rect width="32" height="32" rx="7.5" fill="#fbb1a4"/>
+  <g fill="#361917">
+    <rect x="2"  y="11.5" width="4" height="9"  rx="1.8"/>
+    <rect x="8"  y="8"    width="4" height="16" rx="1.8"/>
+    <rect x="14" y="4.5"  width="4" height="23" rx="1.8"/>
+    <rect x="20" y="8"    width="4" height="16" rx="1.8"/>
+    <rect x="26" y="11"   width="4" height="10" rx="1.8"/>
+  </g>
+</svg>

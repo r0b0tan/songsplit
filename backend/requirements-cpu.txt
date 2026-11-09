@@ -1,0 +1,8 @@
+# Wie requirements.txt, aber mit der CPU-Variante von audio-separator.
+# Spart ca. 3 GB Download (kein CUDA-Torch, keine NVIDIA-Bibliotheken).
+fastapi==0.122.0
+uvicorn[standard]==0.41.0
+python-multipart==0.0.22
+audio-separator[cpu]==0.48.0
+audioread==3.0.1
+soundfile==0.13.1

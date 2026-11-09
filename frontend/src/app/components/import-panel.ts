@@ -1,0 +1,1333 @@
+import { Component, ElementRef, computed, inject, output, signal, viewChild } from '@angular/core';
+
+import { ApiService, describeHttp } from '../core/api.service';
+import { IconComponent } from '../core/icon';
+import { DeviceFacts } from '../core/device-facts';
+import { JobsService, type Site } from '../core/jobs.service';
+import type { Job, ModelInfo } from '../core/models';
+import { stemColor } from '../core/stem-colors';
+import { VARIANT } from '../core/variant';
+import { DeviceSeparator } from '../separate/device-separator';
+
+/** Ein Balken der Wellenform: Hoehe in Pixeln, Deckkraft. */
+interface Bar {
+  h: number;
+  a: number;
+}
+
+/**
+ * Die Wellenform der Ablegeflaeche, fest gerechnet: ein Ausschlag, der zur
+ * Mitte hin lauter wird. Hier liegt noch keine Datei, die man zeichnen
+ * koennte — das Bild sagt nur, was hier hingehoert.
+ */
+const BARS: readonly Bar[] = Array.from({ length: 31 }, (_, i) => {
+  const envelope = 1 - Math.abs(i - 15) / 16;
+  return {
+    h: 4 + Math.abs(Math.sin(i * 2.28)) * (4 + 24 * envelope),
+    a: 0.3 + 0.69 * envelope,
+  };
+});
+
+/** Was die Ablegeflaeche annimmt. Der Rest wird abgewiesen, mit Grund. */
+const ACCEPTED = /\.(mp3|wav)$/i;
+
+/**
+ * Import: Datei hineinziehen, Trennmodus waehlen, trennen.
+ *
+ * Aufbau und Masse folgen der Vorlage `exampledata/songsplit-uploadmaske`:
+ * eine Kopfleiste mit Marke und Zustand, darunter grosse Ueberschrift, eine
+ * Ablegeflaeche ueber die ganze Breite mit einem Schein in Pflaume, die
+ * Auswahl als drei bis vier gleich breite Karten, darunter die Spuren des
+ * gewaehlten Modus und eine Fusszeile aus Link und Hauptaktion.
+ *
+ * Die Kopfleiste gehoert in dieselbe Flaeche, nicht in eine eigene Karte
+ * darueber. Sie sagt in einem ruhigen Grau, dass hier nichts den Rechner
+ * verlaesst; worauf gerechnet wird, steht hinter dem (i). Dass auf der CPU
+ * getrennt wird, geht dabei nicht verloren: das meldet das Backend als
+ * Hinweis, und der steht unter der Karte, nicht in einem Tooltip.
+ *
+ * Gewaehlt wird ein *Modus* — "Schnell", "Detailliert", "Instrumente" —,
+ * kein Modellname: wer trennen will, entscheidet zwischen Ergebnis und
+ * Wartezeit, nicht zwischen htdemucs und htdemucs_ft. Der technische Name
+ * steht im Tooltip der Karte und spaeter am Job.
+ *
+ * Die Ablegeflaeche ist ein echtes Dateifeld mit `opacity: 0` darueber. Damit
+ * funktionieren Klick, Tastatur und Ablegen ohne eigenen Code; die
+ * Drag-Ereignisse dienen nur der Rueckmeldung, dass die Flaeche trifft.
+ */
+@Component({
+  selector: 'app-import-panel',
+  standalone: true,
+  imports: [IconComponent],
+  // Ein Zeigen irgendwo auf der Seite klappt die Ortsliste zu. Der Fokus
+  // allein reicht dafuer nicht, siehe `onDocumentPointerDown`.
+  host: { '(document:pointerdown)': 'onDocumentPointerDown($event)' },
+  styles: [
+    `
+      :host {
+        display: block;
+        container-type: inline-size;
+      }
+      .box {
+        padding: 0;
+        overflow: hidden;
+      }
+
+      /* ------------------------------------------------------ Kopfleiste */
+      .bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--edge);
+      }
+      .brand,
+      .local {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .logo {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--key);
+        color: var(--on-key);
+        flex: none;
+      }
+      .logo span {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .logo i {
+        display: block;
+        width: 2px;
+        height: 6px;
+        border-radius: 2px;
+        background: currentColor;
+      }
+      .logo i:nth-child(even) {
+        height: 11px;
+      }
+      .logo i:nth-child(3) {
+        height: 16px;
+      }
+      /* Die Leiste sagt etwas Beruhigendes, und Beruhigendes muss nicht
+         laut sein: kein Zustandspunkt, nur Text, eine Stufe schwaecher als
+         jedes andere Grau der Oberflaeche. */
+      .local {
+        font-size: 11px;
+        color: light-dark(#9f98a8, #635d70);
+      }
+      .what-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+      .local .what {
+        display: inline-flex;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--accent);
+        cursor: help;
+        --icon-size: 13px;
+      }
+      .local .what:hover,
+      .what-wrap:hover .what {
+        filter: brightness(1.12);
+      }
+
+      /* Eigene Sprechblase statt des title-Attributs: die des Browsers
+         kommt mit einer
+         Sekunde Verzoegerung, in Systemschrift und ohne Gliederung — fuenf
+         Angaben in einer Zeile sind dort nicht zu lesen. */
+      .tip {
+        position: absolute;
+        top: calc(100% + 9px);
+        right: -4px;
+        z-index: 5;
+        width: max-content;
+        max-width: min(320px, 78cqw);
+        padding: 9px 11px;
+        border: 1px solid var(--edge);
+        border-radius: var(--radius-sm);
+        background: var(--panel-2);
+        color: var(--ink);
+        box-shadow: 0 14px 30px -12px light-dark(rgb(24 19 30 / 0.3), rgb(0 0 0 / 0.6));
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-3px);
+        transition: opacity 0.12s, transform 0.12s, visibility 0.12s;
+      }
+      /* Die Spitze sitzt unter dem Zeichen, nicht in der Mitte der Blase:
+         die Blase ist breiter als ihr Ausloeser. */
+      .tip::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        right: 7px;
+        border: 5px solid transparent;
+        border-bottom-color: var(--edge);
+      }
+      .what-wrap:hover .tip,
+      .what:focus-visible + .tip,
+      .tip.show {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+      }
+      /* Eine Schriftstufe fuer alle Angaben — in der Sprechblase am ⓘ, in
+         der Ortsliste und an der Moduskarte. Sie sind Beiwerk: wer sie
+         braucht, liest sie, und wer nicht, soll von ihnen nicht
+         angesprungen werden.
+
+         Die Spalte der Benennungen ist fest und nicht automatisch: sonst
+         richtet sich jeder Block nach seinem eigenen laengsten Wort, und
+         zwei Eintraege untereinander haben ihre Werte an zwei Stellen. */
+      .tip dl,
+      .card-tip dl,
+      .pick-panel dl {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
+        gap: 2px 9px;
+        margin: 0;
+        font-size: 10.5px;
+      }
+      .tip dt,
+      .card-tip dt,
+      .pick-panel dt {
+        color: var(--faint);
+        white-space: nowrap;
+      }
+      .tip dd,
+      .card-tip dd,
+      .pick-panel dd {
+        margin: 0;
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+      }
+      .inner {
+        padding: 18px;
+      }
+
+      /* ---------------------------------------------------------- Titel */
+      .eyebrow {
+        color: var(--accent);
+      }
+      .lede {
+        font-size: clamp(24px, 5cqw, 36px);
+        font-weight: 700;
+        letter-spacing: -0.055em;
+        line-height: 1.05;
+        margin: 4px 0 12px;
+      }
+
+      /* ------------------------------------------------------- Ablegefeld */
+      .drop {
+        position: relative;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        min-height: 153px;
+        padding: 18px 14px;
+        /* Der gestrichelte Rand ist nicht grau, sondern gedaempft in der
+           Akzentfarbe: die Flaeche gehoert zum Hauptweg. */
+        border: 1px dashed light-dark(#c6a49d, #6d4c53);
+        border-radius: 12px;
+        /* Schein von oben, in Pflaume: er macht aus dem Kasten eine
+           Flaeche, auf die man zielt. */
+        background: radial-gradient(
+          ellipse at 50% 28%,
+          light-dark(#ece4ec, #352530) 0%,
+          light-dark(#f4f2f6, #1d1b24) 70%
+        );
+        transition: border-color 0.18s, background-color 0.18s;
+      }
+      .drop.over,
+      .drop:focus-within {
+        border-color: var(--accent);
+        outline: 1px solid var(--accent);
+      }
+      .drop input[type='file'] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .drop input[type='file']:disabled {
+        cursor: not-allowed;
+      }
+      .wave {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        height: 32px;
+        margin-bottom: 10px;
+        color: var(--accent);
+      }
+      .wave i {
+        display: block;
+        width: 3px;
+        border-radius: 4px;
+        background: currentColor;
+      }
+      .file-label {
+        display: block;
+        font-weight: 650;
+        overflow-wrap: anywhere;
+      }
+      .sub {
+        color: var(--dim);
+        font-size: 12px;
+      }
+
+      /* ------------------------------------------------------- Trennmodus */
+      .model-head {
+        margin: 17px 0 8px;
+        font-weight: 650;
+      }
+      .modes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+        gap: 6px;
+      }
+      /* Jede Karte ist ein echtes Optionsfeld: damit funktionieren
+         Pfeiltasten und Vorlesesoftware ohne eigenen Code. Sichtbar ist
+         nur die Karte. */
+      .mode {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 48px;
+        padding: 7px 9px;
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        background: var(--panel-2);
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 650;
+        transition: border-color 0.12s, background 0.12s;
+      }
+      .mode:hover {
+        border-color: var(--accent);
+      }
+      .mode input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .mode span {
+        display: block;
+        font-size: 11px;
+        font-weight: 400;
+        color: var(--dim);
+      }
+      .mode.on {
+        border-color: var(--accent);
+        background: light-dark(#f7e9e9, #31232d);
+      }
+      .mode:has(input:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      /* Die Karte traegt nur noch ihren Namen und die Spurzahl. Alles
+         Weitere steht in der Sprechblase daneben. */
+      .mode-wrap {
+        position: relative;
+        display: flex;
+      }
+      .mode-wrap > .mode {
+        flex: 1;
+      }
+      /* Dieselbe Blase wie am (i) der Kopfzeile, nur links statt rechts
+         verankert — und ohne Mauszeiger-Ziel: sie wird gelesen, nicht
+         bedient, und darf den Klick auf die Karte darunter nicht abfangen. */
+      .card-tip {
+        top: calc(100% + 7px);
+        right: auto;
+        left: 0;
+        max-width: min(270px, 86cqw);
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.45;
+        pointer-events: none;
+      }
+      .card-tip::before {
+        right: auto;
+        left: 15px;
+      }
+      /* Die letzte Karte steht am rechten Rand; ihre Blase klappt nach
+         innen, sonst haengt sie ueber der Kante der Karte. */
+      .mode-wrap:last-child .card-tip {
+        left: auto;
+        right: 0;
+      }
+      .mode-wrap:last-child .card-tip::before {
+        left: auto;
+        right: 15px;
+      }
+      .mode-wrap:hover .card-tip,
+      .mode-wrap:has(input:focus-visible) .card-tip {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+      }
+      /* Derselbe Bau wie in der Ortsliste: Kopf, eine leise Zeile, dann
+         die Angaben in zwei Spalten. */
+      .card-tip .say {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--dim);
+        font-size: 10.5px;
+      }
+
+      /* Der Trennort in der Kopfzeile: ein Auswahlfeld, das aussieht wie
+         der Text, der vorher dort stand. Erst beim Zeigen zeigt es, dass
+         es eines ist.
+
+         Das Winkelchen zeichnet der Rahmen eines leeren Kaestchens, nicht
+         der Pfeil des Systems: dessen Groesse und Farbe richten sich nach
+         der Oberflaeche des Betriebssystems und passten hier zu nichts. */
+      .pick::after {
+        content: '';
+        position: absolute;
+        right: 6px;
+        width: 4px;
+        height: 4px;
+        border-right: 1.2px solid currentColor;
+        border-bottom: 1.2px solid currentColor;
+        transform: translateY(-1.5px) rotate(45deg);
+        opacity: 0.75;
+        pointer-events: none;
+      }
+      /* Aufgeklappt zeigt das Winkelchen nach oben. */
+      .pick:has([aria-expanded='true'])::after {
+        transform: translateY(1px) rotate(225deg);
+      }
+      /* Das Wort steht in der Schriftfarbe, das Bedienbare daneben in der
+         Akzentfarbe: so ist auf einen Blick zu sehen, was hier nur
+         beschriftet und was anzufassen ist. */
+      .local .mode-label {
+        margin-right: 1px;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .pick {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        color: var(--accent);
+      }
+      /* Die aufgeklappte Liste: beide Orte untereinander, jeder mit seinen
+         Angaben. Sie sieht aus wie die Sprechblase am ⓘ, weil sie deren
+         Aufgabe uebernommen hat. */
+      .pick-panel {
+        position: absolute;
+        top: calc(100% + 9px);
+        right: -4px;
+        z-index: 6;
+        display: grid;
+        gap: 4px;
+        width: max-content;
+        max-width: min(310px, 86cqw);
+        padding: 5px;
+        border: 1px solid var(--edge);
+        border-radius: var(--radius-sm);
+        background: var(--panel-2);
+        box-shadow: 0 16px 34px -12px light-dark(rgb(24 19 30 / 0.34), rgb(0 0 0 / 0.65));
+      }
+      .pick-opt {
+        display: block;
+        padding: 7px 9px;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .pick-opt:hover {
+        border-color: var(--edge);
+      }
+      .pick-opt.on {
+        border-color: var(--accent);
+        background: light-dark(#f7e9e9, #31232d);
+      }
+      .pick-opt:has(input:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      /* Laeuft gerade ein Job, bleibt die Liste lesbar, aber nicht
+         bedienbar: die Angaben sind dann erst recht interessant. */
+      .pick-opt:has(input:disabled) {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .pick-opt input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .pick-head {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11.5px;
+        font-weight: 650;
+      }
+      /* Die zwei Zeilen darunter: Verfahren und Geraet. Eine Stufe
+         kleiner, in der Schrift der Messwerte — es sind Namen, keine
+         Saetze, und untereinander sollen sie sich ausrichten. */
+      .pick-sum {
+        display: block;
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 10.5px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+      .pick-sum.dim {
+        color: var(--faint);
+      }
+      .local .site-pick {
+        appearance: none;
+        color: var(--accent);
+        margin-left: -4px;
+        padding: 1px 15px 1px 4px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        font: inherit;
+        cursor: pointer;
+      }
+      .local .site-pick:hover:not(:disabled) {
+        border-color: var(--edge);
+        filter: brightness(1.12);
+      }
+      .local .site-pick:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      /* Die aufgeklappte Liste zeichnet das System, nicht diese Karte —
+         ohne diese Zeile stuende sie im Dunkelmodus schwarz auf schwarz. */
+      .local .site-pick option {
+        background: var(--panel-2);
+        color: var(--ink);
+      }
+
+      /* ------------------------------------------------------ Rueckfrage */
+      .ask {
+        width: min(400px, calc(100vw - 32px));
+        padding: 19px 21px 16px;
+        border: 1px solid var(--edge);
+        border-radius: var(--radius-sm);
+        background: var(--panel-2);
+        color: var(--ink);
+      }
+      .ask::backdrop {
+        background: light-dark(rgb(28 22 34 / 0.32), rgb(0 0 0 / 0.55));
+      }
+      .ask-q {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 650;
+      }
+      .ask-why {
+        margin: 8px 0 0;
+        color: var(--dim);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .ask-go {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      /* Die Spuren des gewaehlten Modus, jede mit dem Strich in ihrer
+         Farbe — derselben, die sie spaeter im Deck traegt. */
+      .outputs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 11px;
+        margin-top: 11px;
+        min-height: 20px;
+        color: var(--dim);
+        font-size: 12px;
+      }
+      .stem {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .stem::before {
+        content: '';
+        width: 8px;
+        height: 3px;
+        border-radius: 4px;
+        background: var(--sig);
+      }
+
+      /* ------------------------------------------------------------- Fuss */
+      .go {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px 14px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--edge);
+      }
+      /* Die Nebenhandlung sieht aus wie ein Link, nicht wie ein zweiter
+         Knopf: daneben steht die Hauptaktion, und zwei Knoepfe
+         nebeneinander waeren zwei gleich laute Angebote. */
+      button.demo {
+        min-height: 34px;
+        padding: 2px 0;
+        border: 0;
+        background: none;
+        color: var(--dim);
+        font-size: 12px;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      button.demo:hover:not(:disabled) {
+        color: var(--accent);
+      }
+      button.start {
+        min-height: 38px;
+        padding: 8px 14px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--key);
+        color: var(--on-key);
+        font-weight: 700;
+      }
+      button.start:hover:not(:disabled) {
+        filter: brightness(1.05);
+      }
+      button.start:disabled {
+        background: var(--panel-2);
+        color: var(--dim);
+        opacity: 0.72;
+      }
+
+      .hint {
+        margin-top: 8px;
+        color: var(--dim);
+        font-size: 12px;
+      }
+
+      @container (max-width: 350px) {
+        .inner {
+          padding: 13px;
+        }
+        .mode {
+          padding-inline: 5px;
+        }
+        button.start {
+          width: 100%;
+        }
+      }
+      @media (pointer: coarse) {
+        button.demo,
+        button.start {
+          min-height: 44px;
+        }
+      }
+    `,
+  ],
+  template: `
+    <section class="panel box">
+      <header class="bar">
+        <div class="brand">
+          <span class="logo" aria-hidden="true">
+            <span><i></i><i></i><i></i><i></i><i></i></span>
+          </span>
+          <strong>songsplit</strong>
+        </div>
+        <span class="local">
+          <!-- Der Trennort steht da, wo vorher nur sein Name stand, und das
+               ⓘ ist darin aufgegangen: aufgeklappt zeigt die Liste beide
+               Moeglichkeiten **mit ihren Angaben nebeneinander**. Vorher
+               nannte die Blase nur den gerade gewaehlten Ort — wer
+               vergleichen wollte, musste erst umschalten, also genau das
+               tun, worueber er sich noch nicht entschieden hatte.
+
+               Die Eintraege sind echte Optionsfelder in einer
+               Radiogruppe: Pfeiltasten, Auswahl und Vorlesesoftware
+               kommen damit ohne eigenen Code zurecht. -->
+          @if (jobs.serverAvailable) {
+            <span class="mode-label" id="site-label">Modus</span>
+            <div class="pick" (focusout)="onPickBlur($event)">
+              <button
+                #pickButton
+                type="button"
+                class="site-pick"
+                data-testid="site-select"
+                aria-haspopup="true"
+                aria-labelledby="site-label site-pick-value"
+                [attr.aria-expanded]="pickOpen()"
+                (click)="pickOpen.set(!pickOpen())"
+                (keydown.escape)="closePick()"
+                (keydown.arrowdown)="onPickKey($event)"
+                (keydown.arrowup)="onPickKey($event)"
+              >
+                <span id="site-pick-value">{{ currentSite().short }}</span>
+              </button>
+              @if (pickOpen()) {
+                <div
+                  class="pick-panel"
+                  role="radiogroup"
+                  aria-label="Wo getrennt wird"
+                  data-testid="site-panel"
+                  (keydown.escape)="closePick()"
+                >
+                  @for (s of SITES; track s.key) {
+                    <label
+                      class="pick-opt"
+                      [class.on]="site() === s.key"
+                      data-testid="site-option"
+                      [attr.data-site]="s.key"
+                      [title]="s.hint"
+                    >
+                      <input
+                        type="radio"
+                        name="site"
+                        [value]="s.key"
+                        [checked]="site() === s.key"
+                        [disabled]="busy()"
+                        (change)="chooseSite(s.key)"
+                      />
+                      <span class="pick-head">{{ s.short }}</span>
+                      <!-- Zwei Zeilen, mehr nicht: womit gerechnet wird und
+                           worauf. Alles Weitere steht im Fenster der
+                           laufenden Trennung — dort wartet man ohnehin. -->
+                      <span class="pick-sum">{{ facts.summary(s.key).method }}</span>
+                      <span class="pick-sum dim">{{ facts.summary(s.key).device }}</span>
+                    </label>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <!-- Ohne Wahl bleibt es beim Satz und beim ⓘ daneben: eine
+                 Liste mit einem Eintrag waere keine Wahl, die Angaben
+                 muessen aber trotzdem irgendwo stehen. -->
+            {{ VARIANT.label }}
+            <span class="what-wrap">
+              <button
+                type="button"
+                class="what"
+                data-testid="device-info"
+                aria-label="Worauf gerechnet wird"
+                aria-describedby="device-tip"
+                [attr.aria-expanded]="infoOpen()"
+                (click)="infoOpen.set(!infoOpen())"
+                (blur)="infoOpen.set(false)"
+              >
+                <app-icon name="info" />
+              </button>
+              <span
+                class="tip"
+                id="device-tip"
+                role="tooltip"
+                data-testid="device-tip"
+                [class.show]="infoOpen()"
+              >
+                <dl>
+                  @for (row of deviceRows(); track row.label) {
+                    <dt>{{ row.label }}</dt>
+                    <dd>{{ row.value }}</dd>
+                  }
+                </dl>
+              </span>
+            </span>
+          }
+        </span>
+      </header>
+
+      <div class="inner">
+      <div class="eyebrow">01 / Import</div>
+      <h2 class="lede">Song trennen</h2>
+
+      <!-- ------------------------------------------------------- Datei -->
+      <label
+        class="drop"
+        [class.over]="over()"
+        (dragenter)="over.set(true)"
+        (dragover)="over.set(true)"
+        (dragleave)="over.set(false)"
+        (drop)="over.set(false)"
+      >
+        <input
+          #fileInput
+          id="audio-file"
+          type="file"
+          accept=".mp3,.wav,audio/mpeg,audio/wav"
+          [disabled]="busy()"
+          aria-label="MP3- oder WAV-Datei auswählen"
+          (change)="pick($event)"
+        />
+        <span>
+          <span class="wave" aria-hidden="true">
+            @for (bar of bars; track $index) {
+              <i [style.height.px]="bar.h" [style.opacity]="bar.a"></i>
+            }
+          </span>
+          <span class="file-label">
+            {{ file()?.name ?? 'MP3 oder WAV hierher ziehen' }}
+          </span>
+          <span class="sub">
+            {{ file() ? 'Andere Datei auswählen' : 'oder Datei auswählen' }}
+          </span>
+        </span>
+      </label>
+
+      <!-- -------------------------------------------------- Trennmodus -->
+      <p class="model-head" id="mode-label">Trennmodus</p>
+      <div class="modes" role="radiogroup" aria-labelledby="mode-label">
+        @for (m of models(); track m.name) {
+          <!-- Die Sprechblase haengt neben der Karte, nicht in ihr: stuende
+               sie im Etikett, gehoerte ihr ganzer Text zum Namen des
+               Optionsfelds, und eine Vorlesesoftware sagte bei jedem
+               Pfeiltastendruck vier Saetze auf. Verbunden sind beide ueber
+               aria-describedby. -->
+          <div class="mode-wrap">
+            <label
+              class="mode"
+              [class.on]="model() === m.name"
+              data-testid="model"
+            >
+              <input
+                type="radio"
+                name="model"
+                [value]="m.name"
+                [checked]="model() === m.name"
+                [disabled]="busy()"
+                [attr.aria-describedby]="'mode-tip-' + m.name"
+                (change)="model.set(m.name)"
+              />
+              {{ m.mode }}
+              <span>{{ m.stems.length }} Spuren</span>
+            </label>
+            <span
+              class="tip card-tip"
+              role="tooltip"
+              [id]="'mode-tip-' + m.name"
+              data-testid="mode-tip"
+            >
+              <strong class="pick-head">{{ m.mode }}</strong>
+              <span class="say">{{ m.description }}</span>
+              <dl>
+                <dt>Modell</dt>
+                <dd>{{ m.name }}</dd>
+                <dt>Spuren</dt>
+                <dd>{{ m.stems.join(' · ') }}</dd>
+                @if (m.site === 'device') {
+                  <dt>Gewichte</dt>
+                  <dd>
+                    @if (m.downloaded) {
+                      im Browser-Cache
+                    } @else {
+                      {{ megabytes(m.download_bytes ?? 0) }} MB, einmalig
+                    }
+                  </dd>
+                }
+              </dl>
+            </span>
+          </div>
+        }
+      </div>
+
+      <!-- Eine leere Modusliste darf nicht stumm bleiben. Sie sah aus wie
+           „noch nicht geladen" und blieb es auch: Grund war ein alter
+           Eintrag im Browser-Cache, und ohne diese Zeile gab es nichts,
+           woran das zu erkennen war. -->
+      @if (site() === 'device' && device.modelProblem(); as why) {
+        <div class="notice" style="margin-top: 12px" data-testid="no-model">
+          <span><strong>Kein Trennmodus:</strong> {{ why }}</span>
+        </div>
+      }
+
+      <div class="outputs" aria-live="polite" aria-label="Spuren im gewählten Modus">
+        @if (selectedModel(); as m) {
+          @for (stem of m.stems; track stem; let i = $index) {
+            <span class="stem" [style.--sig]="color(stem, i)">{{ stem }}</span>
+          }
+        }
+      </div>
+
+      <!-- Kein WebGPU, oder nur eine Software-Umsetzung. Das ist eine
+           Warnung und keine Sperre: gerechnet wird dann auf dem Prozessor,
+           und das dauert. Wer die Wartezeit in Kauf nimmt, soll trennen
+           können — aber vorher wissen, worauf er sich einlässt, und nicht
+           erst nach zehn Minuten. -->
+      @if (site() === 'device' && deviceProblem(); as why) {
+        <div class="notice" style="margin-top: 12px" data-testid="no-webgpu">
+          <span>
+            <strong>Keine Grafikbeschleunigung:</strong> {{ why }}
+            Getrennt wird dann auf dem Prozessor — das geht, dauert aber ein
+            Vielfaches, bei einem ganzen Lied eher zehn Minuten als eine.
+            @if (jobs.serverAvailable) {
+              Über „Auf diesem Rechner“ läuft es in Sekunden.
+            }
+          </span>
+        </div>
+      }
+
+      @if (selectedModel(); as m) {
+        <!-- Der Browserpfad sagt seinen Download nicht mehr hier: 174 MB
+             sind eine Folge des Startens, kein Zustand der Karte. Gefragt
+             wird beim Start, siehe ask() weiter unten. Der Backendpfad bleibt stehen,
+             weil dort ein Befehl steht, den jemand abtippen koennen muss —
+             in einer Sprechblase waere er nicht zu markieren. -->
+        @if (m.site === 'server' && !m.downloaded) {
+          <div class="notice" style="margin-top: 12px">
+            <span>
+              <strong>{{ m.mode }}</strong> ({{ m.name }}) wird beim ersten Lauf
+              erst heruntergeladen ({{ m.missing_files.length }}
+              {{ m.missing_files.length === 1 ? 'Datei' : 'Dateien' }}). Der Job
+              bleibt so lange auf „Wird verarbeitet“. Schlägt der Download fehl,
+              hilft
+              <span class="mono">python tools/fetch_model_configs.py {{ m.name }}</span>:
+              das Skript probiert mehrere Quellen und sagt, woran es scheitert.
+            </span>
+          </div>
+        }
+      }
+
+      @if (error(); as e) {
+        <div class="notice bad" style="margin-top: 12px"><span>{{ e }}</span></div>
+      }
+
+      <!-- Die Rueckfrage vor dem ersten Modelldownload.
+           Oben die Frage, darunter klein und grau, was sie nach sich zieht:
+           wer weiss, worum es geht, liest nur die erste Zeile. Escape und
+           ein Klick daneben zaehlen wie „Nein" — das Teuerste darf nicht
+           das sein, was aus Versehen passiert. -->
+      <dialog
+        #askDialog
+        class="ask"
+        data-testid="ask-download"
+        (close)="pending.set(null)"
+        (click)="onAskClick($event)"
+      >
+        @if (pending(); as ask) {
+          <p class="ask-q">{{ ask.question }}</p>
+          <p class="ask-why">{{ ask.why }}</p>
+          <div class="ask-go">
+            <button type="button" class="demo" (click)="answer(false)">Nein</button>
+            <button type="button" class="start" (click)="answer(true)">Ja</button>
+          </div>
+        }
+      </dialog>
+
+      <!-- --------------------------------------------------------- Fuss -->
+      <div class="go">
+        <button
+          type="button"
+          class="demo"
+          [disabled]="busy()"
+          title="Legt drei synthetische Spuren an, ohne zu trennen: zwei Klickspuren mit Klicks auf genau denselben Zeitpunkten und einen 440-Hz-Dauerton. Laufen die Klickspuren synchron, hört man einen einzigen Klick."
+          (click)="startTest()"
+        >
+          Testspuren anlegen
+        </button>
+        <button
+          type="button"
+          class="start"
+          [disabled]="!canStart()"
+          (click)="start()"
+        >
+          {{ startLabel() }} <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+
+      @if (hint(); as h) {
+        <p class="hint" role="status">{{ h }}</p>
+      }
+      </div>
+    </section>
+  `,
+})
+export class ImportPanelComponent {
+  readonly api = inject(ApiService);
+  readonly device = inject(DeviceSeparator);
+  readonly facts = inject(DeviceFacts);
+  private readonly jobs = inject(JobsService);
+
+  readonly VARIANT = VARIANT;
+
+  /** Der angelegte Job — der Aufrufer zeigt ihm beim Laufen zu. */
+  readonly started = output<Job>();
+
+  private readonly fileInput =
+    viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
+
+  readonly bars = BARS;
+
+  /**
+   * Die beiden Trennorte.
+   *
+   * „Auf diesem Gerät" steht zuerst und ist die Vorgabe: es braucht kein
+   * Backend, nichts verlässt den Rechner, und es ist der Weg, den die
+   * öffentliche Variante überhaupt hat. „Auf diesem Rechner" meint den
+   * Python-Dienst mit CUDA — schneller, aber er muss laufen.
+   */
+  readonly SITES: readonly {
+    key: Site;
+    label: string;
+    /** Was auf dem Knopf und ueber dem Eintrag steht. Ein Wort. */
+    short: string;
+    where: string;
+    hint: string;
+  }[] = [
+    {
+      key: 'device',
+      label: 'Auf diesem Gerät',
+      short: 'Browser',
+      where: 'im Browser, WebGPU',
+      hint:
+        'Rechnet im Browser auf der Grafikkarte. Kein Backend nötig, die ' +
+        'Datei verlässt das Gerät nicht. Beim ersten Lauf werden die ' +
+        'Modellgewichte geladen.',
+    },
+    {
+      key: 'server',
+      label: 'Auf diesem Rechner',
+      short: 'Lokal',
+      where: 'Python, CUDA',
+      hint:
+        'Rechnet im lokalen Python-Dienst mit CUDA. Deutlich schneller, ' +
+        'braucht aber das laufende Backend.',
+    },
+  ];
+
+  readonly file = signal<File | null>(null);
+  /** Vorgabe: auf dem Gerät. */
+  readonly site = signal<Site>('device');
+  readonly model = signal('htdemucs');
+  readonly busy = signal(false);
+  readonly error = signal<string | null>(null);
+  /** Kurze Rueckmeldung unter der Fusszeile, etwa zum Dateityp. */
+  readonly hint = signal<string | null>(null);
+  /** Haengt eine Datei gerade ueber der Ablegeflaeche? */
+  readonly over = signal(false);
+
+  /** Die Modi des gewählten Orts — und nur die. */
+  readonly models = computed(() => this.jobs.modelsFor(this.site()));
+
+  readonly selectedModel = computed(
+    () => this.models().find((m) => m.name === this.model()) ?? null,
+  );
+
+  /**
+   * Warum „Auf diesem Gerät" nicht geht — oder `null`.
+   *
+   * Fehlendes WebGPU und eine Software-Umsetzung sind verschiedene Dinge mit
+   * derselben Folge, und beide stehen im Klartext in `probeWebGpu`.
+   */
+  readonly deviceProblem = computed(() => {
+    const support = this.device.support();
+    if (!support) return null; // wird noch geprüft
+    return support.available ? null : support.reason;
+  });
+
+  /**
+   * Wechselt den Ort und zieht den Trennmodus mit.
+   *
+   * Beide Orte haben „Schnell"; „Instrumente" kann hier und dort fehlen.
+   * Stünde der Modus nach dem Wechsel auf etwas, das es am neuen Ort nicht
+   * gibt, wäre keine Karte markiert und der Knopf meldete einen Fehler, den
+   * niemand verursacht hat.
+   */
+  setSite(site: Site): void {
+    this.site.set(site);
+    this.error.set(null);
+    const available = this.jobs.modelsFor(site);
+    if (available.some((m) => m.name === this.model())) return;
+    const fallback = available.find((m) => m.is_default) ?? available[0];
+    if (fallback) this.model.set(fallback.name);
+  }
+
+  megabytes(bytes: number): number {
+    return Math.round(bytes / 1e6);
+  }
+
+  /** Ist die Sprechblase angetippt offen? Fuer Finger und Tastatur. */
+  readonly infoOpen = signal(false);
+
+  /** Ist die Ortsliste aufgeklappt? */
+  readonly pickOpen = signal(false);
+
+  private readonly pickButton =
+    viewChild<ElementRef<HTMLButtonElement>>('pickButton');
+
+  readonly currentSite = computed(
+    () => this.SITES.find((s) => s.key === this.site()) ?? this.SITES[0],
+  );
+
+  /**
+   * Klappt zu, sobald der Fokus die Liste verlaesst.
+   *
+   * `relatedTarget` ist das, was den Fokus bekommt. Liegt es noch in der
+   * Liste — etwa beim Wandern von einem Eintrag zum naechsten —, bleibt
+   * sie offen.
+   */
+  onPickBlur(event: FocusEvent): void {
+    const next = event.relatedTarget;
+    // Ein `relatedTarget` von `null` heisst: der Fokus ging nirgendwohin.
+    // Das passiert mitten in einem gewoehnlichen Mausklick auf einen
+    // Eintrag — beim Druecken verlaesst er den Knopf, und erst beim
+    // Loslassen landet er im Optionsfeld. Wer hier zuklappt, nimmt dem
+    // Klick das Ziel weg, und die Wahl kommt nie an. Genau das ist
+    // passiert: ein schneller, synthetischer Klick traf noch, ein
+    // menschlicher Tastendruck von achtzig Millisekunden nicht mehr.
+    //
+    // Zugeklappt wird deshalb nur, wenn der Fokus wirklich woandershin
+    // geht. Fuer alles andere sorgen Escape und das Zeigen daneben.
+    if (!next) return;
+    const wrap = (event.currentTarget as HTMLElement) ?? null;
+    if (next instanceof Node && wrap?.contains(next)) return;
+    this.pickOpen.set(false);
+  }
+
+  /**
+   * Pfeiltaste auf dem Knopf klappt auf und springt in die Liste.
+   *
+   * Wer ein Auswahlfeld vor sich sieht, probiert die Pfeiltasten. Vorher
+   * geschah dabei nichts — der Knopf ist keins, und die Optionsfelder
+   * liegen eine Ebene tiefer.
+   */
+  onPickKey(event: Event): void {
+    event.preventDefault();
+    if (!this.pickOpen()) this.pickOpen.set(true);
+    // Erst nach dem Zeichnen: vorher gibt es die Eintraege noch nicht.
+    setTimeout(() => {
+      const host = this.pickButton()?.nativeElement.closest('.pick') ?? null;
+      const radio =
+        host?.querySelector<HTMLInputElement>('input[name="site"]:checked') ??
+        host?.querySelector<HTMLInputElement>('input[name="site"]');
+      radio?.focus();
+    });
+  }
+
+  /**
+   * Ein Zeigen daneben klappt zu.
+   *
+   * Der Fokus allein reicht nicht: ein Tippen auf leere Flaeche bewegt ihn
+   * auf manchen Geraeten gar nicht, und die Liste bliebe stehen.
+   */
+  onDocumentPointerDown(event: Event): void {
+    if (!this.pickOpen()) return;
+    const target = event.target;
+    const host = this.pickButton()?.nativeElement.closest('.pick') ?? null;
+    if (target instanceof Node && host?.contains(target)) return;
+    this.pickOpen.set(false);
+  }
+
+  closePick(): void {
+    if (!this.pickOpen()) return;
+    this.pickOpen.set(false);
+    this.pickButton()?.nativeElement.focus();
+  }
+
+  /** Ort waehlen und zuklappen — der Fokus geht zurueck auf den Knopf. */
+  chooseSite(site: Site): void {
+    this.setSite(site);
+    this.closePick();
+  }
+
+  /** Die offene Rueckfrage, oder `null`. */
+  readonly pending = signal<{ question: string; why: string } | null>(null);
+
+  /**
+   * Modi, deren Download in dieser Sitzung schon bejaht wurde.
+   *
+   * `downloaded` wird erst wahr, wenn die Gewichte liegen. Ohne dieses
+   * Gedaechtnis fragte ein Abbruch mit anschliessendem zweiten Versuch
+   * dieselbe Frage noch einmal — und das ist der Fall, in dem der Mensch
+   * gerade bewiesen hat, dass er sie kennt.
+   */
+  private readonly agreed = new Set<string>();
+
+  private readonly askDialog =
+    viewChild.required<ElementRef<HTMLDialogElement>>('askDialog');
+
+  /**
+   * Worauf gerechnet wird — alles, was hinter dem (i) steht.
+   *
+   * Je Ort etwas anderes: beim Gerät der Grafikadapter und die Fassung der
+   * Runtime, beim Backend die Grafikkarte, der freie Speicher und die
+   * Fassungen von PyTorch und CUDA.
+   */
+  /**
+   * Die langen Angaben — nur noch fuer das ⓘ der oeffentlichen Variante.
+   *
+   * Dort gibt es keine Ortsliste und kein anderes Fenster, in dem sie
+   * stehen koennten; in der lokalen Variante zeigt sie das Fenster der
+   * laufenden Trennung.
+   */
+  readonly deviceRows = computed(() => this.facts.rows(this.site()));
+
+
+
+
+
+  readonly startLabel = computed(() => {
+    if (this.busy()) {
+      return this.site() === 'device' ? 'wird vorbereitet …' : 'wird hochgeladen …';
+    }
+    const stems = this.selectedModel()?.stems.length;
+    return stems ? `${stems} Spuren trennen` : 'Trennen';
+  });
+
+  /**
+   * Kann jetzt getrennt werden?
+   *
+   * Fehlende Grafikbeschleunigung hält hier nicht auf — dann rechnet der
+   * Prozessor, und die Warnung darüber sagt, was das bedeutet. Was aufhält,
+   * ist eine Trennung, die schon läuft: davon gibt es eine je Tab.
+   */
+  readonly canStart = computed(() => {
+    if (!this.file() || this.busy()) return false;
+    if (!this.selectedModel()) return false;
+    if (this.site() === 'device') return !this.device.busy();
+    return true;
+  });
+
+  color(stem: string, index: number): string {
+    return stemColor(stem.toLowerCase(), index, stem);
+  }
+
+  /**
+   * `accept` filtert nur den Dateidialog. Hineingezogen werden kann alles,
+   * und eine Textdatei ergaebe erst beim Hochladen einen Fehler vom Server
+   * — das sagt sich hier schneller.
+   */
+  pick(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const chosen = input.files?.[0] ?? null;
+    this.error.set(null);
+    if (chosen && !ACCEPTED.test(chosen.name)) {
+      this.hint.set('Bitte eine MP3- oder WAV-Datei auswählen.');
+      input.value = '';
+      return;
+    }
+    this.hint.set(null);
+    this.file.set(chosen);
+  }
+
+  /**
+   * Startet — oder fragt vorher.
+   *
+   * Gefragt wird nur im Browserpfad und nur beim ersten Mal: dort laedt
+   * der Start 174 MB ueber die Leitung des Menschen, und das ist eine
+   * Folge, die vor dem Klick gehoert und nicht danach. Der Backendpfad
+   * laedt auf dem Server und fragt deshalb nicht.
+   */
+  async start(): Promise<void> {
+    if (!this.file()) return;
+    const model = this.selectedModel();
+    if (
+      model &&
+      model.site === 'device' &&
+      !model.downloaded &&
+      !this.agreed.has(model.name)
+    ) {
+      this.ask(model);
+      return;
+    }
+    await this.launch();
+  }
+
+  private ask(model: ModelInfo): void {
+    const mb = this.megabytes(model.download_bytes ?? 0);
+    this.pending.set({
+      question: `${mb} MB Modellgewichte laden?`,
+      why:
+        `„${model.mode}" (${model.name}) rechnet im Browser und holt die ` +
+        'Gewichte dafür einmalig. Sie bleiben danach im Browser-Cache: ' +
+        'jeder weitere Song beginnt sofort, auch ohne Netz. Über Mobilfunk ' +
+        'zählen die ' +
+        `${mb} MB auf das Datenvolumen.`,
+    });
+    this.askDialog().nativeElement.showModal();
+  }
+
+  /** „Ja" startet, alles andere nicht. */
+  answer(yes: boolean): void {
+    const model = this.selectedModel();
+    this.askDialog().nativeElement.close();
+    if (!yes || !model) return;
+    this.agreed.add(model.name);
+    void this.launch();
+  }
+
+  /**
+   * Ein Klick auf den Schleier zaehlt als „Nein".
+   *
+   * Das Ereignis des Dialogs trifft bei einem Klick daneben ihn selbst;
+   * im Inneren trifft es den Absatz oder den Knopf. Genau daran laesst
+   * sich beides unterscheiden.
+   */
+  onAskClick(event: MouseEvent): void {
+    if (event.target === this.askDialog().nativeElement) this.answer(false);
+  }
+
+  private async launch(): Promise<void> {
+    const file = this.file();
+    if (!file) return;
+    this.busy.set(true);
+    this.error.set(null);
+    this.hint.set(null);
+    try {
+      const job =
+        this.site() === 'device'
+          ? await this.device.start(file, this.model())
+          : await this.api.upload(file, this.model());
+      this.file.set(null);
+      // Auch das Eingabefeld leeren. Sonst steht dort weiter ein Dateiname,
+      // waehrend "Trennen" deaktiviert ist, und dieselbe Datei nochmal zu
+      // waehlen loest kein change-Ereignis aus.
+      this.fileInput().nativeElement.value = '';
+      this.started.emit(job);
+    } catch (err) {
+      this.error.set(describeHttp(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async startTest(): Promise<void> {
+    this.busy.set(true);
+    this.error.set(null);
+    this.hint.set(null);
+    try {
+      // Ohne Backend legt der Browser die Testspuren selbst an — dieselben
+      // drei Spuren, aus derselben Vorschrift.
+      if (this.api.enabled) await this.api.createTestJob();
+      else this.device.createTestJob();
+    } catch (err) {
+      this.error.set(describeHttp(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}

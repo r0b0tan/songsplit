@@ -1,0 +1,39 @@
+{
+  "name": "songsplit-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test:audio": "node tests/audio/run.mjs",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "start:public": "ng serve --configuration public",
+    "build:public": "ng build --configuration public",
+    "test:separate": "node tests/separate/run.mjs",
+    "test:webgpu": "node tests/webgpu/run.mjs",
+    "vendor:ort": "node tools/vendor-onnxruntime.mjs",
+    "test:separate:browser": "node tests/separate/run-browser.mjs",
+    "test:public": "node tests/public/run.mjs",
+    "test:webgpu:windows": "node tests/webgpu/run-windows.mjs"
+  },
+  "dependencies": {
+    "@angular/common": "^22.2.5",
+    "@angular/compiler": "^22.2.5",
+    "@angular/core": "^22.2.5",
+    "@angular/forms": "^22.2.5",
+    "@angular/platform-browser": "^22.2.5",
+    "onnxruntime-web": "1.31.1",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.6",
+    "@angular/cli": "^22.2.6",
+    "@angular/compiler-cli": "^22.2.5",
+    "@webgpu/types": "0.1.68",
+    "lucide-static": "^1.70.0",
+    "playwright": "^1.65.0",
+    "typescript": "~6.0.3"
+  }
+}

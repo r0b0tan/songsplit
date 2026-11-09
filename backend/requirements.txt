@@ -1,0 +1,18 @@
+# Lokale API
+fastapi==0.122.0
+uvicorn[standard]==0.41.0
+python-multipart==0.0.22
+
+# Stem-Trennung. Auf PyPI heisst das Paket "audio-separator",
+# das Projekt selbst "python-audio-separator".
+#   CUDA:  pip install "audio-separator[gpu]==0.48.0"
+#   CPU:   pip install "audio-separator[cpu]==0.48.0"
+# Die Zeile unten installiert die CUDA-Variante.
+audio-separator[gpu]==0.48.0
+
+# audio-separator 0.48.0 importiert audioread, deklariert es aber nicht
+# als Abhaengigkeit. Ohne diese Zeile schlaegt der Import fehl mit
+# "ModuleNotFoundError: No module named 'audioread'".
+audioread==3.0.1
+
+soundfile==0.13.1

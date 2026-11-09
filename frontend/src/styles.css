@@ -1,0 +1,325 @@
+/*
+ * songsplit — Oberflaeche "Graphite"
+ *
+ * Layout: eine gestapelte Spalte aus Karten, maximal 1180 px breit. Jede
+ * Karte ist ein eigenes Werkzeug (Status, Import, Jobs, Deck). Das Deck
+ * selbst ist eine Tabelle: Spurkopf | Wellenform | Regler.
+ *
+ * Farben stehen als light-dark()-Paare in den Tokens. Beide Themen sind
+ * damit in einer Zeile beschrieben, und native Regler folgen ueber
+ * color-scheme von selbst. Wichtig: ein Token ist fuer Javascript nur
+ * Text, kein Farbwert. Wer eine Farbe lesen muss (Canvas), liest eine
+ * echte Eigenschaft wie `color`, nie `--token`.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ------------------------------------------------------------ Flaechen */
+  --bg: light-dark(#eeedf0, #121216);
+  --panel: light-dark(#f8f7fa, #1c1b22);
+  --panel-2: light-dark(#f1eff4, #22212a);
+  --lane: light-dark(#e6e4ea, #17171e);
+  --lane-2: light-dark(#dfdde5, #1b1b23);
+  --edge: light-dark(#d5d1db, #35333f);
+  --edge-soft: light-dark(#e4e1e9, #282730);
+
+  /* ------------------------------------------------------------- Schrift */
+  --ink: light-dark(#23212a, #f0eef4);
+  --dim: light-dark(#5f5869, #b2acbe);
+  --faint: light-dark(#8b8495, #827b8e);
+
+  /* -------------------------------------------------------------- Akzent */
+  --accent: light-dark(#a6433a, #ffa497);
+  --key: light-dark(#fbb1a4, #ffa497);
+  --on-key: #361917;
+  --tint: light-dark(#faeae7, #2d232b);
+  --ghost: light-dark(rgb(166 67 58 / 0.11), rgb(255 164 151 / 0.13));
+  --ring: light-dark(rgb(166 67 58 / 0.45), rgb(255 164 151 / 0.5));
+
+  /* ------------------------------------------------------------ Zustaende */
+  --ok: light-dark(#2e6b4e, #7fd2a5);
+  --ok-bg: light-dark(#e6f1ea, #1a2a22);
+  --warn: light-dark(#8a6118, #e5bb6c);
+  --warn-bg: light-dark(#f6ecda, #2a2318);
+  --bad: light-dark(#a73a32, #f3918a);
+  --bad-bg: light-dark(#f8e7e5, #2c1c1c);
+  --test: light-dark(#64479b, #c0a5ec);
+  --test-bg: light-dark(#eee9f6, #231d2e);
+
+  /* ------------------------------------------------------------- Schriften */
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono',
+    Menlo, monospace;
+
+  /* Rundungen wie in der Vorlage exampledata/songsplit-uploadmaske: die
+     grosse Flaeche deutlich, die kleinen Schalter darin knapp. */
+  --radius: 18px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+/* Solange das Deck als Modal offen ist, gehoert das Scrollen ihm. */
+html.modal-open {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 var(--sans);
+  letter-spacing: -0.006em;
+}
+
+/* ------------------------------------------------------------- Typografie */
+
+h1, h2, h3 { margin: 0; font-weight: 650; line-height: 1.2; text-wrap: balance; }
+h1 { font-size: 15px; letter-spacing: -0.02em; }
+h2 { font-size: 15px; letter-spacing: -0.015em; }
+h3 { font-size: 13px; }
+p { margin: 0; }
+
+/** Versalien-Label ueber einer Gruppe. Traegt die Gliederung. */
+.eyebrow {
+  font: 600 10.5px/1.4 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.dim { color: var(--dim); }
+.faint { color: var(--faint); }
+.small { font-size: 12.5px; }
+.tiny { font-size: 11.5px; }
+.nowrap { white-space: nowrap; }
+.truncate { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/** Nur fuer Vorlesesoftware: steht im Textfluss, aber nicht auf dem Schirm. */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 2px;
+}
+a:hover { text-decoration-color: currentColor; }
+
+hr { border: none; border-top: 1px solid var(--edge-soft); margin: 0; }
+
+/* ------------------------------------------------------------- Hilfsreihen */
+
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row-tight { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.spread { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.grow { flex: 1; min-width: 0; }
+
+/* ----------------------------------------------------------------- Karten */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  container-type: inline-size;
+}
+/* Innenabstand nur, wo die Karte keine eigenen Baender fuehrt. */
+.panel-pad { padding: 15px clamp(13px, 2.2vw, 19px); }
+
+/** Kopfzeile einer Karte: Label links, Werkzeuge rechts. */
+.panel-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* --------------------------------------------------------------- Bedienung */
+
+button, select {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  min-height: 33px;
+  padding: 5px 11px;
+  letter-spacing: -0.006em;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+button:hover:not(:disabled), select:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled, select:disabled { opacity: 0.42; cursor: not-allowed; }
+
+/** Hauptaktion. Nur eine pro Karte. */
+button.key {
+  background: var(--key);
+  border-color: var(--key);
+  color: var(--on-key);
+  font-weight: 650;
+}
+button.key:hover:not(:disabled) { filter: brightness(1.05); border-color: var(--key); }
+/* Deaktiviert heisst deaktiviert: eine blass eingefaerbte Hauptaktion sieht
+   weiter nach "hier klicken" aus. Lieber ganz zurueck in den Hintergrund. */
+button.key:disabled {
+  background: var(--panel-2);
+  border-color: var(--edge);
+  color: var(--dim);
+  font-weight: 500;
+  opacity: 1;
+}
+
+/** Umschalter: der gedrueckte Zustand ist eingefaerbt, nicht nur dunkler. */
+button[aria-pressed='true'] {
+  background: var(--ghost);
+  border-color: var(--ring);
+  color: var(--accent);
+}
+
+button.ghost { background: transparent; }
+button.sm { min-height: 27px; padding: 3px 8px; font-size: 12px; }
+button.icon {
+  min-height: 27px;
+  width: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font: 600 11px/1 var(--mono);
+}
+
+:where(button, select, input, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input[type='range'] {
+  width: 100%;
+  margin: 0;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--sig, var(--accent));
+}
+
+/* --------------------------------------------------------------- Abzeichen */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--panel-2);
+  font: 500 11.5px/1.5 var(--sans);
+  white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+
+.chip.queued { color: var(--dim); }
+.chip.processing { color: var(--accent); background: var(--ghost); border-color: var(--ring); }
+.chip.done { color: var(--ok); background: var(--ok-bg); border-color: color-mix(in srgb, currentColor 32%, transparent); }
+.chip.failed { color: var(--bad); background: var(--bad-bg); border-color: color-mix(in srgb, currentColor 32%, transparent); }
+.chip.test { color: var(--test); background: var(--test-bg); border-color: color-mix(in srgb, currentColor 32%, transparent); }
+
+/* ------------------------------------------------------------- Mitteilungen */
+
+.notice {
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--warn);
+  background: var(--warn-bg);
+  color: var(--ink);
+  padding: 9px 11px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 12.5px;
+}
+.notice::before {
+  content: '!';
+  font: 700 11px/1.3 var(--mono);
+  color: var(--warn);
+  flex: none;
+}
+.notice.bad { border-left-color: var(--bad); background: var(--bad-bg); }
+.notice.bad::before { content: '×'; color: var(--bad); font-size: 14px; }
+.notice.test { border-left-color: var(--test); background: var(--test-bg); }
+.notice.test::before { content: '◇'; color: var(--test); }
+.notice.info { border-left-color: var(--dim); background: var(--panel-2); }
+.notice.info::before { content: 'i'; color: var(--dim); font-style: italic; }
+
+/* ------------------------------------------------------------ Aktivitaet */
+/* Der Worker liefert keinen Prozentwert, deshalb ein Lauflicht und keine
+   Fortschrittsanzeige, die etwas behaupten wuerde, was niemand weiss. */
+.activity {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--lane);
+  overflow: hidden;
+  position: relative;
+}
+.activity::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 32%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: sweep 1.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes sweep {
+  0% { left: -32%; }
+  100% { left: 100%; }
+}
+
+/* ---------------------------------------------------------------- Spinner */
+/* Fuer das Warten mit bekanntem Ende, aber unbekannter Dauer: Laden und
+   Dekodieren der Spuren. Ein Ring, kein Prozentbalken — wie lange das
+   Dekodieren dauert, weiss vorher niemand. */
+.spinner {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid var(--edge);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+.spinner.sm { width: 15px; height: 15px; border-width: 2px; }
+
+@keyframes spin {
+  to { transform: rotate(1turn); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  .activity::after { left: 0; width: 100%; animation: none; opacity: 0.5; }
+  /* Der Spinner dreht weiter, nur langsamer: ein Warteanzeiger, der
+     stillsteht, sieht aus wie ein haengendes Programm — und genau das
+     soll er ja widerlegen. */
+  .spinner { animation-duration: 1.8s !important; }
+}
+
+/* ------------------------------------------------------------- Beruehrung */
+@media (pointer: coarse) {
+  button, select { min-height: 44px; }
+  button.sm, button.icon { min-height: 36px; }
+  button.icon { width: 36px; }
+  input[type='range'] { height: 28px; }
+}

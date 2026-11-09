@@ -1,0 +1,9 @@
+# Zeilenenden.
+#
+# Dieses Projekt wird von beiden Seiten benutzt: das Backend laeuft unter
+# WSL, die Messung auf der Grafikkarte steuert das Chrome von Windows. Wer
+# unter Windows klont, bekommt mit der Vorgabe `core.autocrlf=true` CRLF in
+# jede Textdatei — und ein Shell-Skript mit CRLF beantwortet jeden Aufruf
+# mit „bad interpreter". Deshalb bleiben .sh-Dateien ueberall bei LF.
+* text=auto
+*.sh text eol=lf
