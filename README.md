@@ -1610,7 +1610,15 @@ Ausgeführt und bestanden:
 9. `npm run test:e2e <datei.mp3>` — 33 von 33, inklusive echter Trennung mit
    zwei verschiedenen Modellen, Zustandsanzeige, Solo samt eigenem Tempo,
    Wellenformen, Loop per Ziehen, Speichermessung und WAV-Download mit
-   korrekt kodiertem Dateinamen.
+   korrekt kodiertem Dateinamen. **Ohne** Datei sind es 21, und auch die
+   laufen auf einem leeren Jobspeicher durch: Die Prüfung der Reiter
+   („Songs" gegen „Testläufe") braucht einen echten Trennjob und setzte
+   dafür stillschweigend einen vom vorigen Lauf voraus — war keiner da,
+   war der Reiter deaktiviert und der Klick lief in seinen Timeout. Jetzt
+   legt der Prüfstand sich zwei Sekunden künstlichen Ton selbst an, über
+   `POST /api/jobs` statt über die Oberfläche: ein dort gestarteter Job
+   zöge das Deck auf, sobald er fertig ist, und das offene Modal finge ab
+   da jeden Klick ab.
 10. `npx ng build` (Produktionsbau) ohne Fehler.
 
 Für den Browserweg dazugekommen:

@@ -12,6 +12,8 @@ import { execFileSync } from 'node:child_process';
 
 import { chromium } from 'playwright';
 
+import { makeInputWav } from '../lib/wav.mjs';
+
 /**
  * Hauptspeicher aller Chromium-Prozesse in MB.
  *
@@ -434,6 +436,46 @@ async function main() {
     page.locator('[data-testid="job"]').evaluateAll((els) =>
       els.map((el) => `${el.dataset.status}/${el.dataset.testPath}`),
     );
+
+  // Die Reiter weiter unten trennen Songs von Testlaeufen. Dafuer muss
+  // mindestens ein **echter** Job da sein — und der entstand bisher nur,
+  // wenn man dem Pruefstand eine Musikdatei mitgab oder noch einer vom
+  // vorigen Lauf auf der Platte lag. Auf einem aufgeraeumten Rechner war
+  // der Reiter „Songs" leer und deshalb deaktiviert; der Klick lief in
+  // seinen Timeout, und der Durchlauf brach ab, statt etwas zu messen.
+  //
+  // Dieselbe Antwort wie beim Blaettern gleich darunter: was die Pruefung
+  // braucht, legt sie selbst an. Zwei Sekunden kuenstlicher Ton genuegen,
+  // und gewartet wird nur auf den **Job**, nicht auf die fertige
+  // Trennung — der Reiter fragt `is_test_path`, nicht den Zustand.
+  const echteJobs = async () =>
+    (await (await fetch(`${API}/api/jobs`)).json()).filter((j) => !j.is_test_path);
+  //
+  // Angelegt wird er ueber die **API**, nicht ueber die Oberflaeche. Ein
+  // hier gestarteter Job zieht das Deck auf, sobald er fertig ist — und
+  // zwei Sekunden Ton sind schnell fertig, naemlich mitten in den
+  // Pruefungen danach. Das offene Modal faengt dann jeden Klick ab; genau
+  // daran ist der erste Versuch gescheitert. Im Verlauf steht der Job so
+  // oder so, und mehr braucht der Reiter nicht.
+  if (!(await echteJobs()).length) {
+    const form = new FormData();
+    form.append(
+      'file',
+      new Blob([makeInputWav(2, 44100)], { type: 'audio/wav' }),
+      'Pruefstueck.wav',
+    );
+    const angelegt = await fetch(`${API}/api/jobs`, { method: 'POST', body: form });
+    if (!angelegt.ok) {
+      throw new Error(
+        `Der Trennjob fuer die Reiter liess sich nicht anlegen: HTTP ${angelegt.status}`,
+      );
+    }
+    // Die Liste holt sich von selbst nach; gewartet wird auf die Zeile,
+    // nicht auf die Antwort — der Reiter liest den DOM.
+    await page.waitForSelector('[data-testid="job"][data-test-path="false"]', {
+      timeout: 30_000,
+    });
+  }
 
   // Blaettern laesst sich nur pruefen, wenn es etwas zu blaettern gibt:
   // sechs Jobs je Seite. Auf einem frisch aufgeraeumten Rechner steht hier
