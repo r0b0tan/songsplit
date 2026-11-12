@@ -419,6 +419,75 @@ async function main() {
     // Zurueck auf „Schnell", damit die Pruefungen danach wie bisher laufen.
     await page.locator('[data-testid="model"]:has-text("Schnell")').first().click();
 
+    // ----------------------------------- 5c. Der Speicherwaechter greift
+    // Getrennt wird im Arbeitsspeicher, die Laenge des Liedes ist damit
+    // eine Systemgrenze. Hier wird nicht die Rechnung geprueft — das tut
+    // `tests/memory/run.mjs` ohne Browser —, sondern dass die Oberflaeche
+    // den Start wirklich anhaelt und sagt, warum. Statt eine lange Datei
+    // anzulegen, wird das Geraet klein gemacht: `deviceMemory` liest der
+    // Waechter bei jedem Start neu, ein Neuladen ist dafuer nicht noetig.
+    const echterSpeicher = await page.evaluate(() => navigator.deviceMemory ?? null);
+    const jobsVorher = await page.locator('[data-testid="job"]').count();
+
+    // Ausgang eins: knapp. Es kommt dieselbe Rueckfrage wie beim
+    // Download, und „Nein" laesst alles, wie es war.
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'deviceMemory', { value: 1, configurable: true });
+    });
+    await page.locator('input[type=file]').setInputFiles(inputPath);
+    await page.waitForTimeout(200);
+    await page.locator('button.start').click();
+    const frage = await page
+      .waitForSelector('[data-testid="ask-download"] .ask-q', { timeout: 10_000 })
+      .then((el) => el.innerText())
+      .catch(() => '');
+    await page.locator('[data-testid="ask-download"] button.demo').click();
+    await page.waitForTimeout(300);
+    const jobsNachNein = await page.locator('[data-testid="job"]').count();
+    check(
+      'Knapper Speicher fragt nach, „Nein" startet nichts',
+      /Arbeitsspeicher/.test(frage) && /MB/.test(frage) && jobsNachNein === jobsVorher,
+      `„${frage.replace(/\s+/g, ' ').trim()}" — ${jobsNachNein} Jobs wie vorher`,
+    );
+
+    // Ausgang zwei: aussichtslos. Hier wird nicht gefragt, sondern
+    // abgelehnt — und zwar mit dem Grund, nicht mit „ging nicht".
+    const vorWaechter = requests.length;
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'deviceMemory', { value: 0.25, configurable: true });
+    });
+    await page.locator('button.start').click();
+    const abgelehnt = await page
+      .waitForSelector('.notice.bad', { timeout: 10_000 })
+      .then((el) => el.innerText())
+      .catch(() => '');
+    const meldung = abgelehnt.replace(/\s+/g, ' ').trim();
+    const jobsNachAbsage = await page.locator('[data-testid="job"]').count();
+    check(
+      'Zu kleines Gerät: abgelehnt, mit Grund, ohne etwas zu laden',
+      /reicht der Arbeitsspeicher dieses Geräts nicht/.test(meldung) &&
+        /MB/.test(meldung) &&
+        // Ein Ausschnitt hilft hier nicht — und darf deshalb auch nicht
+        // als Rat dastehen, schon gar nicht als „bis 0:00".
+        !/0:00/.test(meldung) &&
+        jobsNachAbsage === jobsVorher &&
+        requests.length === vorWaechter,
+      `„${meldung.slice(0, 130)}" — ${requests.length - vorWaechter} Anfragen`,
+    );
+
+    // Geraet und Eingabefeld zuruecksetzen, sonst traegt der Rest des
+    // Durchlaufs eine abgelehnte Datei und ein Telefon mit sich herum.
+    await page.evaluate((gb) => {
+      if (gb === null) delete navigator.deviceMemory;
+      else
+        Object.defineProperty(navigator, 'deviceMemory', {
+          value: gb,
+          configurable: true,
+        });
+    }, echterSpeicher);
+    await page.locator('input[type=file]').setInputFiles([]);
+    await page.waitForTimeout(200);
+
     // --------------------------------- 6. Speicher und Netz inspizieren
     const storage = await page.evaluate(async () => {
       const read = (store) => {

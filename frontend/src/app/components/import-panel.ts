@@ -8,6 +8,13 @@ import type { Job, ModelInfo } from '../core/models';
 import { stemColor } from '../core/stem-colors';
 import { VARIANT } from '../core/variant';
 import { DeviceSeparator } from '../separate/device-separator';
+import { probeDuration } from '../separate/decode';
+import {
+  SHORTEST_WORTH_SUGGESTING_S,
+  asMinutes,
+  assess,
+  deviceMemoryGb,
+} from '../separate/memory-budget';
 
 /** Ein Balken der Wellenform: Hoehe in Pixeln, Deckkraft. */
 interface Bar {
@@ -862,7 +869,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         #askDialog
         class="ask"
         data-testid="ask-download"
-        (close)="pending.set(null)"
+        (close)="onAskClosed()"
         (click)="onAskClick($event)"
       >
         @if (pending(); as ask) {
@@ -1091,8 +1098,27 @@ export class ImportPanelComponent {
     this.closePick();
   }
 
-  /** Die offene Rueckfrage, oder `null`. */
-  readonly pending = signal<{ question: string; why: string } | null>(null);
+  /**
+   * Die offene Rueckfrage, oder `null`.
+   *
+   * Zwei Arten teilen sich denselben Dialog: der Modelldownload und der
+   * Speicher. `kind` entscheidet, was ein „Ja" auslöst — ohne das wäre
+   * `answer()` nicht zu sagen, welche Frage gerade beantwortet wurde.
+   */
+  readonly pending = signal<{
+    kind: 'speicher' | 'download';
+    question: string;
+    why: string;
+  } | null>(null);
+
+  /**
+   * Die Datei, für die der Speicher schon bejaht wurde.
+   *
+   * Dieselbe Begründung wie bei `agreed`: wer gerade „trotzdem" gesagt
+   * hat, soll nicht bei jedem Anlauf wieder gefragt werden. Hängt an der
+   * Datei, weil die Frage von ihrer Länge abhängt.
+   */
+  private memoryAgreed: File | null = null;
 
   /**
    * Modi, deren Download in dieser Sitzung schon bejaht wurde.
@@ -1169,18 +1195,39 @@ export class ImportPanelComponent {
     }
     this.hint.set(null);
     this.file.set(chosen);
+    // Die Zusage galt der vorigen Datei und ihrer Länge, nicht dieser.
+    this.memoryAgreed = null;
   }
 
   /**
-   * Startet — oder fragt vorher.
+   * Startet — oder fragt vorher. Zweimal, im schlimmsten Fall.
    *
-   * Gefragt wird nur im Browserpfad und nur beim ersten Mal: dort laedt
-   * der Start 174 MB ueber die Leitung des Menschen, und das ist eine
-   * Folge, die vor dem Klick gehoert und nicht danach. Der Backendpfad
-   * laedt auf dem Server und fragt deshalb nicht.
+   * Gefragt wird nur im Browserpfad: dort laedt der Start 174 MB ueber
+   * die Leitung des Menschen, und dort liegt die ganze Trennung in
+   * seinem Arbeitsspeicher. Beides sind Folgen, die vor den Klick
+   * gehoeren und nicht dahinter. Der Backendpfad laedt auf dem Server und
+   * rechnet dort, und fragt deshalb keines von beidem.
+   *
+   * Die Reihenfolge ist Absicht: erst der Speicher, dann der Download.
+   * Wer wegen der Laenge abbricht, soll das koennen, bevor die 174 MB
+   * geflossen sind.
    */
   async start(): Promise<void> {
-    if (!this.file()) return;
+    const file = this.file();
+    if (!file) return;
+    const model = this.selectedModel();
+
+    // Der Speicher zuerst, der Download danach. Wer wegen der Länge
+    // abbricht, soll das tun können, bevor 174 MB über seine Leitung
+    // gegangen sind — andersherum wäre die teure Frage die erste.
+    if (model?.site === 'device' && this.memoryAgreed !== file) {
+      if ((await this.judgeMemory(file, model)) !== 'weiter') return;
+    }
+    this.afterMemory();
+  }
+
+  /** Download-Rueckfrage, oder los. */
+  private afterMemory(): void {
     const model = this.selectedModel();
     if (
       model &&
@@ -1191,12 +1238,81 @@ export class ImportPanelComponent {
       this.ask(model);
       return;
     }
-    await this.launch();
+    void this.launch();
+  }
+
+  /**
+   * Passt der Song in den Arbeitsspeicher dieses Geraets?
+   *
+   * Getrennt wird im Arbeitsspeicher der Sitzung, und die Laenge des
+   * Liedes ist damit eine Systemgrenze — siehe `memory-budget.ts`. Bis
+   * hierher lief jeder Start ungeprueft los; ging er schief, starb der
+   * Tab ohne Meldung, und niemand erfuhr, woran es lag.
+   *
+   * Drei Ausgaenge: `weiter` (reicht, oder nicht zu beurteilen), `halt`
+   * (aussichtslos, Meldung steht) und `gefragt` (Dialog ist offen, es
+   * geht in `answer()` weiter).
+   */
+  private async judgeMemory(
+    file: File,
+    model: ModelInfo,
+  ): Promise<'weiter' | 'halt' | 'gefragt'> {
+    const stems = model.peak_stems;
+    // Ohne Spurzahl oder ohne lesbare Laenge wird nicht geraten. Ein
+    // Waechter, der seine Zahlen nicht kennt, haelt sich heraus.
+    if (!stems) return 'weiter';
+    const seconds = await probeDuration(file);
+    if (seconds === null) return 'weiter';
+
+    const urteil = assess(seconds, stems);
+    if (urteil.verdict === 'reicht') return 'weiter';
+
+    const mb = (n: number) => Math.round(n).toLocaleString('de-DE');
+    const geraet = urteil.measured
+      ? `Dieses Gerät meldet ${deviceMemoryGb().gb} GB.`
+      : 'Dieser Browser nennt den Speicher des Geräts nicht; angenommen sind 4 GB.';
+    // Die Spitze, nicht das Ergebnis: bei „Minimum" stehen am Ende zwei
+    // Spuren, während des Laufs sind es vier.
+    const waehrend =
+      `„${model.mode}" hält während des Laufs ${stems} Spuren und die ` +
+      `Eingabe gleichzeitig im Arbeitsspeicher`;
+
+    if (urteil.verdict === 'aussichtslos') {
+      // Zwei verschiedene Absagen. Liegt die machbare Länge unter einer
+      // halben Minute, ist nicht der Song zu lang, sondern das Gerät zu
+      // klein — dann wäre „nimm einen kürzeren Ausschnitt" ein Rat, der
+      // ins Leere geht.
+      this.error.set(
+        urteil.fitsSeconds < SHORTEST_WORTH_SUGGESTING_S
+          ? `Für „${model.mode}" reicht der Arbeitsspeicher dieses Geräts nicht: ` +
+              `gebraucht werden rund ${mb(urteil.neededMib)} MB, und allein die ` +
+              `Modellgewichte belegen davon etwa 400 MB. ${geraet} Ein kürzerer ` +
+              'Ausschnitt hilft hier nicht.'
+          : `${asMinutes(seconds)} ist zu lang für dieses Gerät. ${waehrend} — ` +
+              `zusammen mit dem Modell rund ${mb(urteil.neededMib)} MB. ${geraet} ` +
+              `Bis etwa ${asMinutes(urteil.fitsSeconds)} geht es hier; ein kürzerer ` +
+              'Ausschnitt lässt sich trennen.',
+      );
+      return 'halt';
+    }
+
+    this.pending.set({
+      kind: 'speicher',
+      question: `Knapp: rund ${mb(urteil.neededMib)} MB Arbeitsspeicher nötig.`,
+      why:
+        `${waehrend} — bei ${asMinutes(seconds)} sind das ${mb(urteil.audioMib)} MB, ` +
+        `dazu etwa 400 MB für das Modell. ${geraet} Es kann gutgehen. Geht es ` +
+        'nicht gut, beendet der Browser den Tab, und die Trennung ist weg — ' +
+        'gespeichert wird unterwegs nichts.',
+    });
+    this.askDialog().nativeElement.showModal();
+    return 'gefragt';
   }
 
   private ask(model: ModelInfo): void {
     const mb = this.megabytes(model.download_bytes ?? 0);
     this.pending.set({
+      kind: 'download',
       question: `${mb} MB Modellgewichte laden?`,
       why:
         `„${model.mode}" (${model.name}) rechnet im Browser und holt die ` +
@@ -1208,13 +1324,39 @@ export class ImportPanelComponent {
     this.askDialog().nativeElement.showModal();
   }
 
-  /** „Ja" startet, alles andere nicht. */
+  /**
+   * „Ja" startet, alles andere nicht.
+   *
+   * Welche Frage offen war, muss **vor** dem Schliessen gelesen werden:
+   * das `close`-Ereignis setzt `pending` auf `null`.
+   */
   answer(yes: boolean): void {
+    const offen = this.pending();
     const model = this.selectedModel();
     this.askDialog().nativeElement.close();
-    if (!yes || !model) return;
+    if (!yes) return;
+    if (offen?.kind === 'speicher') {
+      this.memoryAgreed = this.file();
+      this.afterMemory();
+      return;
+    }
+    if (!model) return;
     this.agreed.add(model.name);
     void this.launch();
+  }
+
+  /**
+   * Aufraeumen, wenn der Dialog wirklich zu ist.
+   *
+   * Nicht einfach `pending.set(null)`: `close()` feuert sein Ereignis
+   * **nachtraeglich**, als eigene Aufgabe. Auf die Speicherfrage folgt
+   * aber unter Umstaenden sofort die Downloadfrage, die denselben Dialog
+   * wieder oeffnet — das Ereignis der ersten traefe dann die zweite und
+   * loeschte ihren Text, waehrend sie offen steht. Gefragt wird deshalb
+   * den Dialog selbst, ob er noch auf ist.
+   */
+  onAskClosed(): void {
+    if (!this.askDialog().nativeElement.open) this.pending.set(null);
   }
 
   /**

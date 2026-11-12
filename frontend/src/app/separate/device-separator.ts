@@ -192,6 +192,10 @@ export class DeviceSeparator {
           missing_files: [],
           site: 'device',
           download_bytes: manifest.weights.total_bytes,
+          // Was das Modell wirklich ausgibt. Das Manifest ist dafür die
+          // Quelle, nicht `display`: bei „Minimum" zeigt die Anzeige zwei
+          // Spuren, der Lauf hält vier.
+          peak_stems: manifest.sources.length,
         });
       } catch (error) {
         broken.push(`${model.mode} (${model.name}): ${message(error)}`);

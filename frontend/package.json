@@ -15,7 +15,9 @@
     "vendor:ort": "node tools/vendor-onnxruntime.mjs",
     "test:separate:browser": "node tests/separate/run-browser.mjs",
     "test:public": "node tests/public/run.mjs",
-    "test:webgpu:windows": "node tests/webgpu/run-windows.mjs"
+    "test:webgpu:windows": "node tests/webgpu/run-windows.mjs",
+    "test:memory": "node tests/memory/run.mjs",
+    "check:literals": "node tools/check-literals.mjs"
   },
   "dependencies": {
     "@angular/common": "^22.2.5",

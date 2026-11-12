@@ -74,6 +74,14 @@ export interface ModelInfo {
   site: JobSite;
   /** Browserpfad: Größe des Modelldownloads in Byte. */
   download_bytes?: number;
+  /**
+   * Browserpfad: wie viele Spuren das **Modell** liefert.
+   *
+   * Nicht `stems.length`: dort stehen die angezeigten Spuren, und bei
+   * „Minimum" sind das zwei, während des Laufs aber vier. Der
+   * Speicherwächter braucht die Spitze, nicht das Ergebnis.
+   */
+  peak_stems?: number;
 }
 
 export interface DeviceInfo {

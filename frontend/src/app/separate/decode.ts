@@ -90,3 +90,49 @@ export async function decodeForModel(
     notes,
   };
 }
+
+/**
+ * Nur die Laenge, ohne zu dekodieren.
+ *
+ * Der Speicherwaechter muss vor dem Start wissen, wie lang das Stueck ist
+ * — und zwar **bevor** `decodeForModel` die Abtastwerte anlegt. Ein
+ * `<audio>`-Element liest dafuer die Kopfdaten und sonst nichts: bei einer
+ * MP3 sind das ein paar Kilobyte, bei einer WAV der RIFF-Kopf.
+ *
+ * Bei einer MP3 mit wechselnder Bitrate ohne Xing-Kopf schaetzt der
+ * Browser die Dauer; fuer einen Budgetvergleich reicht das. Geht etwas
+ * schief — kaputter Kopf, Format, das der Browser nicht mag —, kommt
+ * `null` zurueck und der Waechter haelt sich heraus, statt einen Start zu
+ * verbieten, den er nicht beurteilen kann. Gescheitert wird dann weiter
+ * unten beim Dekodieren, mit der besseren Meldung.
+ */
+export function probeDuration(file: File | Blob): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio();
+    let done = false;
+
+    const fertig = (value: number | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      audio.removeAttribute('src');
+      URL.revokeObjectURL(url);
+      resolve(value);
+    };
+
+    // Ohne Frist haengt ein Browser, der die Kopfdaten nicht versteht,
+    // den Start fuer immer auf. Lieber nach drei Sekunden nichts wissen
+    // als nie starten.
+    const timer = setTimeout(() => fertig(null), 3000);
+
+    audio.addEventListener('loadedmetadata', () => {
+      const d = audio.duration;
+      fertig(Number.isFinite(d) && d > 0 ? d : null);
+    });
+    audio.addEventListener('error', () => fertig(null));
+
+    audio.preload = 'metadata';
+    audio.src = url;
+  });
+}

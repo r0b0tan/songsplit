@@ -142,6 +142,13 @@ cd backend  && ../.venv/bin/python run.py   # nur die API
    ohne Netz.
 5. Das **Deck** geht von selbst auf, sobald alle Spuren da sind.
 
+Bei einem **langen Stück** kann vorher eine zweite Frage kommen: im Browser
+liegt alles im Arbeitsspeicher, und ein Lied belegt dort rund 21 MB je
+Minute und Spur. songsplit rechnet das vor dem Start aus und sagt, wenn es
+knapp wird — bei einem Telefon früher als bei einem Rechner. Wird es
+abgelehnt, steht in der Meldung, bis zu welcher Länge es auf diesem Gerät
+ginge. Ein kürzerer Ausschnitt lässt sich dann trennen.
+
 Im Verlauf darunter steht jede Trennung mit Zustand; fertige lassen sich
 erneut im Deck öffnen oder spurweise als WAV speichern.
 

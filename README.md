@@ -423,10 +423,63 @@ nur fallen Drums, Bass und Rest hinterher zu einer Spur „Begleitung"
 zusammen — die Ausgaben von Demucs addieren sich zum Mix, die Summe ist
 also genau „Mix ohne Gesang". Kein zweiter Download (derselbe Eintrag im
 Cache), keine zusätzliche Rechenzeit außer dem Addieren, und halb so viel
-im Arbeitsspeicher: 184 MB statt 368 bei einem Lied von 4:33. Schneller
-ist es damit **nicht** — gemessen liegt es im Rauschen, und die Trennung
-selbst ist dieselbe. Es ist der Modus zum Mitspielen: zwei Regler statt
-vier.
+im Arbeitsspeicher, **nachdem** der Lauf durch ist: 184 MB statt 368 bei
+einem Lied von 4:33. Die Spitze *während* des Laufs ist dieselbe wie bei
+„Schnell" — zusammengefasst wird erst, wenn alle vier Spuren da sind, und
+addiert wird in den Puffer der ersten statt in einen neuen. „Minimum" ist
+deshalb kein Ausweg bei knappem Speicher, sondern einer danach. Schneller
+ist es ebenfalls **nicht** — gemessen liegt es im Rauschen, und die
+Trennung selbst ist dieselbe. Es ist der Modus zum Mitspielen: zwei Regler
+statt vier.
+
+**Vor dem Start wird gerechnet, ob der Speicher reicht.** Getrennt wird im
+Arbeitsspeicher der Sitzung, und damit ist die Länge des Liedes eine
+Systemgrenze: eine Spur belegt 21 MB je Minute (44 100 Hz, Stereo,
+Float32), und während des Laufs liegen die Spuren des Modells und die
+dekodierte Eingabe gleichzeitig da. Vier Spuren eines Liedes von 4:33 sind
+367 MB, mit Eingabe 459, mit Modell rund 859. Ein Zehnminüter mit sechs
+Spuren wäre bei 2,3 GB.
+
+Bis hierher lief jeder Start ungeprüft los. Ging er schief, starb der Tab
+ohne Meldung — auf dem Rechner des Entwicklers fiel das nie auf, weil dort
+genug da war. Jetzt liest [`decode.ts`](frontend/src/app/separate/decode.ts)
+vor dem Start nur die Kopfdaten der Datei (ein `<audio>`-Element, ein paar
+Kilobyte, kein Dekodieren), und
+[`memory-budget.ts`](frontend/src/app/separate/memory-budget.ts) hält das
+Ergebnis gegen `navigator.deviceMemory`. Drei Ausgänge:
+
+| | |
+|---|---|
+| passt | nichts passiert, der Start läuft wie bisher |
+| knapp | dieselbe Rückfrage wie beim Download — Zahl, Grund, Ja/Nein |
+| aussichtslos | abgelehnt, mit der Länge, die hier noch ginge |
+
+Dass die Größenordnung stimmt, steht schon weiter oben in der Tabelle des
+lokalen Prüfstands: bei 368 MB Spuren wuchs der Browser-Prozess um 721 MB.
+Die Abschätzung sagt für denselben Fall 859 MB — etwas zu viel, und das
+ist die richtige Richtung. Wer knapp rechnet, verspricht einen Lauf, den
+das Gerät nicht hält.
+
+Zugetraut werden einem Tab 60 % dessen, was das Gerät meldet, abzüglich
+400 MB für Gewichte und Runtime; gewarnt wird schon bei 60 % davon. Die
+Zahlen sind eine Abschätzung, keine Messung — **kein Browser nennt die
+Grenze eines Tabs.** Was sie leisten, ist die Unterscheidung zwischen
+„geht", „kann knapp werden" und „wird nichts". Ein Lied von 4:33 läuft auf
+8 GB ohne Frage durch, wird auf einem 2-GB-Telefon zur Rückfrage; zehn
+Minuten werden dort abgelehnt, mit dem Hinweis, dass es bis 8:12 ginge.
+
+Zwei Entwurfsentscheidungen dabei. **Gefragt wird vor dem Download**, nicht
+danach: wer wegen der Länge abbricht, soll das tun können, bevor 174 MB
+über seine Leitung gegangen sind. Und **wer nichts weiß, verbietet
+nichts** — Firefox und Safari kennen `navigator.deviceMemory` nicht, dort
+werden 4 GB angenommen statt das Schlimmste; lässt sich die Länge nicht
+lesen, hält der Wächter sich ganz heraus. Ein Wächter, der seine Zahlen
+nicht kennt, soll keinen Start verbieten, den er nicht beurteilen kann.
+
+Geprüft wird das ohne Browser:
+[`tests/memory/run.mjs`](frontend/tests/memory/run.mjs) bündelt das Modul
+mit esbuild und täuscht Geräte vor — zwölf Prüfungen, darunter die, dass
+die genannte Länge auch wirklich durchgeht.
 
 **Die 174 MB werden erfragt, nicht angekündigt.** Dass der Browserpfad
 beim ersten Lauf Modellgewichte lädt, stand früher als „Download nötig" an
@@ -1508,7 +1561,7 @@ die zehnte ist mit dem Browserweg dazugekommen und zweimal gelaufen:
 | Fertige Trennung landet ohne Zutun im Deck | Fortschrittsfenster zu, Deck offen, vier Spuren geladen |
 | Spuren liegen im Arbeitsspeicher | Oberfläche meldet 368 MB, Browser-Prozess wächst um 721 MB |
 
-**Öffentliche Variante**, 28 Prüfungen aus `npm run test:public`, alle
+**Öffentliche Variante**, 30 Prüfungen aus `npm run test:public`, alle
 bestanden. Die Zahlen daraus, die etwas sagen:
 
 | Prüfung | Ergebnis |
@@ -1516,6 +1569,8 @@ bestanden. Die Zahlen daraus, die etwas sagen:
 | Anfragen nach `/api` | keine, bei 11 verschiedenen angefragten Pfaden |
 | Angebotene Modi | „Minimum“, „Schnell“ und „Instrumente“ — und sonst keine |
 | „Minimum“ liefert zwei Spuren, ohne etwas nachzuladen | 2 Spuren (Gesang, Begleitung), 0 Anfragen |
+| Knapper Speicher fragt nach, „Nein“ startet nichts | „Knapp: rund 407 MB Arbeitsspeicher nötig.“ — Jobliste unverändert |
+| Zu kleines Gerät: abgelehnt, mit Grund, ohne etwas zu laden | „Für „Schnell“ reicht der Arbeitsspeicher dieses Geräts nicht …“ — 0 Anfragen |
 | Phasen im Fortschrittsfenster | „Modell wird geladen (n MB von n MB)“ → „Modell wird vorbereitet“ → „Wird getrennt“ |
 | WAV-Download einer Spur | `Gesang.wav`, RIFF, 2 Kanäle, 44100 Hz, 16 Bit, 4,00 s bei 4 s Eingabe |
 | Dauerhafter Speicher | `localStorage` 0 Einträge, `sessionStorage` 0, IndexedDB 0 Datenbanken |
