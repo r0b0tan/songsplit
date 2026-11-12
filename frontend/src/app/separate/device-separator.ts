@@ -39,6 +39,7 @@ const STEM_LABELS: Record<string, string> = {
   other: 'Rest',
   guitar: 'Gitarre',
   piano: 'Klavier',
+  instrumental: 'Begleitung',
 };
 
 /** Was die Oberfläche je Phase schreibt. */
@@ -538,14 +539,15 @@ export class DeviceSeparator {
     const job = this.jobs().find((j) => j.id === message.jobId);
     if (!job) return;
     const order = BROWSER_ORDER.get(job.model) ?? message.manifest.sources;
+    const stemsOut = foldStems(message.stems, BROWSER_MERGE.get(job.model));
 
     // Nach Anzeigereihenfolge sortieren, nicht nach der des Modells: das
     // Deck zeigt Gesang oben, das Modell liefert Drums zuerst.
-    const byName = new Map(message.stems.map((s) => [s.source, s]));
+    const byName = new Map(stemsOut.map((s) => [s.source, s]));
     const sorted = order
       .map((source) => byName.get(source))
-      .filter((s): s is (typeof message.stems)[number] => !!s);
-    for (const stem of message.stems) if (!sorted.includes(stem)) sorted.push(stem);
+      .filter((s): s is (typeof stemsOut)[number] => !!s);
+    for (const stem of stemsOut) if (!sorted.includes(stem)) sorted.push(stem);
 
     this.store.put({
       jobId: message.jobId,
@@ -621,6 +623,47 @@ const BROWSER_IDS = new Map(BROWSER_MODELS.map((m) => [m.name, m.id]));
 const BROWSER_ORDER = new Map<string, readonly string[]>(
   BROWSER_MODELS.map((m) => [m.name, m.display]),
 );
+const BROWSER_MERGE = new Map(
+  BROWSER_MODELS.filter((m) => m.merge).map((m) => [m.name, m.merge!]),
+);
+
+/**
+ * Fasst Spuren zusammen, wenn der Modus das vorsieht.
+ *
+ * Addiert wird **in** den Puffer der ersten Spur statt in einen neuen:
+ * drei Spuren eines 4:33-Songs sind 276 MB, und die ein zweites Mal
+ * anzulegen waere auf einem knappen Geraet der Unterschied zwischen laeuft
+ * und laeuft nicht. Die Quellspuren fallen danach weg, der Speicher sinkt
+ * also unterm Strich.
+ *
+ * Keine Normierung: die Ausgaben von Demucs addieren sich zum Mix, die
+ * Summe liegt damit im selben Bereich wie das Original. Lauter machen
+ * wuerde die Spur gegenueber dem Gesang verschieben, und beides zusammen
+ * ergaebe nicht mehr den Song.
+ */
+function foldStems<T extends { source: string; channels: Float32Array[] }>(
+  stems: T[],
+  merge: { into: string; from: readonly string[] } | undefined,
+): T[] {
+  if (!merge) return stems;
+  const byName = new Map(stems.map((s) => [s.source, s]));
+  const parts = merge.from
+    .map((name) => byName.get(name))
+    .filter((s): s is T => !!s);
+  if (parts.length < 2) return stems;
+
+  const base = parts[0]!;
+  for (let c = 0; c < base.channels.length; c++) {
+    const target = base.channels[c]!;
+    for (let p = 1; p < parts.length; p++) {
+      const add = parts[p]!.channels[c];
+      if (!add) continue;
+      for (let i = 0; i < target.length; i++) target[i] += add[i]!;
+    }
+  }
+  const merged = { ...base, source: merge.into } as T;
+  return [...stems.filter((s) => !merge.from.includes(s.source)), merged];
+}
 
 /** Klartext aus einem unbekannten Fehlerwert. */
 function message(error: unknown): string {

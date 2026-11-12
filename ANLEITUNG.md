@@ -12,7 +12,9 @@ hinter den Entscheidungen, die Messwerte und die Fallstricke stehen in
 
 ## Was es kann
 
-- **Trennen** einer MP3 oder WAV in 4 oder 6 Spuren (Demucs v4).
+- **Trennen** einer MP3 oder WAV in 2, 4 oder 6 Spuren (Demucs v4).
+  „Minimum" gibt Gesang und Begleitung — derselbe Lauf wie „Schnell", nur
+  zusammengefasst, ohne zusätzlichen Download.
 - **Üben** im Deck: gemeinsames Play/Pause, Seek, Tempo 50–125 %, A/B-Loop.
   Je Spur Wellenform, Lautstärke, Mute, Solo und Tonhöhe in Halbtönen. Wer
   eine Spur solo hört, kann für sie ein eigenes Tempo einstellen.
@@ -28,7 +30,7 @@ ist. Und es gibt keine Cloud-Anbindung mit eigenem Schlüssel.
 |---|---|---|
 | Rechnet | Python + CUDA, oder Browser | nur im Browser (WebGPU) |
 | Braucht | Python, FFmpeg, NVIDIA-Treiber | einen Browser mit WebGPU |
-| Trennmodi | 4 Modelle, dazu die Browser-Modi | „Schnell" und „Instrumente" |
+| Trennmodi | 4 Modelle, dazu die Browser-Modi | „Minimum", „Schnell", „Instrumente" |
 | Verlauf | übersteht den Neustart | gilt für die Sitzung |
 | Ausliefern | zwei Prozesse auf `127.0.0.1` | statische Dateien über HTTPS |
 
@@ -131,8 +133,9 @@ cd backend  && ../.venv/bin/python run.py   # nur die API
 1. **Datei** auf die Fläche ziehen oder anklicken — MP3 oder WAV.
 2. **Modus** oben rechts: „Browser" oder „Lokal". Beim Aufklappen steht zu
    jedem, womit gerechnet wird und worauf. Vorgabe ist der Browser.
-3. **Trennmodus** wählen: „Schnell" (4 Spuren) oder „Instrumente" (6).
-   Die Sprechblase neben der Karte nennt Modell, Spuren und Download.
+3. **Trennmodus** wählen: „Minimum" (Gesang + Begleitung), „Schnell"
+   (4 Spuren) oder „Instrumente" (6). Die Spuren des gewählten Modus
+   stehen farbig unter den Karten.
 4. **Trennen.** Beim allerersten Lauf im Browser fragt songsplit, ob die
    174 MB Modellgewichte geladen werden dürfen. Danach nie wieder — sie
    bleiben im Browser-Cache, und jeder weitere Song beginnt sofort, auch

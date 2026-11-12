@@ -200,23 +200,6 @@ async function main() {
       `Modi: ${modes.map((m) => m.split('\n')[0]).join(', ')}`,
     );
 
-    // Die Karte selbst traegt nur Name und Spurzahl; was der Modus kostet
-    // und was er liefert, steht in der Sprechblase daneben. Geprueft wird,
-    // dass sie beim Zeigen auch wirklich erscheint — ein Tooltip, der
-    // verborgen bleibt, ist dasselbe wie keine Auskunft.
-    const firstCard = page.locator('[data-testid="model"]').first();
-    const firstTip = page.locator('[data-testid="mode-tip"]').first();
-    const tipHidden = await firstTip.isVisible();
-    await firstCard.hover();
-    await page.waitForTimeout(400);
-    const tipShown = await firstTip.isVisible();
-    const tipText = (await firstTip.innerText()).replace(/\s+/g, ' ').trim();
-    check(
-      'Die Moduskarte erklärt sich beim Zeigen, nicht im Dauerzustand',
-      !tipHidden && tipShown && /\d+ MB/.test(tipText),
-      `vorher sichtbar: ${tipHidden}, beim Zeigen: ${tipShown} — „${tipText.slice(0, 90)}"`,
-    );
-    await page.mouse.move(0, 0);
 
     // --------------------------------------------- 2. Testpfad und Deck
     await page.getByRole('button', { name: 'Testspuren anlegen' }).click();
@@ -405,6 +388,36 @@ async function main() {
     );
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
+
+    // ------------------------------------ 5b. „Minimum": zwei Spuren
+    // Kein eigenes Modell, sondern dieselbe Trennung mit zusammengefassten
+    // Spuren. Zwei Zusagen sind zu pruefen: es kommen wirklich zwei Spuren
+    // heraus, und es wird **nichts** nachgeladen — derselbe Cache-Eintrag
+    // wie „Schnell", sonst waere das Zusammenfassen teuer erkauft.
+    const vorMinimum = requests.length;
+    await page.locator('[data-testid="model"]:has-text("Minimum")').first().click();
+    await page.locator('input[type=file]').setInputFiles(inputPath);
+    await page.waitForTimeout(200);
+    await page.locator('button.start').click();
+    const zweiSpuren = await page
+      .waitForSelector('[data-testid="track"][data-state="ready"]', { timeout: 4 * 60_000 })
+      .then(() => page.locator('[data-testid="track"]').count())
+      .catch(() => 0);
+    const spurnamen = (await page.locator('[data-testid="track"]').allInnerTexts())
+      .map((t) => t.split('\n')[0].trim());
+    check(
+      '„Minimum" liefert zwei Spuren, ohne etwas nachzuladen',
+      zweiSpuren === 2 &&
+        spurnamen.join(' ').includes('Gesang') &&
+        spurnamen.join(' ').includes('Begleitung') &&
+        requests.length === vorMinimum,
+      `${zweiSpuren} Spuren (${spurnamen.join(', ')}), ` +
+        `${requests.length - vorMinimum} Anfragen`,
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    // Zurueck auf „Schnell", damit die Pruefungen danach wie bisher laufen.
+    await page.locator('[data-testid="model"]:has-text("Schnell")').first().click();
 
     // --------------------------------- 6. Speicher und Netz inspizieren
     const storage = await page.evaluate(async () => {

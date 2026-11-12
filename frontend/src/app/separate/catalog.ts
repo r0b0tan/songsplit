@@ -27,6 +27,15 @@ export interface BrowserModel {
   description: string;
   /** Spuren in der Reihenfolge der Anzeige, nicht der des Modells. */
   display: readonly string[];
+  /**
+   * Spuren, die nach dem Lauf zu einer zusammenfallen.
+   *
+   * Kein eigenes Modell und kein eigener Download: das Ergebnis liegt
+   * schon vor, es wird nur anders zusammengefasst. Weil die Ausgaben von
+   * Demucs sich zum Mix addieren, ist die Summe aus Drums, Bass und Rest
+   * genau „Mix ohne Gesang".
+   */
+  merge?: { into: string; from: readonly string[] };
 }
 
 /**
@@ -34,6 +43,20 @@ export interface BrowserModel {
  * `backend/tools/export_htdemucs_onnx.py` geschrieben hat.
  */
 export const BROWSER_MODELS: readonly BrowserModel[] = [
+  {
+    // Dasselbe Modell und dieselbe Kennung wie „Schnell" — deshalb
+    // derselbe Eintrag im Cache, kein zweiter Download und keine
+    // zusaetzliche Rechenzeit. Nur die Spuren fallen hinterher zusammen.
+    id: 'htdemucs-op17-fp32',
+    name: 'htdemucs_2s',
+    mode: 'Minimum',
+    label: 'htdemucs — 2 Spuren',
+    description:
+      'Gesang und alles andere in einer Spur. Dieselbe Trennung wie ' +
+      '„Schnell", nur zusammengefasst — zum Mitspielen oder Mitsingen.',
+    display: ['vocals', 'instrumental'],
+    merge: { into: 'instrumental', from: ['drums', 'bass', 'other'] },
+  },
   {
     id: 'htdemucs-op17-fp32',
     name: 'htdemucs',

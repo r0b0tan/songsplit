@@ -191,7 +191,6 @@ const ACCEPTED = /\.(mp3|wav)$/i;
          richtet sich jeder Block nach seinem eigenen laengsten Wort, und
          zwei Eintraege untereinander haben ihre Werte an zwei Stellen. */
       .tip dl,
-      .card-tip dl,
       .pick-panel dl {
         display: grid;
         grid-template-columns: 88px minmax(0, 1fr);
@@ -200,13 +199,11 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         font-size: 10.5px;
       }
       .tip dt,
-      .card-tip dt,
       .pick-panel dt {
         color: var(--faint);
         white-space: nowrap;
       }
       .tip dd,
-      .card-tip dd,
       .pick-panel dd {
         margin: 0;
         color: var(--dim);
@@ -344,57 +341,6 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         outline: 2px solid var(--accent);
         outline-offset: 2px;
       }
-      /* Die Karte traegt nur noch ihren Namen und die Spurzahl. Alles
-         Weitere steht in der Sprechblase daneben. */
-      .mode-wrap {
-        position: relative;
-        display: flex;
-      }
-      .mode-wrap > .mode {
-        flex: 1;
-      }
-      /* Dieselbe Blase wie am (i) der Kopfzeile, nur links statt rechts
-         verankert — und ohne Mauszeiger-Ziel: sie wird gelesen, nicht
-         bedient, und darf den Klick auf die Karte darunter nicht abfangen. */
-      .card-tip {
-        top: calc(100% + 7px);
-        right: auto;
-        left: 0;
-        max-width: min(270px, 86cqw);
-        font-size: 12px;
-        font-weight: 400;
-        line-height: 1.45;
-        pointer-events: none;
-      }
-      .card-tip::before {
-        right: auto;
-        left: 15px;
-      }
-      /* Die letzte Karte steht am rechten Rand; ihre Blase klappt nach
-         innen, sonst haengt sie ueber der Kante der Karte. */
-      .mode-wrap:last-child .card-tip {
-        left: auto;
-        right: 0;
-      }
-      .mode-wrap:last-child .card-tip::before {
-        left: auto;
-        right: 15px;
-      }
-      .mode-wrap:hover .card-tip,
-      .mode-wrap:has(input:focus-visible) .card-tip {
-        opacity: 1;
-        visibility: visible;
-        transform: none;
-      }
-      /* Derselbe Bau wie in der Ortsliste: Kopf, eine leise Zeile, dann
-         die Angaben in zwei Spalten. */
-      .card-tip .say {
-        display: block;
-        margin-bottom: 6px;
-        color: var(--dim);
-        font-size: 10.5px;
-      }
-
       /* Der Trennort in der Kopfzeile: ein Auswahlfeld, das aussieht wie
          der Text, der vorher dort stand. Erst beim Zeigen zeigt es, dass
          es eines ist.
@@ -421,6 +367,29 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       /* Das Wort steht in der Schriftfarbe, das Bedienbare daneben in der
          Akzentfarbe: so ist auf einen Blick zu sehen, was hier nur
          beschriftet und was anzufassen ist. */
+      /* Beschriftung und Auswahl sind ein Bedienelement, also tragen sie
+         einen Rahmen gemeinsam — derselbe wie an jedem zweitrangigen Knopf
+         (button und select in styles.css), nur eine Nummer kleiner, weil die
+         Kopfzeile in 11 px gesetzt ist. */
+      .mode-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px 2px 9px;
+        border: 1px solid var(--edge);
+        border-radius: var(--radius-sm);
+        /* Ohne Fuellung: in der Kopfzeile soll nur der Rahmen sagen, dass
+           hier etwas zu bedienen ist. Eine Flaeche daneben waere ein
+           zweiter Kasten im Kasten. */
+        background: transparent;
+        transition: border-color 0.12s;
+      }
+      .mode-group:hover {
+        border-color: var(--accent);
+      }
+      .mode-group:has(:focus-visible) {
+        border-color: var(--accent);
+      }
       .local .mode-label {
         margin-right: 1px;
         color: var(--ink);
@@ -437,8 +406,8 @@ const ACCEPTED = /\.(mp3|wav)$/i;
          Aufgabe uebernommen hat. */
       .pick-panel {
         position: absolute;
-        top: calc(100% + 9px);
-        right: -4px;
+        top: calc(100% + 11px);
+        right: -9px;
         z-index: 6;
         display: grid;
         gap: 4px;
@@ -513,7 +482,6 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         cursor: pointer;
       }
       .local .site-pick:hover:not(:disabled) {
-        border-color: var(--edge);
         filter: brightness(1.12);
       }
       .local .site-pick:focus-visible {
@@ -673,7 +641,8 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                Radiogruppe: Pfeiltasten, Auswahl und Vorlesesoftware
                kommen damit ohne eigenen Code zurecht. -->
           @if (jobs.serverAvailable) {
-            <span class="mode-label" id="site-label">Modus</span>
+            <span class="mode-group">
+            <span class="mode-label" id="site-label">Modus:</span>
             <div class="pick" (focusout)="onPickBlur($event)">
               <button
                 #pickButton
@@ -725,6 +694,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                 </div>
               }
             </div>
+            </span>
           } @else {
             <!-- Ohne Wahl bleibt es beim Satz und beim ⓘ daneben: eine
                  Liste mit einem Eintrag waere keine Wahl, die Angaben
@@ -803,55 +773,22 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       <p class="model-head" id="mode-label">Trennmodus</p>
       <div class="modes" role="radiogroup" aria-labelledby="mode-label">
         @for (m of models(); track m.name) {
-          <!-- Die Sprechblase haengt neben der Karte, nicht in ihr: stuende
-               sie im Etikett, gehoerte ihr ganzer Text zum Namen des
-               Optionsfelds, und eine Vorlesesoftware sagte bei jedem
-               Pfeiltastendruck vier Saetze auf. Verbunden sind beide ueber
-               aria-describedby. -->
-          <div class="mode-wrap">
-            <label
-              class="mode"
-              [class.on]="model() === m.name"
-              data-testid="model"
-            >
-              <input
-                type="radio"
-                name="model"
-                [value]="m.name"
-                [checked]="model() === m.name"
-                [disabled]="busy()"
-                [attr.aria-describedby]="'mode-tip-' + m.name"
-                (change)="model.set(m.name)"
-              />
-              {{ m.mode }}
-              <span>{{ m.stems.length }} Spuren</span>
-            </label>
-            <span
-              class="tip card-tip"
-              role="tooltip"
-              [id]="'mode-tip-' + m.name"
-              data-testid="mode-tip"
-            >
-              <strong class="pick-head">{{ m.mode }}</strong>
-              <span class="say">{{ m.description }}</span>
-              <dl>
-                <dt>Modell</dt>
-                <dd>{{ m.name }}</dd>
-                <dt>Spuren</dt>
-                <dd>{{ m.stems.join(' · ') }}</dd>
-                @if (m.site === 'device') {
-                  <dt>Gewichte</dt>
-                  <dd>
-                    @if (m.downloaded) {
-                      im Browser-Cache
-                    } @else {
-                      {{ megabytes(m.download_bytes ?? 0) }} MB, einmalig
-                    }
-                  </dd>
-                }
-              </dl>
-            </span>
-          </div>
+          <label
+            class="mode"
+            [class.on]="model() === m.name"
+            data-testid="model"
+          >
+            <input
+              type="radio"
+              name="model"
+              [value]="m.name"
+              [checked]="model() === m.name"
+              [disabled]="busy()"
+              (change)="model.set(m.name)"
+            />
+            {{ m.mode }}
+            <span>{{ m.stems.length }} Spuren</span>
+          </label>
         }
       </div>
 

@@ -399,27 +399,34 @@ Wechsel zieht den Trennmodus mit: stünde er danach auf etwas, das es am
 neuen Ort nicht gibt, wäre keine Karte markiert und der Knopf meldete einen
 Fehler, den niemand verursacht hat.
 
-Darunter der **Trennmodus** als Karte je Möglichkeit: „Schnell",
-„Detailliert", „Instrumente", „Nur Gesang", darunter jeweils die Spurzahl.
-Mehr trägt die Karte nicht. Angeboten werden nur die Modi, die am gewählten
-Ort wirklich da sind — auf dem Gerät also „Schnell" und „Instrumente",
-nicht ausgegraut, sondern gar nicht vorhanden. Gewählt wird damit ein
-Ergebnis, kein Modellname — wer trennt, entscheidet zwischen Güte und
-Wartezeit, nicht zwischen `htdemucs` und `htdemucs_ft`. Welches Modell
-dahinter steckt, was es liefert und was es beim ersten Lauf kostet, steht
-in einer **Sprechblase neben der Karte** — im selben Bau wie die Einträge
-der Ortsliste: Kopf, eine leise Zeile, dann die Angaben in zwei Spalten.
-Die Spalte der Benennungen ist überall gleich breit, damit untereinander
-stehende Blöcke ihre Werte nicht an zwei Stellen haben, und die Angaben
-sind eine Schriftstufe kleiner und grauer als der Text darüber: sie sind
-Beiwerk, und wer sie nicht braucht, soll von ihnen nicht angesprungen
-werden. Sie hängt neben dem Etikett, nicht darin:
-stünde sie im `label`, gehörte ihr ganzer Text zum Namen des Optionsfelds,
-und eine Vorlesesoftware sagte bei jedem Pfeiltastendruck vier Sätze auf.
-Verbunden sind beide über `aria-describedby`. Unter den Karten die Spuren
-des gewählten Modus, jede mit dem Farbstrich, den sie später im Deck trägt.
-Die Karten sind echte Optionsfelder, Pfeiltasten und Vorlesesoftware
-kommen damit ohne Zutun zurecht.
+Darunter der **Trennmodus** als Karte je Möglichkeit: im Browser
+„Minimum", „Schnell" und „Instrumente", beim Backend dazu „Detailliert"
+und „Nur Gesang". Jede Karte trägt ihren Namen und die Spurzahl, mehr
+nicht. Angeboten wird nur, was am gewählten Ort wirklich da ist — nicht
+ausgegraut, sondern gar nicht vorhanden. Gewählt wird damit ein Ergebnis,
+kein Modellname: wer trennt, entscheidet zwischen Güte und Wartezeit,
+nicht zwischen `htdemucs` und `htdemucs_ft`. Welches Modell dahinter
+steckt, steht am fertigen Job.
+
+Unter den Karten die Spuren des gewählten Modus, jede mit dem Farbstrich,
+den sie später im Deck trägt. Die Karten sind echte Optionsfelder,
+Pfeiltasten und Vorlesesoftware kommen damit ohne Zutun zurecht.
+
+Eine Sprechblase an der Karte gab es zwischendurch, mit Modell, Spuren und
+Downloadgröße. Sie ist wieder weg, weil jede ihrer drei Angaben woanders
+besser steht: die **Spuren** farbig unter den Karten, die **Downloadgröße**
+in der Rückfrage beim Start — also dann, wenn sie etwas ändert —, und das
+**Modell** am Job. Ein Hinweis, der vorher nie gelesen wird, ist keiner.
+
+**„Minimum" ist kein eigenes Modell.** Es ist derselbe Lauf wie „Schnell",
+nur fallen Drums, Bass und Rest hinterher zu einer Spur „Begleitung"
+zusammen — die Ausgaben von Demucs addieren sich zum Mix, die Summe ist
+also genau „Mix ohne Gesang". Kein zweiter Download (derselbe Eintrag im
+Cache), keine zusätzliche Rechenzeit außer dem Addieren, und halb so viel
+im Arbeitsspeicher: 184 MB statt 368 bei einem Lied von 4:33. Schneller
+ist es damit **nicht** — gemessen liegt es im Rauschen, und die Trennung
+selbst ist dieselbe. Es ist der Modus zum Mitspielen: zwei Regler statt
+vier.
 
 **Die 174 MB werden erfragt, nicht angekündigt.** Dass der Browserpfad
 beim ersten Lauf Modellgewichte lädt, stand früher als „Download nötig" an
@@ -1507,7 +1514,8 @@ bestanden. Die Zahlen daraus, die etwas sagen:
 | Prüfung | Ergebnis |
 |---|---|
 | Anfragen nach `/api` | keine, bei 11 verschiedenen angefragten Pfaden |
-| Angebotene Modi | „Schnell“ und „Instrumente“ — und sonst keine |
+| Angebotene Modi | „Minimum“, „Schnell“ und „Instrumente“ — und sonst keine |
+| „Minimum“ liefert zwei Spuren, ohne etwas nachzuladen | 2 Spuren (Gesang, Begleitung), 0 Anfragen |
 | Phasen im Fortschrittsfenster | „Modell wird geladen (n MB von n MB)“ → „Modell wird vorbereitet“ → „Wird getrennt“ |
 | WAV-Download einer Spur | `Gesang.wav`, RIFF, 2 Kanäle, 44100 Hz, 16 Bit, 4,00 s bei 4 s Eingabe |
 | Dauerhafter Speicher | `localStorage` 0 Einträge, `sessionStorage` 0, IndexedDB 0 Datenbanken |
