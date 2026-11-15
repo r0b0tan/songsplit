@@ -14,6 +14,7 @@ import { ImportPanelComponent } from './components/import-panel';
 import { JobListComponent } from './components/job-list';
 import { PlayerComponent } from './components/player';
 import { RunProgressComponent } from './components/run-progress';
+import { SiteFooterComponent } from './components/site-footer';
 import { ApiService } from './core/api.service';
 import { JobsService } from './core/jobs.service';
 import type { Job } from './core/models';
@@ -22,7 +23,7 @@ import { StemStore } from './separate/stem-store';
 
 /**
  * Die Oberflaeche ist eine schmale Spalte: der Import als Karte, darunter
- * der Verlauf. Die Breite folgt der Vorlage
+ * der Verlauf als Liste. Die Breite folgt der Vorlage
  * `exampledata/mixapart-uploadmaske` — eine Spalte, keine Flaeche, die
  * sich ueber den ganzen Schirm zieht.
  *
@@ -51,6 +52,7 @@ import { StemStore } from './separate/stem-store';
     JobListComponent,
     PlayerComponent,
     RunProgressComponent,
+    SiteFooterComponent,
   ],
   styles: [
     `
@@ -58,9 +60,10 @@ import { StemStore } from './separate/stem-store';
         display: block;
       }
       .shell {
-        /* Dieselbe Spaltenbreite wie die Vorlage: 780 px abzueglich der
-           Raender ergibt die Karte darin. */
-        max-width: 780px;
+        /* Etwas breiter als die Vorlage (780 px): so traegt die
+           Verlaufszeile Stueck, Modus, Laenge und Spurzahl nebeneinander,
+           ohne dass die Seite zur Flaeche wird. */
+        max-width: 900px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
@@ -83,7 +86,11 @@ import { StemStore } from './separate/stem-store';
          deshalb ohne eigene Flaeche, ohne Rand, ohne Polster. Gescrollt
          wird im Dialog, nicht auf der Seite dahinter. */
       .deck-modal {
-        width: min(1180px, calc(100vw - 2 * clamp(8px, 2vw, 26px)));
+        /* Breit: die Wellenformen sind das Werkzeug, jede Pixelspalte mehr
+           ist mehr Zeit, die man im Song auseinanderhaelt. Die Spalten
+           links und rechts stehen fest, der Zugewinn geht ganz an die
+           Bahnen. */
+        width: min(1640px, calc(100vw - 2 * clamp(8px, 2vw, 26px)));
         max-width: none;
         max-height: calc(100dvh - 2 * clamp(8px, 2vh, 26px));
         padding: 0;
@@ -96,6 +103,11 @@ import { StemStore } from './separate/stem-store';
            ueber die Ecken hinaussteht. */
         border-radius: var(--radius);
         box-shadow: 0 20px 54px -14px light-dark(rgb(24 19 30 / 0.34), rgb(0 0 0 / 0.66));
+        /* Muss das Deck doch einmal scrollen -- kleines Fenster, viele
+           Spuren --, dann wenigstens schmal: der Balken liegt ausserhalb
+           der Karte und soll dort nicht auftragen. */
+        scrollbar-width: thin;
+        scrollbar-color: var(--edge) transparent;
       }
       /* Das Fortschrittsfenster ist dasselbe Prinzip, nur schmaler: es
          traegt eine Karte, keine Flaeche. */
@@ -168,6 +180,11 @@ import { StemStore } from './separate/stem-store';
         (closed)="closeJob()"
       />
 
+      <!-- Der Fuss schliesst die Spalte ab: Rechtstexte und Jahr, schmal
+           und gedaempft. Er steht in der Spalte und nicht ueber die ganze
+           Breite, damit die Linie darueber dort endet, wo die Karten
+           enden. -->
+      <app-site-footer />
     </main>
 
     <!-- ------------------------------------------------ Trennung laeuft -->

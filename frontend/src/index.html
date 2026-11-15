@@ -2,39 +2,83 @@
 <html lang="de">
   <head>
     <meta charset="utf-8" />
-    <title>MixApart — Stem Deck</title>
+    <title>MixApart — Songs in Einzelspuren trennen</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
-      content="Lokale Stem-Trennung und Mix-Player. Alles bleibt auf diesem Rechner."
+      content="MixApart trennt Songs in Gesang, Drums, Bass und Instrumente — im Browser, ohne Upload. Ein Produkt von CLICKIT DIGITAL."
     />
-    <meta name="color-scheme" content="light dark" />
 
-    <!-- Das Zeichen der App. Die SVG gilt, wo sie gelesen wird; die .ico
-         ist der Rueckfall mit den Stufen 16, 32 und 48. Beide Rasterdateien
-         sind aus der SVG gerechnet, mit `node tools/favicon.mjs`. -->
+    <!-- Eine Adresse, unter der die Seite zaehlt. Die www-Form gehoert per
+         Weiterleitung hierher, sonst steht derselbe Inhalt fuer eine
+         Suchmaschine zweimal im Netz. -->
+    <link rel="canonical" href="https://mixapart.de/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="CLICKIT DIGITAL" />
+    <meta name="application-name" content="MixApart" />
+    <meta name="apple-mobile-web-app-title" content="MixApart" />
+
+    <!-- Die Farbe, die der Browser um die Seite legt: dieselbe Flaeche, die
+         hinter ihr liegt (--bg), in beiden Farbwelten. -->
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#eeedf0" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121216" />
+
+    <!-- Im Reiter steht die reduzierte Marke mit drei Linien
+         (favicon.svg): das Zeichen der App hat sieben Balken, und die sind
+         bei 16 Pixeln ein Fleck. Auf dem Startbildschirm, wo Platz ist,
+         steht es vollstaendig (app-icon.svg). Die gerasterten Dateien
+         rechnet `node tools/favicon.mjs` aus den beiden SVG. -->
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
-    <link rel="icon" href="/mixapart.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- Was erscheint, wenn jemand die Seite irgendwo einfuegt. Der Pfad
-         steht relativ: solange die Seite nur oertlich laeuft, gibt es keine
-         Adresse, unter der ein fremder Dienst das Bild abholen koennte.
-         Wird sie einmal veroeffentlicht, gehoert hier die vollstaendige URL
-         hin -- manche Dienste, Facebook voran, verlangen sie. -->
+    <!-- Was erscheint, wenn jemand die Seite irgendwo einfuegt. Die Pfade
+         stehen vollstaendig: ein fremder Dienst holt das Bild von seinem
+         eigenen Server aus, ein relativer Pfad liefe dort ins Leere. -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="MixApart — Stem Deck" />
+    <meta property="og:site_name" content="MixApart" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:url" content="https://mixapart.de/" />
+    <meta property="og:title" content="MixApart — Songs in Einzelspuren trennen" />
     <meta
       property="og:description"
-      content="Lokale Stem-Trennung und Mix-Player. Alles bleibt auf diesem Rechner."
+      content="Gesang, Drums, Bass und Instrumente getrennt — im Browser, ohne Upload. Ein Produkt von CLICKIT DIGITAL."
     />
-    <meta property="og:image" content="/mixapart-share.webp" />
+    <meta property="og:image" content="https://mixapart.de/mixapart-share.webp" />
     <meta property="og:image:type" content="image/webp" />
     <meta property="og:image:width" content="1734" />
     <meta property="og:image:height" content="907" />
-    <meta property="og:image:alt" content="MixApart" />
+    <meta property="og:image:alt" content="MixApart — Songs in Einzelspuren trennen" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="/mixapart-share.webp" />
+    <meta name="twitter:title" content="MixApart — Songs in Einzelspuren trennen" />
+    <meta
+      name="twitter:description"
+      content="Gesang, Drums, Bass und Instrumente getrennt — im Browser, ohne Upload. Ein Produkt von CLICKIT DIGITAL."
+    />
+    <meta name="twitter:image" content="https://mixapart.de/mixapart-share.webp" />
+    <meta name="twitter:image:alt" content="MixApart — Songs in Einzelspuren trennen" />
+
+    <!-- Dasselbe noch einmal fuer Maschinen, die kein og lesen: was das
+         hier ist, wer es herausgibt, und dass es im Browser laeuft. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "MixApart",
+        "url": "https://mixapart.de/",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "de",
+        "image": "https://mixapart.de/mixapart-share.webp",
+        "description": "MixApart trennt Songs in Gesang, Drums, Bass und Instrumente — im Browser, ohne Upload.",
+        "publisher": {
+          "@type": "Organization",
+          "name": "CLICKIT DIGITAL",
+          "url": "https://www.clickit-digital.de/"
+        }
+      }
+    </script>
   </head>
   <body>
     <app-root></app-root>

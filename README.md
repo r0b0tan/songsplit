@@ -200,11 +200,18 @@ zwei Dutzend gebrauchten Zeichen aus `lucide-static` und schreibt sie nach
 Skript ein und lässt es laufen; das Paket selbst bleibt eine reine
 Entwicklungsabhängigkeit.
 
-Das Zeichen der App steht als `frontend/public/mixapart.svg` und ist die
-einzige Quelle. `favicon.ico` (16, 32, 48) und `apple-touch-icon.png` (180)
-sind daraus gerechnet und liegen fertig daneben; wer das Zeichen ändert,
-ändert die SVG und lässt `node tools/favicon.mjs` noch einmal laufen. Das
-Skript zeichnet mit demselben Chromium, der auch die Tests fährt.
+Das Zeichen der App steht als `frontend/public/app-icon.svg` — dasselbe,
+das in der Kopfzeile neben dem Namen sitzt —, die Marke für den Reiter als
+`frontend/public/favicon.svg`. `favicon.ico` (16, 32, 48)
+und `apple-touch-icon.png` (180) sind daraus gerechnet und liegen fertig
+daneben; wer ein Zeichen ändert, ändert die SVG und lässt
+`node tools/favicon.mjs` noch einmal laufen. Das Skript zeichnet mit
+demselben Chromium, der auch die Tests fährt.
+
+Im Reiter steht nicht das ganze Zeichen, sondern `favicon.svg` mit drei
+Linien: sieben Balken sind bei 16 Pixeln ein Fleck. Beide SVG sind von Hand
+gezeichnet, das Skript rastert sie nur — `favicon.svg` zur `.ico`,
+`app-icon.svg` zum `apple-touch-icon.png`.
 
 Beim Teilen zeigt die Seite `frontend/public/mixapart-share.webp` (1734 ×
 907) — eingetragen als `og:image` und `twitter:image` in
@@ -336,8 +343,10 @@ Alles über Umgebungsvariablen:
 
 ## Bedienung
 
-Die Seite ist eine Spalte von 780 px, keine Fläche über den ganzen Schirm:
-die Importkarte, darunter der Verlauf. Oben in der Karte eine Leiste mit
+Die Seite ist eine Spalte von 900 px, keine Fläche über den ganzen Schirm:
+die Importkarte, darunter der Verlauf. Die Breite richtet sich nach der
+Verlaufszeile: Stück, Trennmodus, Länge und Spurzahl stehen dort
+nebeneinander und brauchen den Platz. Oben in der Karte eine Leiste mit
 Marke und rechts **„Modus" als Auswahlfeld** — „Browser" oder „Lokal" —
 mit einem ⓘ daneben. Das Wort steht in der
 Schriftfarbe, Feld und ⓘ in der Akzentfarbe: so ist auf einen Blick zu
@@ -523,21 +532,25 @@ Rechner weiter und steht danach im Verlauf. Schlägt die Trennung fehl,
 bleibt das Fenster mit dem Grund stehen.
 
 **Verlauf.** Eine Zeile je Job, nur durch eine Linie getrennt — keine
-Karten in der Karte. Links ein Wellenzeichen, dann das Stück und darunter
-Interpret, Trennmodus, Länge und Spurzahl; rechts der Knopf „Im Deck
-öffnen" in der Akzentfarbe, mit Rahmen und dem Zeichen für „geht auf" —
-die eine Handlung, um die es im Verlauf geht, und deshalb als Knopf
-erkennbar und nicht als Haken neben einem Stück Text. Der Titel kommt aus dem Dateinamen, aber ohne das, was nicht
+Karten in der Karte. Die Zeile ist eine Tabellenzeile: links ein
+Wellenzeichen, dann das Stück (der Interpret dahinter, blass), daneben in
+festen Spalten Trennmodus, Länge und Spurzahl, rechts „Im Deck öffnen" in
+der Akzentfarbe mit dem Zeichen für „geht auf" — die eine Handlung, um die
+es im Verlauf geht. Feste Spalten, weil das Auge sie so von Zeile zu Zeile
+wiederfindet; wird die Spalte schmal, fällt zuerst der Modus weg, dann
+Länge und Spurzahl, und Stück und Weg ins Deck bleiben am längsten. Beim
+Erscheinen kommt die Liste aus der unteren rechten Ecke heran, die Zeilen
+gestaffelt hinterher. Der Titel kommt aus dem Dateinamen, aber ohne das, was nicht
 zum Stück gehört: „Yeah Yeah Yeahs - Heads Will Roll (Official Music Video)
 [auzfTPp4moA].mp3" steht als **Heads Will Roll** da, mit „Yeah Yeah Yeahs"
-in der Zeile darunter. Entfernt werden eckige Klammern und Klammerinhalte
+in derselben Zeile dahinter. Entfernt werden eckige Klammern und Klammerinhalte
 aus einer festen Liste von Beiwerk („Official", „Lyrics", „4K", Jahreszahlen
 …); „(Remix)" oder „(Live in Tokyo)" bleiben stehen, die gehören zum Stück.
 Der vollständige Name steht im Tooltip der Zeile und überall sonst.
 
-Läuft ein Job, steht statt des Hakens eine Uhr mit „läuft" oder „wartet",
-und in der Zeile darunter die Phase im Klartext. Fehlgeschlagene Jobs
-tragen den Grund an derselben Stelle, in Rot.
+Läuft ein Job, steht an der Stelle des Knopfes eine Uhr mit „läuft" oder
+„wartet", und in der Spalte der Spurzahl die Phase im Klartext.
+Fehlgeschlagene Jobs tragen den Grund in der Modusspalte, in Rot.
 
 Der Verlauf zeigt **beide Trennorte in einer Liste**. Es ist derselbe Song
 mit denselben Spuren; wer gestern lokal getrennt hat und heute auf dem
@@ -554,7 +567,7 @@ erneut getrennt werden kann. Siehe
 
 Die Reiter oben rechts trennen, was sich nicht vergleichen lässt: **Alle**,
 **Songs** und **Testläufe**, jeweils mit Anzahl. Testläufe sammeln sich beim
-Ausprobieren an und wären sonst die Mehrheit der Liste. Gezeigt werden sechs
+Ausprobieren an und wären sonst die Mehrheit der Liste. Gezeigt werden zehn
 Jobs je Seite, darunter blättert eine Leiste weiter; ein neuer Job holt die
 Liste von selbst auf die erste Seite zurück, sonst schiene der Import nichts
 getan zu haben.
@@ -1553,7 +1566,7 @@ die zehnte ist mit dem Browserweg dazugekommen und zweimal gelaufen:
 | Ziehen in der Wellenform setzt den Loop | von 20 % auf 50 % der Spur ergibt 9,00 s bei 30 s Länge |
 | Loop lässt sich in Millisekunden eintippen | 4250 und 7800 ms ergeben 0:04.25 – 0:07.80 (3,55 s) |
 | Lineal zeigt die Millisekunde unter dem Zeiger | Zeiger auf halber Bahn: 15000 ms bei 30 s Länge |
-| Verlauf blättert seitenweise | 7 Jobs, Seite 1/2, sechs je Seite, zweite Seite ohne Überschneidung |
+| Verlauf blättert seitenweise | 11 Jobs, Seite 1/2, zehn je Seite, zweite Seite ohne Überschneidung |
 | Verlauf trennt Songs von Testläufen | Alle 7 · Songs 2 · Testläufe 5, und 2 + 5 = 7 |
 | Aufräumen fragt erst nach | „Wirklich? 7 löschen", nach dem Verlassen wieder „Alle", nichts gelöscht |
 | Trennort steht zur Wahl, auf dem Gerät als Vorgabe | 2 Einträge in der Liste, gewählt `device` |
@@ -1774,7 +1787,7 @@ sind, damit sie nicht wiederkehren:
   (Fertiges zeigt die Spurzahl und den Knopf ins Deck). Beide prüfen jetzt,
   was wirklich dasteht.
 - **Die Blätterprüfung brach ab, statt etwas zu messen.** Sie braucht mehr
-  als sechs Jobs; auf einem aufgeräumten Rechner gab es keine Leiste und
+  als zehn Jobs; auf einem aufgeräumten Rechner gab es keine Leiste und
   der Lauf endete mit einer Zeitüberschreitung. Sie legt sich die nötigen
   Testläufe jetzt selbst an.
 - Der Prüfstand selbst war anfangs unzuverlässig: etwa jeder achte Lauf

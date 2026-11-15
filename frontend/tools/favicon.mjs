@@ -1,17 +1,24 @@
 /**
- * Rechnet favicon.ico und apple-touch-icon.png aus public/mixapart.svg.
+ * Rechnet favicon.ico und apple-touch-icon.png aus den beiden Zeichen.
  *
  *     node tools/favicon.mjs
  *
- * Die SVG ist die einzige Quelle: wer das Zeichen aendert, aendert sie und
- * laesst dieses Skript noch einmal laufen. Gezeichnet wird vom selben
- * Chromium, das auch die Tests fahren -- eine eigene Rasterbibliothek
- * braucht es dafuer nicht, Playwright liegt ohnehin als
- * Entwicklungsabhaengigkeit hier.
+ * Es gibt zwei, und das hat einen Grund: das Zeichen der App
+ * (`app-icon.svg`) traegt sieben Balken, die bei 16 Pixeln zu einem Fleck
+ * verlaufen. Fuer den Reiter steht daneben `favicon.svg` mit drei Linien.
+ * Beide sind von Hand gezeichnet und werden hier nur gerastert -- wer sie
+ * aendert, aendert die SVG und laesst dieses Skript noch einmal laufen.
  *
- * Die .ico traegt drei Stufen (16, 32, 48) als PNG. Das verstehen alle
- * Browser, die heute noch eine .ico lesen, und erspart den Umweg ueber das
- * alte BMP-Format samt seiner Maske.
+ *   favicon.svg   -> favicon.ico (16, 32, 48), der Reiter
+ *   app-icon.svg  -> apple-touch-icon.png (180), der Startbildschirm
+ *
+ * Gerastert wird vom selben Chromium, der auch die Tests faehrt -- eine
+ * eigene Rasterbibliothek braucht es dafuer nicht, Playwright liegt ohnehin
+ * als Entwicklungsabhaengigkeit hier.
+ *
+ * Die .ico traegt ihre drei Stufen als PNG. Das verstehen alle Browser, die
+ * heute noch eine .ico lesen, und erspart den Umweg ueber das alte
+ * BMP-Format samt seiner Maske.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +28,10 @@ import { chromium } from 'playwright';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(HERE, '..', 'public');
-const SOURCE = path.join(PUBLIC, 'mixapart.svg');
+/** Das Zeichen der App: Kopfzeile, Startbildschirm, ueberall wo Platz ist. */
+const MARK = path.join(PUBLIC, 'app-icon.svg');
+/** Die reduzierte Marke fuer den Reiter. */
+const TAB = path.join(PUBLIC, 'favicon.svg');
 
 /** Die Stufen in der .ico. Mehr Stufen heisst: der Browser waehlt, statt
     eine grosse herunterzurechnen. */
@@ -68,17 +78,19 @@ function buildIco(images) {
   return Buffer.concat([head, ...images.map((i) => i.png)]);
 }
 
-const svg = fs.readFileSync(SOURCE, 'utf8');
+const tab = fs.readFileSync(TAB, 'utf8');
+const mark = fs.readFileSync(MARK, 'utf8');
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 1 });
 
 const steps = [];
-for (const size of ICO_SIZES) steps.push({ size, png: await render(page, svg, size) });
+for (const size of ICO_SIZES) steps.push({ size, png: await render(page, tab, size) });
 fs.writeFileSync(path.join(PUBLIC, 'favicon.ico'), buildIco(steps));
-fs.writeFileSync(path.join(PUBLIC, 'apple-touch-icon.png'), await render(page, svg, TOUCH_SIZE));
+fs.writeFileSync(path.join(PUBLIC, 'apple-touch-icon.png'), await render(page, mark, TOUCH_SIZE));
 
 await browser.close();
 console.log(
-  `geschrieben aus ${path.relative(process.cwd(), SOURCE)}: ` +
-    `favicon.ico (${ICO_SIZES.join(', ')}), apple-touch-icon.png (${TOUCH_SIZE})`,
+  `geschrieben: favicon.ico (${ICO_SIZES.join(', ')}) aus favicon.svg, ` +
+    `apple-touch-icon.png (${TOUCH_SIZE}) aus app-icon.svg`,
 );

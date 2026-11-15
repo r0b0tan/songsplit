@@ -34,10 +34,18 @@ interface Bar {
  */
 const WAVE_SCALE = 1.4;
 
+/**
+ * Wie hoch die Welle darueber hinaus steht. Breite und Abstand der Balken
+ * bleiben davon unberuehrt: die Welle wird schlanker, nicht groesser. Der
+ * hoechste Balken ist WAVE_SCALE mal WAVE_RISE mal 32 Pixel hoch -- genau
+ * die Hoehe, die .wave im Stilblock hat.
+ */
+const WAVE_RISE = 1.4;
+
 const BARS: readonly Bar[] = Array.from({ length: 31 }, (_, i) => {
   const envelope = 1 - Math.abs(i - 15) / 16;
   return {
-    h: (4 + Math.abs(Math.sin(i * 2.28)) * (4 + 24 * envelope)) * WAVE_SCALE,
+    h: (4 + Math.abs(Math.sin(i * 2.28)) * (4 + 24 * envelope)) * WAVE_SCALE * WAVE_RISE,
     a: 0.3 + 0.69 * envelope,
   };
 });
@@ -134,33 +142,17 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         align-items: center;
         gap: 8px;
       }
+      /* Das Zeichen der App, nicht mehr aus Balken nachgebaut: hier liegt
+         dieselbe app-icon.svg, aus der auch der Startbildschirm gerastert
+         wird. Eine Quelle, ein Zeichen -- wer die Marke aendert, aendert die
+         SVG, und die Leiste geht mit. Ohne eigene Rundung: die bringt das
+         Zeichen selbst mit, und zwei Rundungen uebereinander schneiden eine
+         Ecke doppelt. */
       .logo {
-        display: grid;
-        place-items: center;
+        display: block;
         width: 28px;
         height: 28px;
-        border-radius: 8px;
-        background: var(--key);
-        color: var(--on-key);
         flex: none;
-      }
-      .logo span {
-        display: flex;
-        align-items: center;
-        gap: 2px;
-      }
-      .logo i {
-        display: block;
-        width: 2px;
-        height: 6px;
-        border-radius: 2px;
-        background: currentColor;
-      }
-      .logo i:nth-child(even) {
-        height: 11px;
-      }
-      .logo i:nth-child(3) {
-        height: 16px;
       }
       /* Die Leiste sagt etwas Beruhigendes, und Beruhigendes muss nicht
          laut sein: kein Zustandspunkt, nur Text, eine Stufe schwaecher als
@@ -320,15 +312,15 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       .drop input[type='file']:disabled {
         cursor: not-allowed;
       }
-      /* Hoehe, Breite und Abstand folgen WAVE_SCALE: 32, 3 und 3 mal 1,4.
-         Wer die Welle aendern will, aendert die Zahl dort und diese drei
-         Werte mit. */
+      /* Breite und Abstand folgen WAVE_SCALE: 3 mal 1,4. Die Hoehe folgt
+         WAVE_SCALE mal WAVE_RISE: 32 mal 1,4 mal 1,4. Wer die Welle aendern
+         will, aendert die Zahlen dort und diese Werte mit. */
       .wave {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 4px;
-        height: 45px;
+        height: 63px;
         margin-bottom: 13px;
         color: var(--accent);
       }
@@ -709,9 +701,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
     <section class="panel box">
       <header class="bar">
         <div class="brand">
-          <span class="logo" aria-hidden="true">
-            <span><i></i><i></i><i></i><i></i><i></i></span>
-          </span>
+          <img class="logo" src="/app-icon.svg" alt="" aria-hidden="true" width="28" height="28" />
           <strong>MixApart</strong>
         </div>
         <span class="local">

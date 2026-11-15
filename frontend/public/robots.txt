@@ -1,0 +1,8 @@
+# MixApart — https://mixapart.de/
+
+# Die Seite ist eine einzige Anwendung: nichts, was eine Suchmaschine
+# aussparen muesste, und nichts, worin sie sich verlaufen koennte.
+User-agent: *
+Allow: /
+
+# Die Zeile fuer die sitemap.xml kommt dazu, sobald es sie gibt.

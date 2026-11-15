@@ -519,7 +519,7 @@ async function main() {
     );
 
     const foreign = [...new Set(requests)].filter(
-      (p) => !/^\/(index\.html|$|main|styles|worker|polyfills|favicon|mixapart|apple-touch|vendor|models|reference|chunk)/.test(p),
+      (p) => !/^\/(index\.html|$|main|styles|worker|polyfills|favicon|app-icon|mixapart|apple-touch|vendor|models|reference|chunk)/.test(p),
     );
     check(
       'Keine Anfrage außer eigenen Dateien',

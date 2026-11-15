@@ -478,11 +478,11 @@ async function main() {
   }
 
   // Blaettern laesst sich nur pruefen, wenn es etwas zu blaettern gibt:
-  // sechs Jobs je Seite. Auf einem frisch aufgeraeumten Rechner steht hier
+  // zehn Jobs je Seite. Auf einem frisch aufgeraeumten Rechner steht hier
   // sonst gar keine Leiste, und die Pruefung brach ab, statt etwas zu
   // messen. Testlaeufe sind billig — sie trennen nichts —, also legt sie
   // die Pruefung selbst an.
-  while ((await (await fetch(`${API}/api/jobs`)).json()).length < 7) {
+  while ((await (await fetch(`${API}/api/jobs`)).json()).length < 11) {
     await page.getByRole('button', { name: 'Testspuren anlegen' }).click();
     await page.waitForTimeout(250);
   }
@@ -513,7 +513,7 @@ async function main() {
   ).catch(() => []);
   record(
     'Jobliste blaettert seitenweise',
-    firstPage.length <= 6 &&
+    firstPage.length <= 10 &&
       secondPage.length > 0 &&
       backAgain.length === firstPage.length &&
       secondPage.every((id) => !firstPage.includes(id)),

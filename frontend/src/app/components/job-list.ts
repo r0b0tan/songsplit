@@ -8,20 +8,25 @@ import { shortStemName } from '../core/stem-name';
 import { StemStore } from '../separate/stem-store';
 import { downloadWav } from '../separate/wav';
 
-/** Jobs je Seite. Sechs passen auf einen Blick, ohne dass man scrollt. */
-const PAGE_SIZE = 6;
+/** Jobs je Seite. Zehn Zeilen fuellen das Blatt, ohne dass man scrollt. */
+const PAGE_SIZE = 10;
 
 /** Die drei Sichten auf den Verlauf. */
 type Tab = 'alle' | 'songs' | 'tests';
 
 /**
- * Verlauf: was getrennt wurde und was gerade laeuft.
+ * Verlauf: was getrennt wurde und was gerade laeuft. Er steht als Liste
+ * unter der Importkarte, in derselben Spalte.
  *
  * Eine Zeile je Job, nur durch eine Linie getrennt — keine Karten in der
- * Karte. In der Zeile steht, woran man den Job wiedererkennt: das Stueck,
- * darunter Interpret, Trennmodus, Laenge und Spurzahl. Alles Weitere
- * (Spuren speichern, loeschen) liegt hinter dem Menue am Zeilenende, denn
- * gebraucht wird fast immer dasselbe: das Deck oeffnen.
+ * Karte. Die Zeile ist eine Tabellenzeile: links das Stueck, daneben
+ * Modus, Laenge und Spurzahl, rechts die eine Handlung, um die es geht —
+ * das Deck oeffnen. Alles Weitere (Spuren speichern, loeschen) liegt
+ * hinter dem Menue am Zeilenende.
+ *
+ * Beim Erscheinen kommt die Liste aus der unteren rechten Ecke heran, die
+ * Zeilen gestaffelt hinterher: so sieht man, dass sie nachgetragen wird,
+ * und liest nicht in eine Liste, die schon dasteht.
  *
  * Die Reiter trennen, was sich nicht vergleichen laesst: echte Trennungen
  * und Testlaeufe. Letztere sammeln sich beim Ausprobieren an und waeren
@@ -40,51 +45,65 @@ type Tab = 'alle' | 'songs' | 'tests';
       .history {
         padding: 0;
         overflow: hidden;
+        /* Luft nach oben, zusaetzlich zum Abstand der Spalte: der Verlauf
+           ist ein eigener Abschnitt und soll nicht an der Importkarte
+           kleben. */
+        margin-top: 28px;
         /* Ohne Rand: der Verlauf ist eine Liste, keine zweite Karte neben
            dem Import. Die Flaeche traegt ihn, die Linien zwischen den
            Zeilen gliedern ihn. */
         border: 0;
+        background: none;
+        /* Er kommt von unten rechts heran — aus der Ecke, in der die
+           Seite endet. */
+        animation: history-in 0.42s cubic-bezier(0.2, 0, 0.2, 1) both;
+      }
+      @keyframes history-in {
+        from {
+          opacity: 0;
+          transform: translate(30px, 38px);
+        }
       }
 
       /* ------------------------------------------------------- Kopfzeile */
       .head {
         display: flex;
-        gap: 10px 16px;
+        gap: 12px 20px;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
-        padding: 13px 16px 0;
+        padding: 19px 21px 2px;
       }
       .head h2 {
-        font-size: 13.5px;
+        font-size: 19px;
         font-weight: 650;
-        letter-spacing: -0.012em;
+        letter-spacing: -0.02em;
       }
       .tabs {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 18px;
       }
       /* Reiter, keine Schalter: sie liegen auf einer Linie und tragen die
          Anzahl gleich mit, damit man vorher weiss, was einen erwartet. */
       .tabs button.tab {
         display: inline-flex;
         align-items: baseline;
-        gap: 6px;
+        gap: 7px;
         min-height: 0;
-        padding: 2px 0 7px;
+        padding: 2px 0 9px;
         border: 0;
         border-bottom: 2px solid transparent;
         border-radius: 0;
         background: none;
         color: var(--dim);
-        font-size: 12.5px;
+        font-size: 13.5px;
       }
       .tabs button.tab:hover:not(:disabled) {
         color: var(--ink);
       }
       .tabs button.tab b {
-        font: 11px/1 var(--mono);
+        font: 11.5px/1 var(--mono);
         font-variant-numeric: tabular-nums;
         color: var(--faint);
       }
@@ -97,12 +116,18 @@ type Tab = 'alle' | 'songs' | 'tests';
       }
 
       /* ------------------------------------------------------------ Zeile */
+      /* Eine Tabelle ohne Tabellenkopf: die Spalten stehen untereinander
+         fest, damit das Auge sie von Zeile zu Zeile wiederfindet. */
       .row {
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns:
+          20px minmax(0, 1fr) minmax(0, 1fr) 46px 80px 140px 26px;
         align-items: center;
-        gap: 11px;
-        padding: 10px 16px;
+        gap: 14px;
+        /* Luft in der Zeile: die Liste wird oft ueberflogen, und zwischen
+           zehn Zeilen liest es sich leichter, wenn jede fuer sich steht. */
+        min-height: 66px;
+        padding: 13px 21px;
         border-top: 1px solid var(--edge-soft);
         transition: background 0.12s;
       }
@@ -112,79 +137,82 @@ type Tab = 'alle' | 'songs' | 'tests';
       .row.current {
         background: var(--tint);
       }
+      /* Die Zeilen kommen gestaffelt nach, in derselben Richtung wie das
+         Blatt — sonst steht die Liste schon da, bevor sie angekommen ist. */
+      .row {
+        animation: row-in 0.34s cubic-bezier(0.2, 0, 0.2, 1) both;
+        animation-delay: calc(var(--i) * 20ms + 120ms);
+      }
+      @keyframes row-in {
+        from {
+          opacity: 0;
+          transform: translate(14px, 8px);
+        }
+      }
       .glyph {
         display: inline-flex;
         color: var(--faint);
-        --icon-size: 17px;
+        --icon-size: 18px;
       }
       .row.current .glyph {
         color: var(--accent);
       }
-      .what {
-        min-width: 0;
-      }
       .song {
-        font-size: 13.5px;
+        font-size: 14px;
         font-weight: 620;
         letter-spacing: -0.012em;
       }
-      .meta {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-top: 2px;
-        font: 11.5px/1.4 var(--mono);
+      .song .artist {
+        margin-left: 7px;
+        font-weight: 400;
+        color: var(--faint);
+      }
+      .cell {
+        min-width: 0;
+        font-size: 13px;
         color: var(--dim);
+      }
+      .cell.num {
+        font-family: var(--mono);
+        font-size: 12.5px;
         font-variant-numeric: tabular-nums;
       }
-      .meta .sep {
-        color: var(--edge);
-      }
-      .meta.bad {
+      .cell.bad {
         color: var(--bad);
-        font-family: var(--sans);
       }
 
       /* --------------------------------------------------------- Aktionen */
-      .actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
       .state {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        font-size: 12px;
+        gap: 6px;
+        font-size: 13px;
         color: var(--dim);
         --icon-size: 14px;
       }
       .state.bad {
         color: var(--bad);
       }
-      /* Die eine Handlung, um die es im Verlauf geht, sieht auch so aus:
-         ein Knopf in der Akzentfarbe, mit dem Zeichen fuer "geht auf".
-         Ein Haken und ein Stueck Text daneben waren zwei halbe Angaben. */
+      /* Die eine Handlung, um die es im Verlauf geht, steht als Text da —
+         kein Kasten, denn die Spalte ist schon die Trennung. */
       .open {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        min-height: 29px;
-        padding: 4px 11px;
-        border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        gap: 7px;
+        min-height: 30px;
+        padding: 4px 9px;
+        margin-left: -9px;
+        border: 0;
         border-radius: var(--radius-sm);
         background: none;
         color: var(--accent);
-        font-size: 12.5px;
+        font-size: 13px;
         font-weight: 550;
+        text-align: left;
         --icon-size: 14px;
       }
-      .open:hover:not(:disabled) {
-        border-color: var(--accent);
-        background: var(--ghost);
-      }
+      .open:hover:not(:disabled),
       .open[aria-pressed='true'] {
-        border-color: var(--accent);
         background: var(--ghost);
       }
 
@@ -192,11 +220,12 @@ type Tab = 'alle' | 'songs' | 'tests';
       .menu-wrap {
         position: relative;
         display: inline-flex;
+        justify-self: end;
       }
       button.dots {
         min-height: 0;
-        width: 22px;
-        height: 22px;
+        width: 26px;
+        height: 26px;
         padding: 0;
         display: grid;
         place-items: center;
@@ -204,7 +233,7 @@ type Tab = 'alle' | 'songs' | 'tests';
         border-radius: 6px;
         background: none;
         color: var(--faint);
-        --icon-size: 15px;
+        --icon-size: 16px;
       }
       button.dots:hover:not(:disabled),
       button.dots[aria-expanded='true'] {
@@ -222,6 +251,12 @@ type Tab = 'alle' | 'songs' | 'tests';
         border-radius: var(--radius-sm);
         background: var(--panel-2);
         box-shadow: 0 14px 30px -12px light-dark(rgb(24 19 30 / 0.3), rgb(0 0 0 / 0.6));
+      }
+      /* Die letzten Zeilen haengen ihr Menue nach oben, sonst steht es
+         ausserhalb des Blattes. */
+      .menu.up {
+        top: auto;
+        bottom: calc(100% + 6px);
       }
       .menu > * {
         display: flex;
@@ -259,9 +294,9 @@ type Tab = 'alle' | 'songs' | 'tests';
       /* ------------------------------------------------------------ Fuss */
       .pager {
         display: flex;
-        gap: 7px;
+        gap: 8px;
         align-items: center;
-        padding: 9px 16px;
+        padding: 14px 21px 6px;
         border-top: 1px solid var(--edge-soft);
         --icon-size: 14px;
       }
@@ -269,19 +304,44 @@ type Tab = 'alle' | 'songs' | 'tests';
         margin-left: auto;
       }
       .empty {
-        padding: 16px;
+        padding: 16px 21px 6px;
         border-top: 1px solid var(--edge-soft);
         color: var(--dim);
-        font-size: 12.5px;
+        font-size: 13px;
+        max-width: 64ch;
       }
 
+      /* Schmaler: erst faellt der Modus weg, dann Laenge und Spurzahl —
+         das Stueck und der Weg ins Deck bleiben am laengsten. */
+      @container (max-width: 700px) {
+        .row {
+          grid-template-columns: 20px minmax(0, 1fr) 46px 80px auto 26px;
+          gap: 11px;
+          padding-inline: 14px;
+        }
+        .head,
+        .pager,
+        .empty {
+          padding-inline: 14px;
+        }
+        .c-mode {
+          display: none;
+        }
+      }
       @container (max-width: 520px) {
         .row {
-          grid-template-columns: auto minmax(0, 1fr);
-          row-gap: 7px;
+          grid-template-columns: 20px minmax(0, 1fr) auto 26px;
         }
-        .actions {
-          grid-column: 2;
+        .c-dur,
+        .c-stems {
+          display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .history,
+        .row {
+          animation: none;
         }
       }
     `,
@@ -347,10 +407,11 @@ type Tab = 'alle' | 'songs' | 'tests';
         <p class="empty">In dieser Sicht steht nichts.</p>
       }
 
-      @for (job of visible(); track job.id) {
+      @for (job of visible(); track job.id; let i = $index) {
         <article
           class="row"
           [class.current]="job.id === selectedId()"
+          [style.--i]="i"
           data-testid="job"
           [attr.data-job-id]="job.id"
           [attr.data-status]="job.status"
@@ -358,35 +419,36 @@ type Tab = 'alle' | 'songs' | 'tests';
         >
           <span class="glyph" aria-hidden="true"><app-icon name="audio-lines" /></span>
 
-          <div class="what">
-            <div class="song truncate" [title]="job.source_name">
-              {{ name(job).title }}
-            </div>
-            @if (job.status === 'failed') {
-              <div class="meta bad">{{ job.error ?? 'Fehlgeschlagen' }}</div>
-            } @else {
-              <div class="meta">
-                @if (name(job).artist; as artist) {
-                  <span>{{ artist }}</span>
-                  <span class="sep">·</span>
-                }
-                <span>{{ mode(job) }}</span>
-                @if (job.duration_seconds) {
-                  <span class="sep">·</span>
-                  <span>{{ formatDuration(job.duration_seconds) }}</span>
-                }
-                @if (job.status === 'done') {
-                  <span class="sep">·</span>
-                  <span>{{ job.stems.length }} Spuren</span>
-                } @else {
-                  <span class="sep">·</span>
-                  <span>{{ job.stage ?? STATUS_LABELS[job.status] }}</span>
-                }
-              </div>
+          <div class="song truncate" [title]="job.source_name">
+            {{ name(job).title }}
+            @if (name(job).artist; as artist) {
+              <span class="artist">{{ artist }}</span>
             }
           </div>
 
-          <div class="actions">
+          @if (job.status === 'failed') {
+            <div class="cell bad truncate c-mode" [title]="job.error ?? 'Fehlgeschlagen'">
+              {{ job.error ?? 'Fehlgeschlagen' }}
+            </div>
+          } @else {
+            <div class="cell truncate c-mode" [title]="mode(job)">{{ mode(job) }}</div>
+          }
+
+          <div class="cell num c-dur">
+            {{ job.duration_seconds ? formatDuration(job.duration_seconds) : '—' }}
+          </div>
+
+          <div class="cell truncate c-stems">
+            @if (job.status === 'done') {
+              {{ job.stems.length }} Spuren
+            } @else if (job.status === 'failed') {
+              —
+            } @else {
+              {{ job.stage ?? STATUS_LABELS[job.status] }}
+            }
+          </div>
+
+          <div class="cell">
             @switch (job.status) {
               @case ('done') {
                 @if (gone(job); as why) {
@@ -420,52 +482,48 @@ type Tab = 'alle' | 'songs' | 'tests';
                 </span>
               }
             }
-
-            <span
-              class="menu-wrap"
-              (focusout)="closeMenu($event, job.id)"
-              (keydown.escape)="menu.set(null)"
-            >
-              <button
-                class="dots"
-                [attr.aria-label]="'Weitere Aktionen zu ' + name(job).title"
-                [attr.aria-expanded]="menu() === job.id"
-                (click)="toggleMenu(job.id)"
-              >
-                <app-icon name="ellipsis" />
-              </button>
-              @if (menu() === job.id) {
-                <div class="menu" role="menu">
-                  @for (stem of job.stems; track stem.slug) {
-                    @if (job.site === 'server') {
-                      <a
-                        role="menuitem"
-                        [href]="stem.download_url"
-                        [download]="stem.name + '.wav'"
-                      >
-                        <app-icon name="download" />{{ short(stem.name) }} speichern
-                      </a>
-                    } @else if (!gone(job)) {
-                      <!-- Im Browserpfad gibt es keine Datei, auf die ein
-                           Link zeigen koennte. Die WAV wird beim Klick
-                           geschrieben — vier Spuren im Voraus waeren 190 MB,
-                           die niemand angefordert hat. -->
-                      <button role="menuitem" (click)="save(job, stem)">
-                        <app-icon name="download" />{{ short(stem.name) }} speichern
-                      </button>
-                    }
-                  }
-                  @if (job.stems.length) {
-                    <hr />
-                  }
-                  <button class="danger" role="menuitem" (click)="armOrRemove(job)">
-                    <app-icon name="trash" />
-                    {{ armed() === job.id ? 'Wirklich löschen?' : 'Job löschen' }}
-                  </button>
-                </div>
-              }
-            </span>
           </div>
+
+          <span
+            class="menu-wrap"
+            (focusout)="closeMenu($event, job.id)"
+            (keydown.escape)="menu.set(null)"
+          >
+            <button
+              class="dots"
+              [attr.aria-label]="'Weitere Aktionen zu ' + name(job).title"
+              [attr.aria-expanded]="menu() === job.id"
+              (click)="toggleMenu(job.id)"
+            >
+              <app-icon name="ellipsis" />
+            </button>
+            @if (menu() === job.id) {
+              <div class="menu" role="menu" [class.up]="i >= visible().length - 3">
+                @for (stem of job.stems; track stem.slug) {
+                  @if (job.site === 'server') {
+                    <a role="menuitem" [href]="stem.download_url" [download]="stem.name + '.wav'">
+                      <app-icon name="download" />{{ short(stem.name) }} speichern
+                    </a>
+                  } @else if (!gone(job)) {
+                    <!-- Im Browserpfad gibt es keine Datei, auf die ein
+                         Link zeigen koennte. Die WAV wird beim Klick
+                         geschrieben — vier Spuren im Voraus waeren 190 MB,
+                         die niemand angefordert hat. -->
+                    <button role="menuitem" (click)="save(job, stem)">
+                      <app-icon name="download" />{{ short(stem.name) }} speichern
+                    </button>
+                  }
+                }
+                @if (job.stems.length) {
+                  <hr />
+                }
+                <button class="danger" role="menuitem" (click)="armOrRemove(job)">
+                  <app-icon name="trash" />
+                  {{ armed() === job.id ? 'Wirklich löschen?' : 'Job löschen' }}
+                </button>
+              </div>
+            }
+          </span>
         </article>
       }
 

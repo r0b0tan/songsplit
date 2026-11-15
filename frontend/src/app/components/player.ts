@@ -1,4 +1,14 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import {
   LOOP_MIN_SECONDS,
@@ -55,6 +65,19 @@ type LoopEnd = 'a' | 'b';
         overflow: hidden;
         --label: 196px;
         --knobs: 190px;
+        /* Die Spurhoehe teilt sich auf, was vom Fenster uebrig bleibt,
+           wenn Kopf, Transport und Fuss ihren Platz haben. Geraten wird
+           dabei nichts: --chrome ist gemessen (siehe Klasse), --lanes ist
+           die Zahl der Spuren, und --deck-space ist genau die Hoehe, die
+           der Dialog zulaesst. So sind die Bahnen so hoch wie moeglich und
+           das Deck scrollt trotzdem nicht. Der Rueckfallwert gilt nur fuer
+           den ersten Bildaufbau, bis gemessen ist. */
+        --deck-space: calc(100dvh - 2 * clamp(8px, 2vh, 26px));
+        --lane-h: clamp(
+          66px,
+          calc((var(--deck-space) - var(--chrome, 330px)) / var(--lanes, 6)),
+          150px
+        );
       }
 
       /* ------------------------------------------------------------- Song */
@@ -228,7 +251,7 @@ type LoopEnd = 'a' | 'b';
 
       .track {
         border-bottom: 1px solid var(--edge-soft);
-        min-height: 66px;
+        min-height: var(--lane-h);
         background: var(--panel);
         transition: min-height 0.18s ease, background 0.18s ease;
       }
@@ -236,7 +259,7 @@ type LoopEnd = 'a' | 'b';
          Solo-Tempo, und ihre Wellenform ist die, auf die man hoert. */
       .track.soloed {
         background: var(--tint);
-        min-height: 112px;
+        min-height: calc(var(--lane-h) + 46px);
       }
 
       .track-head {
@@ -657,7 +680,12 @@ type LoopEnd = 'a' | 'b';
     `,
   ],
   template: `
-    <section class="panel deck">
+    <section
+      class="panel deck"
+      #deck
+      [style.--lanes]="engine.tracks().length || 1"
+      [style.--chrome.px]="chrome()"
+    >
       <!-- ----------------------------------------------------------- Song -->
       <header class="song">
         <div class="grow">
@@ -844,6 +872,7 @@ type LoopEnd = 'a' | 'b';
           <div class="heading eyebrow" style="text-align: right">Pegel · Tonhöhe</div>
         </div>
 
+        <div class="lanes" #lanes>
         @for (track of engine.tracks(); track track.slug; let i = $index) {
           <div
             class="track"
@@ -1011,6 +1040,7 @@ type LoopEnd = 'a' | 'b';
             </div>
           </div>
         }
+        </div>
 
         <!-- --------------------------------------------------- Statusleiste -->
         <footer class="status">
@@ -1125,6 +1155,47 @@ export class PlayerComponent {
   private readonly store = inject(StemStore);
   readonly job = input.required<Job>();
   readonly close = output<void>();
+
+  // ------------------------------------------------------------ Spurhoehe
+  /*
+   * Die Spuren sollen so hoch sein wie moeglich, ohne dass das Deck
+   * scrollt. Rechnen laesst sich das nur, wenn man weiss, wie viel Hoehe
+   * alles ausser den Spuren braucht — und das haengt am Titel, der umbrechen
+   * kann, an Hinweiszeilen, an der Schriftgroesse. Geschaetzte Zahlen gingen
+   * hier reihum daneben, deshalb wird gemessen: Deck minus Spurblock ist das
+   * Beiwerk. Den Rest teilt das CSS durch die Zahl der Spuren.
+   */
+  private readonly deckRef = viewChild<ElementRef<HTMLElement>>('deck');
+  private readonly lanesRef = viewChild<ElementRef<HTMLElement>>('lanes');
+
+  /** Gemessene Hoehe alles Nicht-Spurigen im Deck, in CSS-Pixeln. */
+  readonly chrome = signal(330);
+
+  constructor() {
+    effect((onCleanup) => {
+      const deck = this.deckRef()?.nativeElement;
+      const lanes = this.lanesRef()?.nativeElement;
+      if (!deck || !lanes || typeof ResizeObserver === 'undefined') return;
+
+      /* Zwei Pixel Zugabe fuer Raender und Rundungen: lieber eine Haaresbreite
+         Luft als ein Balken am Rand. Unter einem Pixel Abweichung bleibt alles
+         stehen, sonst schaukelt sich die Messung mit dem Umbruch auf. */
+      let last = 0;
+      const measure = () => {
+        const rest = Math.round(deck.offsetHeight - lanes.offsetHeight) + 2;
+        if (rest > 0 && Math.abs(rest - last) > 1) {
+          last = rest;
+          this.chrome.set(rest);
+        }
+      };
+
+      const observer = new ResizeObserver(measure);
+      observer.observe(deck);
+      observer.observe(lanes);
+      measure();
+      onCleanup(() => observer.disconnect());
+    });
+  }
 
   /**
    * Schreibt eine Spur des Browserpfads als WAV.
