@@ -1078,7 +1078,7 @@ type LoopEnd = 'a' | 'b';
             </span>
           } @else {
             <span class="mono tiny faint">
-              kein Loop · in eine Wellenform ziehen setzt ihn
+              Kein Loop · Zum Setzen mit der Maus markieren
             </span>
           }
 

@@ -27,10 +27,17 @@ interface Bar {
  * Mitte hin lauter wird. Hier liegt noch keine Datei, die man zeichnen
  * koennte — das Bild sagt nur, was hier hingehoert.
  */
+/**
+ * Wie gross die Welle in der Ablegeflaeche steht. Die Formel darunter
+ * beschreibt ihre Form, diese Zahl allein ihre Groesse -- Balkenbreite und
+ * Abstand im Stilblock sind darauf abgestimmt.
+ */
+const WAVE_SCALE = 1.4;
+
 const BARS: readonly Bar[] = Array.from({ length: 31 }, (_, i) => {
   const envelope = 1 - Math.abs(i - 15) / 16;
   return {
-    h: 4 + Math.abs(Math.sin(i * 2.28)) * (4 + 24 * envelope),
+    h: (4 + Math.abs(Math.sin(i * 2.28)) * (4 + 24 * envelope)) * WAVE_SCALE,
     a: 0.3 + 0.69 * envelope,
   };
 });
@@ -71,9 +78,40 @@ const ACCEPTED = /\.(mp3|wav)$/i;
   host: { '(document:pointerdown)': 'onDocumentPointerDown($event)' },
   styles: [
     `
+      /* Die Importkarte steht eine Spur groesser als der Rest der Seite:
+         dieselben Masse wie zuvor, im Ganzen um 15 % vergroessert. Das
+         geschieht hier an einer Stelle und nicht an jedem Pixelwert
+         einzeln -- so bleiben alle Verhaeltnisse der Karte so, wie sie
+         entworfen sind. Die Karte selbst bleibt dabei so breit wie die
+         Spalte: zoom rechnet auch die verfuegbare Breite mit um. */
       :host {
         display: block;
         container-type: inline-size;
+        zoom: 1.15;
+      }
+      /* Und breiter als die Spalte darf sie auch sein: 15 % mehr, zu
+         beiden Seiten gleich ueberstehend, waehrend der Platz in der
+         Spalte derselbe bleibt (115 % breit, 7,5 % Rand nach aussen).
+         Die Prozente rechnen im Massstab der Karte, nicht der Seite --
+         deshalb heben sie sich gegen den zoom darueber sauber auf.
+
+         Erst ab einem Schirm, der den Ueberstand hergibt: 780er Spalte
+         plus zweimal 58 px Ueberstand plus Luft. Darunter bleibt die
+         Karte in der Spalte, sonst schoebe sie die Seite seitlich. */
+      @media (min-width: 960px) {
+        :host {
+          width: 115%;
+          margin-inline: -7.5%;
+        }
+      }
+      /* Und wo noch mehr Schirm ist, eine Stufe weiter: 25 % breiter als
+         die Spalte. Mehr traegt der Ueberstand nicht, ohne dass die Karte
+         den Rand des Fensters sucht. */
+      @media (min-width: 1040px) {
+        :host {
+          width: 125%;
+          margin-inline: -12.5%;
+        }
       }
       .box {
         padding: 0;
@@ -232,7 +270,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         font-weight: 700;
         letter-spacing: -0.055em;
         line-height: 1.05;
-        margin: 4px 0 12px;
+        margin: 4px 0 18px;
       }
 
       /* ------------------------------------------------------- Ablegefeld */
@@ -241,7 +279,17 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         display: grid;
         place-items: center;
         text-align: center;
-        min-height: 153px;
+        /* Die Hoehe haengt an der Breite: das Feld behaelt sein
+           Verhaeltnis von 7:2, egal wie breit die Karte gerade steht.
+           Die Mindesthoehe faengt die schmalen Schirme ab, wo 7:2 einen
+           Streifen ergaebe, in dem Welle und Beschriftung klemmen.
+
+           Die Breite steht ausdruecklich auf 100 %: sonst rechnet der
+           Browser sie aus der Mindesthoehe mal dem Verhaeltnis und das
+           Feld steht breiter als die Karte, die es traegt. */
+        width: 100%;
+        aspect-ratio: 7 / 2;
+        min-height: 204px;
         padding: 18px 14px;
         /* Der gestrichelte Rand ist nicht grau, sondern gedaempft in der
            Akzentfarbe: die Flaeche gehoert zum Hauptweg. */
@@ -272,18 +320,21 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       .drop input[type='file']:disabled {
         cursor: not-allowed;
       }
+      /* Hoehe, Breite und Abstand folgen WAVE_SCALE: 32, 3 und 3 mal 1,4.
+         Wer die Welle aendern will, aendert die Zahl dort und diese drei
+         Werte mit. */
       .wave {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 3px;
-        height: 32px;
-        margin-bottom: 10px;
+        gap: 4px;
+        height: 45px;
+        margin-bottom: 13px;
         color: var(--accent);
       }
       .wave i {
         display: block;
-        width: 3px;
+        width: 4px;
         border-radius: 4px;
         background: currentColor;
       }
@@ -558,30 +609,53 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       }
 
       /* ------------------------------------------------------------- Fuss */
+      /* Der Fuss ist ein eigenes Band und nicht bloss eine Trennlinie im
+         Polster: eigene Flaeche, ueber die ganze Breite der Karte bis an
+         ihre Kanten, abgesetzt durch eine Kante nach oben. Deshalb steht
+         er in der Vorlage neben .inner und nicht darin. Die Rundung unten
+         besorgt das overflow: hidden der Karte. */
+      .foot {
+        padding: 14px 18px;
+        border-top: 1px solid var(--edge);
+        /* Dieselbe Flaeche wie die Karte, nur eine Stufe dunkler als das
+           panel-2, das hier zuerst stand: das Band traegt sich ueber seine
+           Kante nach oben und das Polster bis an die Kartenraender, nicht
+           ueber eine zweite Farbe. */
+        background: var(--panel);
+      }
       .go {
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 8px 14px;
         flex-wrap: wrap;
-        margin-top: 16px;
-        padding-top: 12px;
-        border-top: 1px solid var(--edge);
       }
-      /* Die Nebenhandlung sieht aus wie ein Link, nicht wie ein zweiter
-         Knopf: daneben steht die Hauptaktion, und zwei Knoepfe
-         nebeneinander waeren zwei gleich laute Angebote. */
+      /* Die Nebenhandlung ist ein Knopf in derselben Form wie die
+         Hauptaktion daneben: gleiche Hoehe, gleiche Rundung, gleiches
+         Polster. Nur die Flaeche ist eine ruhige -- zwei gleich helle
+         Knoepfe waeren zwei gleich laute Angebote, und die Hauptaktion
+         steht rechts. */
+      /* Derselbe Knopf wie rechts, nur gedaempft: dieselbe Flaeche und
+         dieselbe graue Schrift, die die Hauptaktion traegt, solange sie
+         wartet. Die 0,72 Deckkraft von dort fehlt mit Absicht -- die
+         gehoert zum Ausgegrauten, und dieser Knopf ist zu haben. */
       button.demo {
-        min-height: 34px;
-        padding: 2px 0;
-        border: 0;
-        background: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 38px;
+        padding: 8px 14px;
+        /* Die Kante ist schon da, nur unsichtbar: beim Zeigen faerbt sie
+           sich, statt zu erscheinen. Sonst waere der Knopf unter dem
+           Zeiger zwei Pixel groesser als daneben. */
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: var(--panel-2);
         color: var(--dim);
-        font-size: 12px;
-        text-decoration: underline;
-        text-underline-offset: 3px;
+        font-weight: 700;
       }
       button.demo:hover:not(:disabled) {
+        border-color: var(--accent);
         color: var(--accent);
       }
       button.start {
@@ -612,9 +686,13 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         .inner {
           padding: 13px;
         }
+        .foot {
+          padding: 11px 13px;
+        }
         .mode {
           padding-inline: 5px;
         }
+        button.demo,
         button.start {
           width: 100%;
         }
@@ -740,7 +818,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       </header>
 
       <div class="inner">
-      <div class="eyebrow">01 / Import</div>
+      <div class="eyebrow">Import</div>
       <h2 class="lede">Song trennen</h2>
 
       <!-- ------------------------------------------------------- Datei -->
@@ -882,7 +960,10 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         }
       </dialog>
 
+      </div>
+
       <!-- --------------------------------------------------------- Fuss -->
+      <footer class="foot">
       <div class="go">
         <button
           type="button"
@@ -891,7 +972,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
           title="Legt drei synthetische Spuren an, ohne zu trennen: zwei Klickspuren mit Klicks auf genau denselben Zeitpunkten und einen 440-Hz-Dauerton. Laufen die Klickspuren synchron, hört man einen einzigen Klick."
           (click)="startTest()"
         >
-          Testspuren anlegen
+          <app-icon name="plus" />Testspuren anlegen
         </button>
         <button
           type="button"
@@ -906,7 +987,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       @if (hint(); as h) {
         <p class="hint" role="status">{{ h }}</p>
       }
-      </div>
+      </footer>
     </section>
   `,
 })

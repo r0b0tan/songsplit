@@ -62,6 +62,8 @@ class ModelPreset:
     is_default: bool = False
 
 
+# Die Reihenfolge hier ist die Reihenfolge der Karten in der Auswahl:
+# zuerst der schnelle Weg, dann aufsteigend nach Zahl der Spuren.
 MODEL_PRESETS: dict[str, ModelPreset] = {
     "htdemucs": ModelPreset(
         name="htdemucs",
@@ -71,6 +73,21 @@ MODEL_PRESETS: dict[str, ModelPreset] = {
         description="Gesang, Drums, Bass und Rest. Der schnellste Weg.",
         stems=("vocals", "drums", "bass", "other"),
         is_default=True,
+    ),
+    "roformer_vocals": ModelPreset(
+        name="roformer_vocals",
+        mode="Nur Gesang",
+        label="Roformer — nur Gesang und Begleitung",
+        description=(
+            "MelBand Roformer, das beste Gesangsmodell der Sammlung. Nur "
+            "zwei Spuren, dafuer am wenigsten Uebersprechen zwischen Gesang "
+            "und Begleitung. Braucht 913 MB Download und bis zu 3,6 GB VRAM."
+        ),
+        # Das Modell schreibt "(Vocals)" und "(Other)"; der zweite Teil ist
+        # hier die ganze Begleitung, nicht ein Rest neben Drums und Bass.
+        stems=("vocals", "other"),
+        stem_labels=(("other", "Begleitung"),),
+        filename="vocals_mel_band_roformer.ckpt",
     ),
     "htdemucs_ft": ModelPreset(
         name="htdemucs_ft",
@@ -92,21 +109,6 @@ MODEL_PRESETS: dict[str, ModelPreset] = {
         label="htdemucs_6s — 6 Spuren",
         description="Zusaetzlich Gitarre und Klavier. Langsamer, mehr VRAM.",
         stems=("vocals", "drums", "bass", "guitar", "piano", "other"),
-    ),
-    "roformer_vocals": ModelPreset(
-        name="roformer_vocals",
-        mode="Nur Gesang",
-        label="Roformer — nur Gesang und Begleitung",
-        description=(
-            "MelBand Roformer, das beste Gesangsmodell der Sammlung. Nur "
-            "zwei Spuren, dafuer am wenigsten Uebersprechen zwischen Gesang "
-            "und Begleitung. Braucht 913 MB Download und bis zu 3,6 GB VRAM."
-        ),
-        # Das Modell schreibt "(Vocals)" und "(Other)"; der zweite Teil ist
-        # hier die ganze Begleitung, nicht ein Rest neben Drums und Bass.
-        stems=("vocals", "other"),
-        stem_labels=(("other", "Begleitung"),),
-        filename="vocals_mel_band_roformer.ckpt",
     ),
 }
 

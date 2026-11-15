@@ -67,7 +67,7 @@ import { StemStore } from './separate/stem-store';
         gap: 12px;
         padding-inline: max(14px, env(safe-area-inset-left, 0px))
           max(14px, env(safe-area-inset-right, 0px));
-        padding-block: clamp(14px, 3vw, 26px) 56px;
+        padding-block: clamp(22px, 5vw, 64px) 56px;
       }
 
       .notes {

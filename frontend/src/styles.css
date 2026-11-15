@@ -208,6 +208,16 @@ button.icon {
   outline-offset: 2px;
 }
 
+/* Ein modaler Dialog bekommt beim Oeffnen selbst den Fokus, damit Tastatur
+   und Vorleser darin landen. Bedient wird er aber nicht: er ist nur der
+   Rahmen. Chrome zeigt seinen Fokusring erst, sobald eine Taste faellt --
+   auch eine blosse Umschalttaste --, und dann liegt ein weisser Rand um das
+   ganze Fenster, der nichts bedeutet. Der Fokus bleibt, der Ring geht. */
+:where(dialog):focus,
+:where(dialog):focus-visible {
+  outline: none;
+}
+
 input[type='range'] {
   width: 100%;
   margin: 0;
