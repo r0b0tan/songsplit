@@ -14,7 +14,6 @@ import { ImportPanelComponent } from './components/import-panel';
 import { JobListComponent } from './components/job-list';
 import { PlayerComponent } from './components/player';
 import { RunProgressComponent } from './components/run-progress';
-import { SiteFooterComponent } from './components/site-footer';
 import { ApiService } from './core/api.service';
 import { JobsService } from './core/jobs.service';
 import type { Job } from './core/models';
@@ -52,12 +51,16 @@ import { StemStore } from './separate/stem-store';
     JobListComponent,
     PlayerComponent,
     RunProgressComponent,
-    SiteFooterComponent,
   ],
   styles: [
     `
+      /* Die Seite ist eine Spalte ueber die volle Hoehe: Inhalt oben,
+         Fussband unten. Ohne das haengt das Band bei wenig Inhalt mitten
+         auf dem Schirm, und darunter steht die nackte Flaeche. */
       :host {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
       }
       .shell {
         /* Etwas breiter als die Vorlage (780 px): so traegt die
@@ -79,6 +82,65 @@ import { StemStore } from './separate/stem-store';
         display: flex;
         flex-direction: column;
         gap: 7px;
+      }
+
+      /* Die Fusszeile der Seite: leise, aber da. */
+      /* Ein Band ueber die ganze Breite, 20 px hoch, eine Spur heller als
+         die Seite dahinter. Mehr braucht es nicht: hier steht nichts, was
+         beim Arbeiten gelesen wird -- es muss nur da sein, wenn jemand
+         danach sucht. Kein Umbruch, damit das Band eine Hoehe hat und
+         nicht zwei. */
+      .legal {
+        height: 20px;
+        display: flex;
+        align-items: center;
+        background: var(--panel);
+        border-top: 1px solid var(--edge-soft);
+        font-size: 11px;
+        line-height: 1;
+        color: var(--faint);
+        white-space: nowrap;
+      }
+      /* Der Text steht in derselben Spalte wie die Karten darueber: das
+         Band ist breit, seine Schrift nicht. */
+      .legal-inner {
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 0;
+        padding-inline: max(14px, env(safe-area-inset-left, 0px))
+          max(14px, env(safe-area-inset-right, 0px));
+      }
+      .legal-mark {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .legal-links {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        flex: none;
+      }
+      .legal a {
+        color: var(--dim);
+        text-decoration: none;
+      }
+      .legal a:hover {
+        color: var(--accent);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      /* Auf schmalen Schirmen traegt die Zeile nur das Noetige. Der Zusatz
+         geht als erstes, die Pflichtverweise bleiben. */
+      @media (max-width: 560px) {
+        .legal-by {
+          display: none;
+        }
       }
 
       /* ------------------------------------------------------------- Deck */
@@ -180,12 +242,31 @@ import { StemStore } from './separate/stem-store';
         (closed)="closeJob()"
       />
 
-      <!-- Der Fuss schliesst die Spalte ab: Rechtstexte und Jahr, schmal
-           und gedaempft. Er steht in der Spalte und nicht ueber die ganze
-           Breite, damit die Linie darueber dort endet, wo die Karten
-           enden. -->
-      <app-site-footer />
     </main>
+
+    <!-- Impressum und Datenschutz muessen von jeder Seite aus mit einem
+         Klick erreichbar sein. Beide liegen als eigene Seiten neben der
+         Anwendung (public/), nicht als Ansicht darin: so stehen sie auch
+         dann, wenn vom Bau nichts laedt. Deshalb echte Verweise und kein
+         Routing.
+
+         Das Band steht ausserhalb der Spalte: es laeuft ueber die ganze
+         Breite, sein Text bleibt in derselben Spalte wie die Karten
+         darueber. -->
+    <footer class="legal">
+      <div class="legal-inner">
+        <span class="legal-mark">
+          <!-- Keine Jahreszahl von Hand: eine, die jemand nachziehen muss,
+               steht irgendwann falsch da. -->
+          MixApart {{ jahr }}
+          <span class="legal-by">· Ein Produkt von CLICKIT DIGITAL</span>
+        </span>
+        <span class="legal-links">
+          <a href="/impressum.html">Impressum</a>
+          <a href="/datenschutz.html">Datenschutz</a>
+        </span>
+      </div>
+    </footer>
 
     <!-- ------------------------------------------------ Trennung laeuft -->
     <dialog
@@ -228,6 +309,13 @@ export class AppComponent {
   private readonly device = inject(DeviceSeparator);
 
   readonly selected = signal<Job | null>(null);
+
+  /**
+   * Das laufende Jahr fuer das Fussband. Einmal beim Aufbau gelesen -- eine
+   * Seite, die ueber Silvester offen bleibt, zeigt dann noch das alte Jahr,
+   * und das ist der einzige Fall, in dem das vorkommt.
+   */
+  readonly jahr = new Date().getFullYear();
 
   private readonly deckDialog =
     viewChild.required<ElementRef<HTMLDialogElement>>('deckDialog');

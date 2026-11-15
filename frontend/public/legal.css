@@ -1,0 +1,92 @@
+/* Aussehen der beiden Rechtsseiten (/impressum.html, /datenschutz.html).
+ *
+ * Eigene Datei statt der Stilangaben der Anwendung: diese Seiten stehen
+ * ohne Angular, ohne Javascript und sollen auch dann lesbar bleiben, wenn
+ * vom Bau nichts da ist. Die Farbmarken sind dieselben wie in
+ * src/styles.css -- wer sie dort aendert, aendert sie hier mit. */
+
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#eeedf0, #121216);
+  --panel: light-dark(#f8f7fa, #1c1b22);
+  --edge: light-dark(#d5d1db, #35333f);
+  --ink: light-dark(#23212a, #f0eef4);
+  --dim: light-dark(#5f5869, #b2acbe);
+  --faint: light-dark(#8b8495, #827b8e);
+  --accent: light-dark(#a6433a, #ffa497);
+  --radius: 18px;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 var(--sans);
+  letter-spacing: -0.006em;
+}
+
+.shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(22px, 5vw, 64px) max(16px, env(safe-area-inset-left, 0px)) 72px
+    max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ------------------------------------------------------------- Kopfzeile */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--edge);
+}
+.bar img { display: block; width: 28px; height: 28px; flex: none; }
+.bar a { color: inherit; text-decoration: none; font-weight: 700; }
+.bar a:hover { color: var(--accent); }
+
+h1 {
+  font-size: clamp(28px, 6vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  margin: 28px 0 6px;
+}
+.stand { color: var(--faint); font-size: 13px; margin: 0 0 28px; }
+
+h2 {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 34px 0 8px;
+}
+h3 { font-size: 14.5px; font-weight: 650; margin: 20px 0 6px; }
+p, li { color: var(--dim); }
+p { margin: 0 0 12px; }
+ul { margin: 0 0 12px; padding-left: 20px; }
+li { margin-bottom: 4px; }
+a { color: var(--accent); }
+
+/* Anschriften stehen als Block, nicht als Fliesstext. */
+address {
+  font-style: normal;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 44px;
+  padding-top: 18px;
+  border-top: 1px solid var(--edge);
+  font-size: 13px;
+  color: var(--faint);
+}
