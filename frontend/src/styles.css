@@ -37,6 +37,11 @@
   --ghost: light-dark(rgb(166 67 58 / 0.11), rgb(255 164 151 / 0.13));
   --ring: light-dark(rgb(166 67 58 / 0.45), rgb(255 164 151 / 0.5));
 
+  /* ---------------------------------------------------------- Scrollbalken */
+  --scroll-track: light-dark(#e4e1e9, #17171e);
+  --scroll-thumb: light-dark(rgb(166 67 58 / 0.55), rgb(255 164 151 / 0.42));
+  --scroll-thumb-hover: light-dark(#a6433a, #ffa497);
+
   /* ------------------------------------------------------------ Zustaende */
   --ok: light-dark(#2e6b4e, #7fd2a5);
   --ok-bg: light-dark(#e6f1ea, #1a2a22);
@@ -61,6 +66,40 @@
 * { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
+
+/* ------------------------------------------------------------ Scrollbalken
+ *
+ * Koralle auf dunkler Bahn, damit der Balken zur Marke gehoert statt zum
+ * Betriebssystem. Die Standard-Eigenschaften (Firefox, Chromium ab 121)
+ * reichen fuer Farbe und Breite. Sobald `scrollbar-color` gesetzt ist,
+ * ignoriert Chromium die ::-webkit-Pseudoelemente -- die bleiben darum
+ * dem Fall vorbehalten, in dem der Standard fehlt (aeltere WebKits).
+ */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+}
+
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scroll-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    border: 3px solid var(--scroll-track);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scroll-thumb-hover);
+  }
+  ::-webkit-scrollbar-corner {
+    background: var(--scroll-track);
+  }
+}
 
 /* Solange das Deck als Modal offen ist, gehoert das Scrollen ihm. */
 html.modal-open {

@@ -97,29 +97,18 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         container-type: inline-size;
         zoom: 1.15;
       }
-      /* Und breiter als die Spalte darf sie auch sein: 15 % mehr, zu
-         beiden Seiten gleich ueberstehend, waehrend der Platz in der
-         Spalte derselbe bleibt (115 % breit, 7,5 % Rand nach aussen).
-         Die Prozente rechnen im Massstab der Karte, nicht der Seite --
-         deshalb heben sie sich gegen den zoom darueber sauber auf.
+      /* Und breiter als die Spalte darf sie auch sein: zu beiden Seiten
+         gleich ueberstehend, waehrend der Platz in der Spalte derselbe
+         bleibt. Wie weit, sagen --bleed-width und --bleed-margin aus
+         app.ts; dort stehen auch die Schirmbreiten, ab denen der
+         Ueberstand einsetzt. Die Fusszeile liest dieselben Token und
+         zieht ihre Linie damit genau auf Kartenbreite.
 
-         Erst ab einem Schirm, der den Ueberstand hergibt: 780er Spalte
-         plus zweimal 58 px Ueberstand plus Luft. Darunter bleibt die
-         Karte in der Spalte, sonst schoebe sie die Seite seitlich. */
-      @media (min-width: 960px) {
-        :host {
-          width: 115%;
-          margin-inline: -7.5%;
-        }
-      }
-      /* Und wo noch mehr Schirm ist, eine Stufe weiter: 25 % breiter als
-         die Spalte. Mehr traegt der Ueberstand nicht, ohne dass die Karte
-         den Rand des Fensters sucht. */
-      @media (min-width: 1040px) {
-        :host {
-          width: 125%;
-          margin-inline: -12.5%;
-        }
+         Die Prozente rechnen im Massstab der Karte, nicht der Seite --
+         deshalb heben sie sich gegen den zoom darueber sauber auf. */
+      :host {
+        width: var(--bleed-width, 100%);
+        margin-inline: var(--bleed-margin, 0);
       }
       .box {
         padding: 0;

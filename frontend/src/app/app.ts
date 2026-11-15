@@ -61,6 +61,36 @@ import { StemStore } from './separate/stem-store';
         display: flex;
         flex-direction: column;
         min-height: 100dvh;
+
+        /* Der Ueberstand der Importkarte ueber die Spalte, als Paar:
+           Breite und Gegenrand gehoeren zusammen (115 % breit heisst
+           7,5 % nach jeder Seite hinaus). Beides steht hier und nicht in
+           der Karte, weil der Fuss dieselbe Linie zieht -- stuenden die
+           Zahlen zweimal da, liefen sie irgendwann auseinander.
+
+           Die Prozente rechnen im Massstab des Elements, das sie liest.
+           Die Karte traegt zoom: 1.15, ihre Prozente heben sich dagegen
+           auf; der Fuss hat keinen Zoom. Beide landen so bei derselben
+           Breite in Seitenpixeln. */
+        --bleed-width: 100%;
+        --bleed-margin: 0;
+      }
+      /* Erst ab einem Schirm, der den Ueberstand hergibt. Darunter bleiben
+         Karte und Fuss in der Spalte, sonst schoeben sie die Seite
+         seitlich. */
+      @media (min-width: 960px) {
+        :host {
+          --bleed-width: 115%;
+          --bleed-margin: -7.5%;
+        }
+      }
+      /* Und wo mehr Schirm ist, eine Stufe weiter. Mehr traegt der
+         Ueberstand nicht, ohne dass die Karte den Fensterrand sucht. */
+      @media (min-width: 1040px) {
+        :host {
+          --bleed-width: 125%;
+          --bleed-margin: -12.5%;
+        }
       }
       .shell {
         /* Etwas breiter als die Vorlage (780 px): so traegt die
@@ -80,7 +110,7 @@ import { StemStore } from './separate/stem-store';
         gap: 22px;
         padding-inline: max(14px, env(safe-area-inset-left, 0px))
           max(14px, env(safe-area-inset-right, 0px));
-        padding-block: clamp(22px, 5vw, 64px) 56px;
+        padding-block: clamp(22px, 5vw, 64px) 72px;
       }
 
       .notes {
@@ -90,61 +120,105 @@ import { StemStore } from './separate/stem-store';
       }
 
       /* Die Fusszeile der Seite: leise, aber da. */
-      /* Ein Band ueber die ganze Breite, 20 px hoch, eine Spur heller als
-         die Seite dahinter. Mehr braucht es nicht: hier steht nichts, was
-         beim Arbeiten gelesen wird -- es muss nur da sein, wenn jemand
-         danach sucht. Kein Umbruch, damit das Band eine Hoehe hat und
-         nicht zwei. */
+      /* Kein Band mehr: eigene Flaeche und durchgehender Rand haben den
+         Fuss wie einen angeklebten Streifen wirken lassen -- viel Gewicht
+         fuer zwei Zeilen Text. Jetzt traegt er denselben Grund wie die
+         Seite und schliesst sie nur mit einer Linie ab, die so breit ist
+         wie die Karten darueber. Deshalb liegt die Spaltenbreite hier
+         aussen und die Linie innen: ein Rand auf dem Element mit dem
+         Polster liefe bis unter den Seitenrand und waere breiter als die
+         Importkarte. */
       .legal {
-        height: 20px;
-        display: flex;
-        align-items: center;
-        background: var(--panel);
-        border-top: 1px solid var(--edge-soft);
-        font-size: 11px;
-        line-height: 1;
-        color: var(--faint);
-        white-space: nowrap;
-      }
-      /* Der Text steht in derselben Spalte wie die Karten darueber: das
-         Band ist breit, seine Schrift nicht. */
-      .legal-inner {
+        /* Dieselbe Spalte wie .shell -- ausdrueckliche Breite, weil ein
+           Flex-Element mit "margin: auto" sonst auf seinen Inhalt
+           schrumpft. */
         width: 100%;
         max-width: 900px;
         margin: 0 auto;
-        display: flex;
-        gap: 14px;
-        align-items: center;
-        justify-content: space-between;
-        min-width: 0;
         padding-inline: max(14px, env(safe-area-inset-left, 0px))
           max(14px, env(safe-area-inset-right, 0px));
+        font-size: 12.5px;
+        color: var(--faint);
+      }
+      .legal-inner {
+        /* So breit wie die Importkarte, nicht wie die Spalte: der Fuss
+           schliesst die Seite ab, und ein Abschluss, der schmaler ist als
+           das breiteste Element darueber, sieht aus wie eingerueckt. */
+        width: var(--bleed-width);
+        margin-inline: var(--bleed-margin);
+        display: flex;
+        gap: 2px 18px;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        min-width: 0;
+        border-top: 1px solid var(--edge-soft);
+        /* Oben die Luft zur Linie, unten der Abstand zum Seitenende. */
+        padding-block: 14px 26px;
       }
       .legal-mark {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      }
+      /* Dasselbe Zeichen wie in der Kopfleiste, nur kleiner und ohne
+         Hintergrund. Das Zeichen ist breiter als hoch (1342:894), also
+         bekommt es seine eigene Breite: in ein Quadrat gezwungen wuerde
+         es gestaucht. */
+      .legal-logo {
+        display: block;
+        width: 27px;
+        height: 18px;
+        flex: none;
       }
       .legal-links {
         display: flex;
-        gap: 14px;
+        gap: 0;
         align-items: center;
         flex: none;
       }
+      .legal-dot {
+        flex: none;
+      }
+      /* Ein Verweis ist eine Flaeche, kein Wort: hoch genug, um ihn mit
+         Maus und Daumen zu treffen. Das Polster bleibt knapp, damit der
+         Punkt dazwischen nicht in der Luft haengt. */
       .legal a {
-        color: var(--dim);
-        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding-inline: 7px;
+        border-radius: var(--radius-sm);
+        /* Im Ruhezustand so leise wie der Rest der Zeile. Farbe gibt es
+           erst, wenn jemand hinzeigt -- so konkurriert der Fuss nicht mit
+           dem Verlauf darueber. */
+        color: inherit;
+        text-decoration: underline;
+        text-decoration-color: color-mix(in srgb, currentColor 28%, transparent);
+        text-underline-offset: 3px;
+        transition: color 0.12s;
       }
       .legal a:hover {
         color: var(--accent);
-        text-decoration: underline;
-        text-underline-offset: 3px;
+        text-decoration-color: currentColor;
       }
-      /* Auf schmalen Schirmen traegt die Zeile nur das Noetige. Der Zusatz
-         geht als erstes, die Pflichtverweise bleiben. */
-      @media (max-width: 560px) {
-        .legal-by {
-          display: none;
+      /* Der Finger braucht mehr als die Maus. */
+      @media (pointer: coarse) {
+        .legal a {
+          min-height: 44px;
+          padding-inline: 9px;
+        }
+      }
+      /* Auf schmalen Schirmen bricht die Zeile; dann sollen Marke und
+         Verweise links buendig untereinander stehen, nicht auseinander
+         gezogen. */
+      @media (max-width: 420px) {
+        .legal-inner {
+          justify-content: flex-start;
+        }
+        .legal-links {
+          margin-inline-start: -7px;
         }
       }
 
@@ -174,7 +248,7 @@ import { StemStore } from './separate/stem-store';
            Spuren --, dann wenigstens schmal: der Balken liegt ausserhalb
            der Karte und soll dort nicht auftragen. */
         scrollbar-width: thin;
-        scrollbar-color: var(--edge) transparent;
+        scrollbar-color: var(--scroll-thumb) transparent;
       }
       /* Das Fortschrittsfenster ist dasselbe Prinzip, nur schmaler: es
          traegt eine Karte, keine Flaeche. */
@@ -261,13 +335,23 @@ import { StemStore } from './separate/stem-store';
     <footer class="legal">
       <div class="legal-inner">
         <span class="legal-mark">
+          <img
+            class="legal-logo"
+            src="/icon_no_bg.svg"
+            alt=""
+            aria-hidden="true"
+            width="27"
+            height="18"
+          />
           <!-- Keine Jahreszahl von Hand: eine, die jemand nachziehen muss,
                steht irgendwann falsch da. -->
-          MixApart {{ jahr }}
-          <span class="legal-by">· Ein Produkt von CLICKIT DIGITAL</span>
+          <span>MixApart &copy; {{ jahr }}</span>
         </span>
         <span class="legal-links">
           <a href="/impressum.html">Impressum</a>
+          <!-- Der Punkt trennt fuers Auge, nicht fuer die Vorlesestimme:
+               sie liest zwei Verweise, kein Satzzeichen dazwischen. -->
+          <span class="legal-dot" aria-hidden="true">&middot;</span>
           <a href="/datenschutz.html">Datenschutz</a>
         </span>
       </div>

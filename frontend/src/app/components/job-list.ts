@@ -38,9 +38,15 @@ type Tab = 'alle' | 'songs' | 'tests';
   imports: [IconComponent],
   styles: [
     `
+      /* Der Verlauf haelt dieselbe Kante wie die Importkarte darueber und
+         die Fusslinie darunter: eine Spaltenkante fuer die ganze Seite.
+         Wie weit der Ueberstand geht, sagen --bleed-width und
+         --bleed-margin aus app.ts. */
       :host {
         display: block;
         container-type: inline-size;
+        width: var(--bleed-width, 100%);
+        margin-inline: var(--bleed-margin, 0);
       }
       .history {
         padding: 0;
@@ -398,11 +404,7 @@ type Tab = 'alle' | 'songs' | 'tests';
       </div>
 
       @if (jobs.jobs().length === 0) {
-        <p class="empty">
-          Noch keine Jobs. Nach dem Import erscheint hier jede Trennung mit
-          ihrem Zustand; sobald eine fertig ist, lässt sie sich im Deck öffnen
-          und jede Spur einzeln als WAV speichern.
-        </p>
+        <p class="empty">Noch keine Jobs.</p>
       } @else if (filtered().length === 0) {
         <p class="empty">In dieser Sicht steht nichts.</p>
       }
