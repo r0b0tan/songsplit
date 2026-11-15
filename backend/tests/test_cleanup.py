@@ -25,9 +25,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Muss vor dem ersten Import von app.config stehen: die Einstellungen
 # werden beim Laden des Moduls eingefroren.
-TEMP = tempfile.mkdtemp(prefix="songsplit-test-")
-os.environ["SONGSPLIT_DATA_DIR"] = TEMP
-os.environ["SONGSPLIT_DEVICE"] = "cpu"
+TEMP = tempfile.mkdtemp(prefix="mixapart-test-")
+os.environ["MIXAPART_DATA_DIR"] = TEMP
+os.environ["MIXAPART_DEVICE"] = "cpu"
 
 from app.jobs import Job, JobStore  # noqa: E402
 

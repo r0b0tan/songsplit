@@ -38,7 +38,7 @@ function setzeGeraet(gb) {
 }
 
 async function main() {
-  const out = await mkdtemp(join(tmpdir(), 'songsplit-mem-'));
+  const out = await mkdtemp(join(tmpdir(), 'mixapart-mem-'));
   const bundle = join(out, 'memory-budget.mjs');
   await esbuild.build({
     entryPoints: [join(here, '..', '..', 'src', 'app', 'separate', 'memory-budget.ts')],

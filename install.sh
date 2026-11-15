@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# songsplit einrichten: alles, was ein frischer Klon braucht.
+# MixApart einrichten: alles, was ein frischer Klon braucht.
 #
 #   ./install.sh           Backend, Frontend, Runtime und Gewichte
 #   ./install.sh --cpu     Torch ohne CUDA (spart rund 3 GB Download)

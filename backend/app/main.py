@@ -1,4 +1,4 @@
-"""Lokale API fuer songsplit.
+"""Lokale API fuer MixApart.
 
 Bindet absichtlich nur an 127.0.0.1 (siehe run.py / README): die Musik bleibt
 auf dem Rechner, es gibt keine Authentifizierung und keinen Upload nach aussen.
@@ -35,10 +35,10 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-log = logging.getLogger("songsplit")
+log = logging.getLogger("mixapart")
 
 app = FastAPI(
-    title="songsplit",
+    title="MixApart",
     version="0.1.0",
     description="Lokale Stem-Trennung mit audio-separator. Nur fuer 127.0.0.1.",
 )

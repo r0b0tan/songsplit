@@ -153,7 +153,7 @@ class JobStore:
         self._lock = threading.RLock()
         self._queue: queue.Queue[str] = queue.Queue()
         self._separate_fn = separate_fn
-        self._worker = threading.Thread(target=self._run, name="songsplit-worker", daemon=True)
+        self._worker = threading.Thread(target=self._run, name="mixapart-worker", daemon=True)
         self._processing: str | None = None
         self._restore()
         self._worker.start()
@@ -340,7 +340,7 @@ def _friendly_error(exc: BaseException) -> str:
         return (
             "Der GPU-Speicher war nicht ausreichend (CUDA out of memory). "
             "Schliesse andere Programme, die die GPU nutzen, und starte den Job neu. "
-            "Alternativ das Backend mit SONGSPLIT_DEVICE=cpu starten."
+            "Alternativ das Backend mit MIXAPART_DEVICE=cpu starten."
         )
     text = str(exc).strip() or type(exc).__name__
     return f"{type(exc).__name__}: {text}"

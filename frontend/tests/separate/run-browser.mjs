@@ -62,7 +62,7 @@ async function main() {
     process.exit(2);
   }
 
-  const out = await mkdtemp(join(tmpdir(), 'songsplit-browser-'));
+  const out = await mkdtemp(join(tmpdir(), 'mixapart-browser-'));
   await esbuild.build({
     entryPoints: {
       check: join(here, 'browser-check.ts'),

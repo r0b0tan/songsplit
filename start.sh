@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# songsplit starten: Backend und Frontend in einem Terminal.
+# MixApart starten: Backend und Frontend in einem Terminal.
 #
 #   ./start.sh           Geraet automatisch (GPU, wenn vorhanden)
 #   ./start.sh --cpu     CPU erzwingen
@@ -19,8 +19,8 @@ set -uo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 logdir=$root/.run
 
-api_port=${SONGSPLIT_PORT:-8000}
-ui_port=${SONGSPLIT_UI_PORT:-4200}
+api_port=${MIXAPART_PORT:-8000}
+ui_port=${MIXAPART_UI_PORT:-4200}
 api=http://127.0.0.1:$api_port
 ui=http://127.0.0.1:$ui_port
 
@@ -28,8 +28,8 @@ open_browser=0
 public=0
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --cpu)        export SONGSPLIT_DEVICE=cpu ;;
-    --gpu|--cuda) export SONGSPLIT_DEVICE=cuda ;;
+    --cpu)        export MIXAPART_DEVICE=cpu ;;
+    --gpu|--cuda) export MIXAPART_DEVICE=cuda ;;
     --open)       open_browser=1 ;;
     --public)     public=1 ;;
     -h|--help)    sed -n '3,15p' "$0" | sed 's/^#\{0,1\} \{0,1\}//'; exit 0 ;;
@@ -70,7 +70,7 @@ fi
 
 if [[ $api_port != 8000 ]]; then
   note "Hinweis: frontend/proxy.conf.json zeigt fest auf 127.0.0.1:8000."
-  note "Mit SONGSPLIT_PORT=$api_port findet die Oberflaeche die API nicht."
+  note "Mit MIXAPART_PORT=$api_port findet die Oberflaeche die API nicht."
 fi
 
 # Laeuft da schon etwas, und ist es unseres?
@@ -84,12 +84,12 @@ start_api=$(( public == 0 ? 1 : 0 ))
 start_ui=1
 
 if [[ $start_api -eq 1 ]] && port_busy "$api_port"; then
-  api_is_ours || die "Port $api_port ist belegt, aber dort antwortet nicht die songsplit-API."
+  api_is_ours || die "Port $api_port ist belegt, aber dort antwortet nicht die MixApart-API."
   start_api=0
   note "Backend laeuft bereits auf :$api_port — wird mitbenutzt."
 fi
 if port_busy "$ui_port"; then
-  ui_is_ours || die "Port $ui_port ist belegt, aber dort liegt nicht die songsplit-Oberflaeche."
+  ui_is_ours || die "Port $ui_port ist belegt, aber dort liegt nicht die MixApart-Oberflaeche."
   start_ui=0
   note "Frontend laeuft bereits auf :$ui_port — wird mitbenutzt."
 fi
@@ -179,7 +179,7 @@ if [[ ${#servers[@]} -eq 0 ]]; then
 else
   hint='Strg-C beendet'
 fi
-printf '\n  %ssongsplit%s   %s   %sGeraet %s · %s%s\n\n' \
+printf '\n  %sMixApart%s   %s   %sGeraet %s · %s%s\n\n' \
   "$bold" "$off" "$ui" "$dim" "${device:-unbekannt}" "$hint" "$off"
 
 if [[ $open_browser -eq 1 ]]; then

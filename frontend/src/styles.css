@@ -1,5 +1,5 @@
 /*
- * songsplit — Oberflaeche "Graphite"
+ * MixApart — Oberflaeche "Graphite"
  *
  * Layout: eine gestapelte Spalte aus Karten, maximal 1180 px breit. Jede
  * Karte ist ein eigenes Werkzeug (Status, Import, Jobs, Deck). Das Deck
@@ -52,7 +52,7 @@
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono',
     Menlo, monospace;
 
-  /* Rundungen wie in der Vorlage exampledata/songsplit-uploadmaske: die
+  /* Rundungen wie in der Vorlage exampledata/mixapart-uploadmaske: die
      grosse Flaeche deutlich, die kleinen Schalter darin knapp. */
   --radius: 18px;
   --radius-sm: 8px;

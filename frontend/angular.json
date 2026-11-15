@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "songsplit": {
+    "mixapart": {
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
@@ -29,7 +29,7 @@
             "styles": [
               "src/styles.css"
             ],
-            "outputPath": "dist/songsplit"
+            "outputPath": "dist/mixapart"
           },
           "configurations": {
             "production": {
@@ -44,7 +44,7 @@
             "public": {
               "optimization": true,
               "outputHashing": "all",
-              "outputPath": "dist/songsplit-public",
+              "outputPath": "dist/mixapart-public",
               "fileReplacements": [
                 {
                   "replace": "src/app/core/variant.ts",
@@ -75,13 +75,13 @@
           },
           "configurations": {
             "production": {
-              "buildTarget": "songsplit:build:production"
+              "buildTarget": "mixapart:build:production"
             },
             "development": {
-              "buildTarget": "songsplit:build:development"
+              "buildTarget": "mixapart:build:development"
             },
             "public": {
-              "buildTarget": "songsplit:build:public-development"
+              "buildTarget": "mixapart:build:public-development"
             }
           },
           "defaultConfiguration": "development"

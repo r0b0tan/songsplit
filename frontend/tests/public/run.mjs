@@ -37,7 +37,7 @@ import { makeInputWav } from '../lib/wav.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const root = join(here, '..', '..');
-const dist = join(root, 'dist', 'songsplit-public', 'browser');
+const dist = join(root, 'dist', 'mixapart-public', 'browser');
 
 /** Kurz, damit eine Trennung auf WASM in Sekunden und nicht Minuten laeuft. */
 const CLIP_SECONDS = 4;
@@ -75,7 +75,7 @@ async function main() {
     process.exit(2);
   }
 
-  const work = await mkdtemp(join(tmpdir(), 'songsplit-public-'));
+  const work = await mkdtemp(join(tmpdir(), 'mixapart-public-'));
   const inputPath = join(work, 'Pruefstueck (Testlauf) [xyz].wav');
   await writeFile(inputPath, makeInputWav(CLIP_SECONDS, RATE));
 
@@ -600,7 +600,7 @@ async function main() {
       await page2.goto(base, { waitUntil: 'load' });
       await page2.waitForSelector('app-import-panel', { timeout: 30_000 });
       await page2.evaluate(async () => {
-        const cache = await caches.open('songsplit-modelle-v1');
+        const cache = await caches.open('mixapart-modelle-v1');
         for (const [url, name] of [
           ['models/htdemucs-op17-fp32/manifest.json', 'htdemucs'],
           ['models/htdemucs_6s-op17-fp32/manifest.json', 'htdemucs_6s'],
@@ -650,7 +650,7 @@ async function main() {
       // aus wie „laedt noch" und bleibt es auch.
       await page2.route('**/manifest.json', (route) => route.abort());
       await page2.evaluate(async () => {
-        const cache = await caches.open('songsplit-modelle-v1');
+        const cache = await caches.open('mixapart-modelle-v1');
         for (const key of await cache.keys()) {
           if (key.url.endsWith('manifest.json')) {
             await cache.put(

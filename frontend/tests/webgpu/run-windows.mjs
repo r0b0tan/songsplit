@@ -22,7 +22,7 @@
  * `localhost` waere WebGPU gar nicht vorhanden.
  *
  * Es laeuft im neuen Headless-Modus, mit einem eigenen Profil unter
- * `C:\\Users\\Public\\songsplit-messung` — das Profil des Benutzers wird
+ * `C:\\Users\\Public\\mixapart-messung` — das Profil des Benutzers wird
  * nicht angefasst, und es erscheint kein Fenster.
  */
 import { spawn } from 'node:child_process';
@@ -52,7 +52,7 @@ const POWERSHELL =
  * sofort. Der Pruefstand wartet dann auf einen Rueckruf, den niemand mehr
  * schickt — hier siebzehn Minuten lang, ohne eine einzige Zeile Ausgabe.
  */
-const PROFILE = `C:\\Users\\Public\\songsplit-messung-${process.pid}-${Date.now()}`;
+const PROFILE = `C:\\Users\\Public\\mixapart-messung-${process.pid}-${Date.now()}`;
 
 /**
  * Beendet die Browser **dieses** Laufs und raeumt sein Profil weg.
@@ -106,7 +106,7 @@ const TYPES = {
 };
 
 const PAGE = (config) => `<!doctype html>
-<html lang="de"><head><meta charset="utf-8"><title>songsplit — Messung</title></head>
+<html lang="de"><head><meta charset="utf-8"><title>MixApart — Messung</title></head>
 <body><pre id="log">startet …</pre>
 <script type="module">
 import { measure } from './measure.js';
@@ -144,7 +144,7 @@ async function main() {
     process.exit(2);
   }
 
-  const out = await mkdtemp(join(tmpdir(), 'songsplit-win-'));
+  const out = await mkdtemp(join(tmpdir(), 'mixapart-win-'));
   await esbuild.build({
     entryPoints: {
       measure: join(here, 'measure.ts'),

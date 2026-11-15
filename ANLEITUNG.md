@@ -1,4 +1,4 @@
-# songsplit — Anleitung
+# MixApart — Anleitung
 
 Ein Song hinein, die einzelnen Spuren heraus: Gesang, Drums, Bass, Rest.
 Danach ein Deck zum Üben — Spuren stummschalten, einzeln hören, Tempo und
@@ -136,7 +136,7 @@ cd backend  && ../.venv/bin/python run.py   # nur die API
 3. **Trennmodus** wählen: „Minimum" (Gesang + Begleitung), „Schnell"
    (4 Spuren) oder „Instrumente" (6). Die Spuren des gewählten Modus
    stehen farbig unter den Karten.
-4. **Trennen.** Beim allerersten Lauf im Browser fragt songsplit, ob die
+4. **Trennen.** Beim allerersten Lauf im Browser fragt MixApart, ob die
    174 MB Modellgewichte geladen werden dürfen. Danach nie wieder — sie
    bleiben im Browser-Cache, und jeder weitere Song beginnt sofort, auch
    ohne Netz.
@@ -144,7 +144,7 @@ cd backend  && ../.venv/bin/python run.py   # nur die API
 
 Bei einem **langen Stück** kann vorher eine zweite Frage kommen: im Browser
 liegt alles im Arbeitsspeicher, und ein Lied belegt dort rund 21 MB je
-Minute und Spur. songsplit rechnet das vor dem Start aus und sagt, wenn es
+Minute und Spur. MixApart rechnet das vor dem Start aus und sagt, wenn es
 knapp wird — bei einem Telefon früher als bei einem Rechner. Wird es
 abgelehnt, steht in der Meldung, bis zu welcher Länge es auf diesem Gerät
 ginge. Ein kürzerer Ausschnitt lässt sich dann trennen.
@@ -158,7 +158,7 @@ erneut im Deck öffnen oder spurweise als WAV speichern.
 
 ```bash
 cd frontend
-npm run build:public      # → dist/songsplit-public/browser/
+npm run build:public      # → dist/mixapart-public/browser/
 ```
 
 Der Inhalt dieses Ordners ist eine Sammlung gewöhnlicher Dateien: hochladen,
@@ -229,12 +229,12 @@ start.sh          startet beides
 
 | Variable | Vorgabe | Bedeutung |
 |---|---|---|
-| `SONGSPLIT_DEVICE` | `auto` | `auto`, `cuda` oder `cpu` |
-| `SONGSPLIT_PORT` | `8000` | Port der API |
-| `SONGSPLIT_UI_PORT` | `4200` | Port der Oberfläche |
-| `SONGSPLIT_DATA_DIR` | `./data` | wohin die Jobs schreiben |
-| `SONGSPLIT_MODEL_DIR` | `./models` | wo die Demucs-Gewichte liegen |
-| `SONGSPLIT_MAX_UPLOAD_MB` | `200` | Obergrenze je Datei |
+| `MIXAPART_DEVICE` | `auto` | `auto`, `cuda` oder `cpu` |
+| `MIXAPART_PORT` | `8000` | Port der API |
+| `MIXAPART_UI_PORT` | `4200` | Port der Oberfläche |
+| `MIXAPART_DATA_DIR` | `./data` | wohin die Jobs schreiben |
+| `MIXAPART_MODEL_DIR` | `./models` | wo die Demucs-Gewichte liegen |
+| `MIXAPART_MAX_UPLOAD_MB` | `200` | Obergrenze je Datei |
 
-`SONGSPLIT_HOST` steht fest auf `127.0.0.1`; `run.py` verweigert jede andere
+`MIXAPART_HOST` steht fest auf `127.0.0.1`; `run.py` verweigert jede andere
 Adresse. Das Backend ist nicht dafür gebaut, im Netz zu stehen.

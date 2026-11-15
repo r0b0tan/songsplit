@@ -23,7 +23,7 @@ import { StemStore } from './separate/stem-store';
 /**
  * Die Oberflaeche ist eine schmale Spalte: der Import als Karte, darunter
  * der Verlauf. Die Breite folgt der Vorlage
- * `exampledata/songsplit-uploadmaske` — eine Spalte, keine Flaeche, die
+ * `exampledata/mixapart-uploadmaske` — eine Spalte, keine Flaeche, die
  * sich ueber den ganzen Schirm zieht.
  *
  * Marke und Geraet stehen in der Kopfleiste der Importkarte, nicht in einer

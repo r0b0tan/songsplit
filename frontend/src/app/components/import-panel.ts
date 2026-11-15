@@ -41,7 +41,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
 /**
  * Import: Datei hineinziehen, Trennmodus waehlen, trennen.
  *
- * Aufbau und Masse folgen der Vorlage `exampledata/songsplit-uploadmaske`:
+ * Aufbau und Masse folgen der Vorlage `exampledata/mixapart-uploadmaske`:
  * eine Kopfleiste mit Marke und Zustand, darunter grosse Ueberschrift, eine
  * Ablegeflaeche ueber die ganze Breite mit einem Schein in Pflaume, die
  * Auswahl als drei bis vier gleich breite Karten, darunter die Spuren des
@@ -634,7 +634,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
           <span class="logo" aria-hidden="true">
             <span><i></i><i></i><i></i><i></i><i></i></span>
           </span>
-          <strong>songsplit</strong>
+          <strong>MixApart</strong>
         </div>
         <span class="local">
           <!-- Der Trennort steht da, wo vorher nur sein Name stand, und das

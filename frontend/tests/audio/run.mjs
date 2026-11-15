@@ -24,7 +24,7 @@ const PAGE = `<!doctype html>
 <body><h1>Engine-Pruefung laeuft</h1><script src="engine-check.js"></script></body></html>`;
 
 async function main() {
-  const out = await mkdtemp(join(tmpdir(), 'songsplit-check-'));
+  const out = await mkdtemp(join(tmpdir(), 'mixapart-check-'));
 
   await esbuild.build({
     entryPoints: [join(here, 'engine-check.ts')],

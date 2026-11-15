@@ -173,7 +173,7 @@ interface Fixtures {
   ],
   template: `
     <div class="wrap">
-      <h1>songsplit — Messung des Browserpfads</h1>
+      <h1>MixApart — Messung des Browserpfads</h1>
 
       <!-- ------------------------------------------------------- Gerät -->
       <section class="panel card">

@@ -26,7 +26,7 @@ if (bench) {
   // denselben Selektor zu geben und sich darauf zu verlassen, dass nie
   // beide gleichzeitig gebraucht werden.
   document.body.innerHTML = '<app-bench></app-bench>';
-  document.title = 'songsplit — Messung';
+  document.title = 'MixApart — Messung';
 }
 
 bootstrapApplication(bench ? BenchPageComponent : AppComponent, {

@@ -12,7 +12,7 @@
  * `stem-store.ts`.
  */
 
-const CACHE_NAME = 'songsplit-modelle-v1';
+const CACHE_NAME = 'mixapart-modelle-v1';
 
 export interface DownloadProgress {
   loaded: number;

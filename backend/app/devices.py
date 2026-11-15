@@ -67,7 +67,7 @@ def probe_device(requested: str | None = None) -> DeviceInfo:
 
     if requested == "cpu":
         info.effective = "cpu"
-        info.notes.append("CPU-Modus ist fest eingestellt (SONGSPLIT_DEVICE=cpu).")
+        info.notes.append("CPU-Modus ist fest eingestellt (MIXAPART_DEVICE=cpu).")
     elif info.cuda_available:
         info.effective = "cuda"
     elif requested == "cuda":
@@ -90,7 +90,7 @@ def probe_device(requested: str | None = None) -> DeviceInfo:
                 "Die Demucs-Modelle brauchen rund 1,2 GB, das Roformer-Modell "
                 f"bis zu 3,6 GB. Unter {VRAM_WARN_GIB:g} GB kann die Trennung mit "
                 "'CUDA out of memory' abbrechen. Schliesse andere GPU-Programme, "
-                "waehle ein Demucs-Modell, oder starte mit SONGSPLIT_DEVICE=cpu."
+                "waehle ein Demucs-Modell, oder starte mit MIXAPART_DEVICE=cpu."
             )
 
     return info

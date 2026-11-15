@@ -29,7 +29,7 @@ async function main() {
     process.exit(2);
   }
 
-  const out = await mkdtemp(join(tmpdir(), 'songsplit-dsp-'));
+  const out = await mkdtemp(join(tmpdir(), 'mixapart-dsp-'));
   const bundle = join(out, 'dsp-check.mjs');
   await esbuild.build({
     entryPoints: [join(here, 'dsp-check.ts')],

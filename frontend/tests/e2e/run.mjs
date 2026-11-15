@@ -38,8 +38,8 @@ function chromiumRssMb() {
   }
 }
 
-const UI = process.env.SONGSPLIT_UI ?? 'http://127.0.0.1:4200';
-const API = process.env.SONGSPLIT_API ?? 'http://127.0.0.1:8000';
+const UI = process.env.MIXAPART_UI ?? 'http://127.0.0.1:4200';
+const API = process.env.MIXAPART_API ?? 'http://127.0.0.1:8000';
 const AUDIO = process.argv[2] ?? null;
 
 const results = [];

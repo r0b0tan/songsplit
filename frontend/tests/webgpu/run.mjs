@@ -28,7 +28,7 @@ import { chromium } from 'playwright';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const root = join(here, '..', '..');
-const dist = join(root, 'dist', 'songsplit', 'browser');
+const dist = join(root, 'dist', 'mixapart', 'browser');
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);

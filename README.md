@@ -1,4 +1,4 @@
-# songsplit
+# MixApart
 
 Zerlegt eine Musikdatei in Stems und spielt die Spuren in einem Mix-Player
 ab, mit Lautstärke, Mute, Solo und Pitch pro Spur, mit Mix-Tempo, A/B-Loop
@@ -226,10 +226,10 @@ ein Fleck.
 cd frontend && npm run start:public       # dasselbe von Hand
 
 # öffentliche Variante bauen (statische Dateien)
-cd frontend && npm run build:public       # dist/songsplit-public/browser/
+cd frontend && npm run build:public       # dist/mixapart-public/browser/
 
 # lokale Variante bauen
-cd frontend && npm run build              # dist/songsplit/browser/
+cd frontend && npm run build              # dist/mixapart/browser/
 ```
 
 Der öffentliche Bau ist eine Sammlung gewöhnlicher Dateien ohne jede
@@ -293,13 +293,13 @@ und Audiodateien gleicher Herkunft.
 | Start | Befehl |
 |---|---|
 | Automatisch (GPU, wenn verfügbar) | `python run.py` |
-| CPU erzwingen | `$env:SONGSPLIT_DEVICE="cpu"; python run.py` |
-| GPU verlangen | `$env:SONGSPLIT_DEVICE="cuda"; python run.py` |
+| CPU erzwingen | `$env:MIXAPART_DEVICE="cpu"; python run.py` |
+| GPU verlangen | `$env:MIXAPART_DEVICE="cuda"; python run.py` |
 
-Unter Linux entsprechend `SONGSPLIT_DEVICE=cpu python run.py`.
+Unter Linux entsprechend `MIXAPART_DEVICE=cpu python run.py`.
 
 `audio-separator` 0.48.0 hat **keinen** Geräte-Parameter: es nimmt die GPU,
-sobald `torch.cuda.is_available()` wahr ist. `SONGSPLIT_DEVICE=cpu` setzt
+sobald `torch.cuda.is_available()` wahr ist. `MIXAPART_DEVICE=cpu` setzt
 deshalb `CUDA_VISIBLE_DEVICES=""`, und zwar in `app/config.py`, bevor
 irgendetwas `torch` importiert.
 
@@ -314,7 +314,7 @@ Hinweis darunter und unter `GET /api/health`:
   die Schwelle richtet sich nach dem schwersten plus Reserve.
 - **`CUDA out of memory` während eines Jobs** → der Job wird „Fehlgeschlagen"
   mit dem Hinweis, andere GPU-Programme zu schließen oder mit
-  `SONGSPLIT_DEVICE=cpu` zu starten.
+  `MIXAPART_DEVICE=cpu` zu starten.
 
 ### Einstellungen
 
@@ -322,12 +322,12 @@ Alles über Umgebungsvariablen:
 
 | Variable | Vorgabe | Bedeutung |
 |---|---|---|
-| `SONGSPLIT_DEVICE` | `auto` | `auto`, `cuda` oder `cpu` |
-| `SONGSPLIT_DATA_DIR` | `./data` | Job-Ordner |
-| `SONGSPLIT_MODEL_DIR` | `./models` | Modell-Cache |
-| `SONGSPLIT_PORT` | `8000` | Port der API |
-| `SONGSPLIT_HOST` | `127.0.0.1` | `run.py` verweigert jede andere Adresse |
-| `SONGSPLIT_MAX_UPLOAD_MB` | `200` | Obergrenze je Datei |
+| `MIXAPART_DEVICE` | `auto` | `auto`, `cuda` oder `cpu` |
+| `MIXAPART_DATA_DIR` | `./data` | Job-Ordner |
+| `MIXAPART_MODEL_DIR` | `./models` | Modell-Cache |
+| `MIXAPART_PORT` | `8000` | Port der API |
+| `MIXAPART_HOST` | `127.0.0.1` | `run.py` verweigert jede andere Adresse |
+| `MIXAPART_MAX_UPLOAD_MB` | `200` | Obergrenze je Datei |
 
 ---
 
@@ -370,7 +370,7 @@ in einem Tooltip. Ebenso alles andere, was im Weg ist: keine Verbindung,
 kein `audio-separator`, knapper VRAM, fehlende Grafikbeschleunigung.
 
 **Import.** Aufbau und Maße folgen der Vorlage
-`exampledata/songsplit-uploadmaske.zip` (die Vorlagen liegen nicht im Repo,
+`exampledata/mixapart-uploadmaske.zip` (die Vorlagen liegen nicht im Repo,
 sie sind Entwurfsmaterial dieser Werkstatt): „01 / Import", eine große
 Überschrift, darunter die Ablegefläche über die ganze Breite — 153 px hoch,
 gestrichelt in gedämpfter Akzentfarbe, mit einem Schein in Pflaume und
@@ -1216,7 +1216,7 @@ Bequemlichkeit: nur dort ist der Kontext sicher, und ohne sicheren Kontext
 gibt es kein `navigator.gpu`.
 
 Es läuft im neuen Headless-Modus mit einem eigenen Profil unter
-`C:\Users\Public\songsplit-messung` — kein Fenster, und das Profil des
+`C:\Users\Public\mixapart-messung` — kein Fenster, und das Profil des
 Benutzers bleibt unberührt.
 
 **Messung ohne Windows** (Chromium, braucht den Produktionsbau):
