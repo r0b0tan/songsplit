@@ -163,7 +163,7 @@ import { STATUS_LABELS, type Job } from '../core/models';
     <section class="panel run">
       <div class="head">
         <div class="grow">
-          <div class="eyebrow step">02 / <b>Trennung</b></div>
+          <div class="eyebrow step"><b>Trennung</b></div>
           <h2 class="lede">{{ job().source_name }}</h2>
           <div class="facts">
             <span>{{ job().model_label }}</span>

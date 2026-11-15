@@ -10,12 +10,31 @@
     />
     <meta name="color-scheme" content="light dark" />
 
-    <!-- Das Zeichen der Kopfzeile. Die SVG gilt, wo sie gelesen wird; die
-         .ico ist der Rueckfall und bringt fuer 16 Pixel ein groeberes
-         Zeichen mit (siehe tools/favicon.py). -->
+    <!-- Das Zeichen der App. Die SVG gilt, wo sie gelesen wird; die .ico
+         ist der Rueckfall mit den Stufen 16, 32 und 48. Beide Rasterdateien
+         sind aus der SVG gerechnet, mit `node tools/favicon.mjs`. -->
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/mixapart.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Was erscheint, wenn jemand die Seite irgendwo einfuegt. Der Pfad
+         steht relativ: solange die Seite nur oertlich laeuft, gibt es keine
+         Adresse, unter der ein fremder Dienst das Bild abholen koennte.
+         Wird sie einmal veroeffentlicht, gehoert hier die vollstaendige URL
+         hin -- manche Dienste, Facebook voran, verlangen sie. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MixApart — Stem Deck" />
+    <meta
+      property="og:description"
+      content="Lokale Stem-Trennung und Mix-Player. Alles bleibt auf diesem Rechner."
+    />
+    <meta property="og:image" content="/mixapart-share.webp" />
+    <meta property="og:image:type" content="image/webp" />
+    <meta property="og:image:width" content="1734" />
+    <meta property="og:image:height" content="907" />
+    <meta property="og:image:alt" content="MixApart" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/mixapart-share.webp" />
   </head>
   <body>
     <app-root></app-root>

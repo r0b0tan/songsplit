@@ -200,13 +200,16 @@ zwei Dutzend gebrauchten Zeichen aus `lucide-static` und schreibt sie nach
 Skript ein und lässt es laufen; das Paket selbst bleibt eine reine
 Entwicklungsabhängigkeit.
 
-Das Symbol der Seite steht als `frontend/public/favicon.svg` — dasselbe
-Zeichen wie in der Kopfzeile. `favicon.ico` (16, 32, 48) und
-`apple-touch-icon.png` sind daraus gerechnet und liegen fertig daneben; wer
-das Zeichen ändert, ändert die SVG und lässt
-`../.venv/bin/python tools/favicon.py` noch einmal laufen. Die 16er-Stufe
-trägt bewusst ein gröberes Zeichen: fünf Balken sind bei 16 Pixeln nur noch
-ein Fleck.
+Das Zeichen der App steht als `frontend/public/mixapart.svg` und ist die
+einzige Quelle. `favicon.ico` (16, 32, 48) und `apple-touch-icon.png` (180)
+sind daraus gerechnet und liegen fertig daneben; wer das Zeichen ändert,
+ändert die SVG und lässt `node tools/favicon.mjs` noch einmal laufen. Das
+Skript zeichnet mit demselben Chromium, der auch die Tests fährt.
+
+Beim Teilen zeigt die Seite `frontend/public/mixapart-share.webp` (1734 ×
+907) — eingetragen als `og:image` und `twitter:image` in
+`frontend/src/index.html`. Die Pfade stehen dort relativ, weil die Seite
+örtlich läuft; unter einer Domain gehört die vollständige URL hinein.
 
 ---
 

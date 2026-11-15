@@ -4,7 +4,9 @@
  * Die Namen und die Reihenfolge der Spuren stehen hier genauso wie in
  * `MODEL_PRESETS` in `backend/app/separation.py` — dieselben Kurznamen
  * („Schnell", „Instrumente"), damit ein Job im Verlauf gleich heisst,
- * gleichgueltig wo er gerechnet wurde.
+ * gleichgueltig wo er gerechnet wurde. Auch die Reihenfolge der Eintraege
+ * folgt der dortigen: zuerst der schnelle Weg, dann aufsteigend nach Zahl
+ * der Spuren — die Karten stehen an beiden Orten gleich.
  *
  * Angeboten wird nur, was wirklich ausgeliefert ist: `available()` fragt das
  * `manifest.json` ab. Ein Modus, dessen Export fehlt, erscheint nicht in der
@@ -44,6 +46,14 @@ export interface BrowserModel {
  */
 export const BROWSER_MODELS: readonly BrowserModel[] = [
   {
+    id: 'htdemucs-op17-fp32',
+    name: 'htdemucs',
+    mode: 'Schnell',
+    label: 'htdemucs — 4 Spuren',
+    description: 'Gesang, Drums, Bass und Rest. Der schnellste Weg.',
+    display: ['vocals', 'drums', 'bass', 'other'],
+  },
+  {
     // Dasselbe Modell und dieselbe Kennung wie „Schnell" — deshalb
     // derselbe Eintrag im Cache, kein zweiter Download und keine
     // zusaetzliche Rechenzeit. Nur die Spuren fallen hinterher zusammen.
@@ -56,14 +66,6 @@ export const BROWSER_MODELS: readonly BrowserModel[] = [
       '„Schnell", nur zusammengefasst — zum Mitspielen oder Mitsingen.',
     display: ['vocals', 'instrumental'],
     merge: { into: 'instrumental', from: ['drums', 'bass', 'other'] },
-  },
-  {
-    id: 'htdemucs-op17-fp32',
-    name: 'htdemucs',
-    mode: 'Schnell',
-    label: 'htdemucs — 4 Spuren',
-    description: 'Gesang, Drums, Bass und Rest. Der schnellste Weg.',
-    display: ['vocals', 'drums', 'bass', 'other'],
   },
   {
     id: 'htdemucs_6s-op17-fp32',

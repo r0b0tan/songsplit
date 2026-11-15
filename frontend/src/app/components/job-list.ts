@@ -40,6 +40,10 @@ type Tab = 'alle' | 'songs' | 'tests';
       .history {
         padding: 0;
         overflow: hidden;
+        /* Ohne Rand: der Verlauf ist eine Liste, keine zweite Karte neben
+           dem Import. Die Flaeche traegt ihn, die Linien zwischen den
+           Zeilen gliedern ihn. */
+        border: 0;
       }
 
       /* ------------------------------------------------------- Kopfzeile */

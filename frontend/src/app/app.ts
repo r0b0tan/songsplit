@@ -64,7 +64,9 @@ import { StemStore } from './separate/stem-store';
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        /* Der Abstand zwischen den Karten der Seite -- der Verlauf soll
+           nicht an der Importkarte kleben. */
+        gap: 22px;
         padding-inline: max(14px, env(safe-area-inset-left, 0px))
           max(14px, env(safe-area-inset-right, 0px));
         padding-block: clamp(22px, 5vw, 64px) 56px;
