@@ -26,6 +26,12 @@
   --dim: light-dark(#5f5869, #b2acbe);
   --faint: light-dark(#8b8495, #827b8e);
   --accent: light-dark(#a6433a, #ffa497);
+
+  /* Scrollbalken, dieselben Werte wie in src/styles.css. */
+  --scroll-track: light-dark(#e4e1e9, #17171e);
+  --scroll-thumb: light-dark(rgb(166 67 58 / 0.55), rgb(255 164 151 / 0.42));
+  --scroll-thumb-hover: light-dark(#a6433a, #ffa497);
+
   --radius-sm: 8px;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono',
@@ -54,6 +60,45 @@
 * { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
+
+/* ---------------------------------------------------------- Scrollbalken
+ *
+ * Derselbe Balken wie in der Anwendung (src/styles.css): Koralle auf
+ * ruhiger Bahn, schmal, und der Platz dafuer bleibt reserviert. Das
+ * Impressum ist kurz und braucht oft keinen Balken, die Startseite und
+ * die Datenschutzerklaerung brauchen ihn -- ohne den reservierten Platz
+ * ruckt die Spalte beim Wechsel um die Balkenbreite seitwaerts.
+ *
+ * Sobald `scrollbar-color` gilt, ignoriert Chromium die ::-webkit-
+ * Pseudoelemente; die bleiben dem Fall vorbehalten, in dem der Standard
+ * fehlt (aeltere WebKits).
+ */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scroll-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    border: 3px solid var(--scroll-track);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scroll-thumb-hover);
+  }
+  ::-webkit-scrollbar-corner {
+    background: var(--scroll-track);
+  }
+}
 
 /* Die Seite ist eine Spalte ueber die volle Hoehe: Inhalt oben, Fuss
    unten. Ohne das haengt der Fuss beim kurzen Impressum mitten auf dem

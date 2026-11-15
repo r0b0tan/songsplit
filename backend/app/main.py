@@ -2,6 +2,19 @@
 
 Bindet absichtlich nur an 127.0.0.1 (siehe run.py / README): die Musik bleibt
 auf dem Rechner, es gibt keine Authentifizierung und keinen Upload nach aussen.
+
+Die Bindung allein traegt aber weniger, als sie aussieht: 127.0.0.1 ist von
+**jeder** Webseite aus erreichbar, die im Browser des Nutzers laeuft. Zwei
+Dinge folgen daraus, und dagegen steht ``LocalGuard`` weiter unten:
+
+* Eine fremde Seite, deren Domain auf 127.0.0.1 zeigt (DNS-Rebinding), waere
+  fuer den Browser gleicher Herkunft wie diese API. CORS greift dann nicht
+  mehr, und die Seite koennte den Verlauf lesen und die Spuren herunterladen.
+  Gegenprobe: ``curl -H "Host: evil.example.com" .../api/jobs``.
+* Ein ``POST /api/jobs`` mit ``multipart/form-data`` ist ein "simple request"
+  und braucht keinen Preflight. CORS haelt ihn nicht auf, die Antwort bleibt
+  fuer die fremde Seite nur unlesbar — der Job entstuende trotzdem, mit
+  fremder Datei auf der Platte und Last auf der GPU.
 """
 from __future__ import annotations
 
@@ -12,7 +25,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 # config zuerst: setzt ggf. CUDA_VISIBLE_DEVICES, bevor torch geladen wird.
 from .config import settings
@@ -50,6 +64,87 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
+
+# Unter welchen Namen diese API sich ansprechen laesst. run.py laesst nur
+# diese drei als Bindeadresse zu, also gibt es auch keinen vierten gueltigen
+# Host-Header. Alles andere ist eine fremde Domain, die auf 127.0.0.1 zeigt.
+ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def _hostname(raw: str) -> str:
+    """Host-Header ohne Port. Beruecksichtigt die Klammerform von IPv6.
+
+    ``starlette.middleware.TrustedHostMiddleware`` tut dasselbe, aber mit
+    ``split(":")[0]`` — aus ``[::1]:8000`` wird dort ``[``, und der Vergleich
+    kann nie passen. Deshalb steht es hier selbst.
+    """
+    host = raw.strip()
+    if host.startswith("["):          # [::1]:8000
+        return host[1:].partition("]")[0]
+    return host.rsplit(":", 1)[0] if ":" in host else host
+
+
+class LocalGuard:
+    """Weist ab, was nicht von diesem Rechner und dieser Oberflaeche kommt.
+
+    Zwei Pruefungen, beide billig und beide vor allem anderen:
+
+    ``Host`` muss einer der lokalen Namen sein. Das nimmt dem DNS-Rebinding
+    den Boden: die fremde Domain steht im Host-Header, und mit ihr faellt die
+    Anfrage auf, bevor sie einen Handler erreicht.
+
+    ``Origin`` muss, **wenn** er mitkommt, zu den erlaubten Herkuenften
+    passen. Browser setzen ihn bei jedem herkunftsfremden POST, auch bei dem
+    aus einem ``<form>``; damit faellt die CSRF-Luecke von oben zu. Ohne
+    Origin bleibt es durchgelassen: curl, Skripte und die Tests schicken
+    keinen, und die sollen weiter funktionieren.
+
+    Reines ASGI, keine ``BaseHTTPMiddleware``: die fasst den Body an, und
+    durch diese Schicht gehen 200-MB-Uploads.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+        self.origins = frozenset(settings.cors_origins)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = {k: v for k, v in scope.get("headers") or ()}
+        host = _hostname(headers.get(b"host", b"").decode("latin-1"))
+        if host not in ALLOWED_HOSTS:
+            log.warning("Anfrage mit fremdem Host-Header abgewiesen: %r", host)
+            await self._deny(
+                400,
+                f"Host {host!r} ist nicht erlaubt. Diese API antwortet nur auf "
+                "127.0.0.1, localhost und ::1.",
+                scope, receive, send,
+            )
+            return
+
+        origin = headers.get(b"origin", b"").decode("latin-1")
+        if origin and origin not in self.origins:
+            log.warning("Anfrage mit fremder Herkunft abgewiesen: %r", origin)
+            await self._deny(
+                403,
+                f"Herkunft {origin!r} ist nicht erlaubt.",
+                scope, receive, send,
+            )
+            return
+
+        await self.app(scope, receive, send)
+
+    @staticmethod
+    async def _deny(status: int, detail: str, scope: Scope, receive: Receive,
+                    send: Send) -> None:
+        await JSONResponse({"detail": detail}, status_code=status)(scope, receive, send)
+
+
+# Nach CORS eingetragen heisst: laeuft davor. Eine abgewiesene Anfrage soll
+# gar nicht erst bis zu den CORS-Kopfzeilen kommen.
+app.add_middleware(LocalGuard)
 
 store = JobStore(separate_fn=separate_job)
 

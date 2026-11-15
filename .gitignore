@@ -52,3 +52,6 @@ out-tsc/
 
 # Logs von start.sh
 /.run/
+
+# Zugangsdaten fuer deploy.sh — Passwoerter, gehoeren nicht in die Historie
+/.env.deploy

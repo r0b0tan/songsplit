@@ -78,6 +78,11 @@ html { -webkit-text-size-adjust: 100%; }
 html {
   scrollbar-width: thin;
   scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+  /* Der Platz fuer den Balken bleibt reserviert, auch wo eine Seite kurz
+     genug ist, um ohne auszukommen. Sonst ruecken Spalte und Inhalt beim
+     Wechsel zwischen langer und kurzer Seite um die Balkenbreite
+     seitwaerts. */
+  scrollbar-gutter: stable;
 }
 
 @supports not (scrollbar-color: auto) {
