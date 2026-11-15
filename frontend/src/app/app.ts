@@ -66,6 +66,11 @@ import { StemStore } from './separate/stem-store';
         /* Etwas breiter als die Vorlage (780 px): so traegt die
            Verlaufszeile Stueck, Modus, Laenge und Spurzahl nebeneinander,
            ohne dass die Seite zur Flaeche wird. */
+        /* Die Breite steht ausdruecklich da: der Wirt ist eine Flex-Spalte,
+           und ein Flex-Element mit waagerechtem "margin: auto" wird nicht
+           mehr auf die Breite gezogen, sondern schrumpft auf seinen Inhalt
+           -- bei Komponenten ohne Eigenbreite also auf nichts. */
+        width: 100%;
         max-width: 900px;
         margin: 0 auto;
         display: flex;
