@@ -16,49 +16,106 @@
   </head>
   <body>
     <main class="shell">
-      <div class="bar">
-        <img src="/app-icon.svg" alt="" aria-hidden="true" width="28" height="28" />
-        <a href="/">MixApart</a>
+      <!-- Kein Kasten um das Ganze: die Seite liegt auf derselben Flaeche
+           wie der Verlauf der Startseite und wird von denselben Haarlinien
+           gegliedert. Die Spaltenkante ist dieselbe wie dort. -->
+      <div class="sheet">
+        <!-- Oben die Marke, rechts der Weg zurueck -- als Wort, nicht als
+             Knopf. -->
+        <header class="bar">
+          <div class="brand">
+            <img src="/app-icon.svg" alt="" aria-hidden="true" width="26" height="26" />
+            <span>MixApart</span>
+          </div>
+          <a class="back" href="/">Zurück <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        </header>
+
+        <!-- Titel links, Stand rechts: dieselbe Zeile wie der Kopf des
+             Verlaufs, wo neben der Ueberschrift die Reiter stehen. -->
+        <div class="head">
+          <h1>Impressum</h1>
+          <p class="stand">Stand: November 2026</p>
+        </div>
+
+        <section class="row">
+          <h2>1. Angaben gemäß § 5 DDG</h2>
+          <div class="body">
+            <address>
+              CLICKIT DIGITAL<br />
+              Inh. Christoph Bauer<br />
+              Sacherberg 5<br />
+              86660 Tapfheim
+            </address>
+            <p>MixApart ist ein Produkt von <a href="https://clickit-digital.de" target="_blank" rel="noopener noreferrer">CLICKIT DIGITAL</a>.</p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>2. Kontakt</h2>
+          <div class="body">
+            <ul>
+              <li>Telefon: +49 (0)176 76649003</li>
+              <li>
+                E-Mail:
+                <a href="mailto:christoph.bauer@clickit-digital.de"
+                  >christoph.bauer@clickit-digital.de</a
+                >
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>3. Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
+          <div class="body">
+            <address>
+              Christoph Bauer<br />
+              Sacherberg 5<br />
+              86660 Tapfheim
+            </address>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>4. Umsatzsteuer</h2>
+          <div class="body">
+            <p>Kleinunternehmer gemäß § 19 UStG. Es wird keine Umsatzsteuer berechnet.</p>
+          </div>
+        </section>
       </div>
-
-      <h1>Impressum</h1>
-      <p class="stand">Stand: November 2026</p>
-
-      <h2>1. Angaben gemäß § 5 DDG</h2>
-      <address>
-        CLICKIT DIGITAL<br />
-        Inh. Christoph Bauer<br />
-        Sacherberg 5<br />
-        86660 Tapfheim
-      </address>
-      <p>MixApart ist ein Produkt von CLICKIT DIGITAL.</p>
-
-      <h2>2. Kontakt</h2>
-      <ul>
-        <li>Telefon: +49 (0)176 76649003</li>
-        <li>
-          E-Mail:
-          <a href="mailto:christoph.bauer@clickit-digital.de"
-            >christoph.bauer@clickit-digital.de</a
-          >
-        </li>
-      </ul>
-
-      <h2>3. Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
-      <address>
-        Christoph Bauer<br />
-        Sacherberg 5<br />
-        86660 Tapfheim
-      </address>
-
-      <h2>4. Umsatzsteuer</h2>
-      <p>Kleinunternehmer gemäß § 19 UStG. Es wird keine Umsatzsteuer berechnet.</p>
-
-      <footer>
-        <a href="/">Zurück zur Anwendung</a>
-        <a href="/datenschutz.html">Datenschutz</a>
-        <span>Ein Produkt von CLICKIT DIGITAL</span>
-      </footer>
     </main>
+
+    <!-- Wortgleich mit dem Fuss der Startseite (src/app/app.ts): dieselbe
+         Marke, dieselben beiden Verweise. Der Verweis auf die eigene Seite
+         bleibt stehen, damit der Fuss ueberall gleich aussieht -- er ist nur
+         als aktuelle Seite ausgewiesen. -->
+    <footer class="legal">
+      <div class="legal-inner">
+        <span class="legal-mark">
+          <img
+            class="legal-logo"
+            src="/icon_no_bg.svg"
+            alt=""
+            aria-hidden="true"
+            width="27"
+            height="18"
+          />
+          <span>MixApart &copy; <span id="jahr">2026</span></span>
+        </span>
+        <span class="legal-links">
+          <a href="/impressum.html" aria-current="page">Impressum</a>
+          <!-- Der Punkt trennt fuers Auge, nicht fuer die Vorlesestimme. -->
+          <span class="legal-dot" aria-hidden="true">&middot;</span>
+          <a href="/datenschutz.html">Datenschutz</a>
+        </span>
+      </div>
+    </footer>
+
+    <!-- Die Jahreszahl zieht sich selbst nach, wie auf der Startseite. Im
+         Markup steht sie als Rueckfall: ohne Javascript ist die Seite
+         vollstaendig, nur das Jahr ist dann von Hand. -->
+    <script>
+      document.getElementById('jahr').textContent = String(new Date().getFullYear());
+    </script>
   </body>
 </html>

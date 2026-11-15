@@ -1,12 +1,19 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  type ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { IconComponent } from '../core/icon';
 import { JobsService } from '../core/jobs.service';
-import { STATUS_LABELS, type Job, type Stem } from '../core/models';
+import { STATUS_LABELS, type Job } from '../core/models';
 import { songName } from '../core/song-name';
-import { shortStemName } from '../core/stem-name';
-import { StemStore } from '../separate/stem-store';
-import { downloadWav } from '../separate/wav';
 
 /** Jobs je Seite. Zehn Zeilen fuellen das Blatt, ohne dass man scrollt. */
 const PAGE_SIZE = 10;
@@ -246,6 +253,123 @@ type Tab = 'alle' | 'songs' | 'tests';
         color: var(--ink);
         background: var(--ghost);
       }
+      /* Der Loeschgriff der Zeile. Im Ruhezustand so leise wie die
+         Punkte vorher -- er soll beim Ueberfliegen nicht nach vorne
+         treten. Farbe bekommt er erst, wenn jemand hinzeigt. */
+      button.kill {
+        justify-self: end;
+      }
+      button.kill:hover:not(:disabled) {
+        color: var(--bad);
+        background: var(--bad-bg);
+      }
+
+      /* ------------------------------------------------- Rueckfrage */
+      /* Das Schild haengt ueber dem Griff: rechts buendig mit ihm, mit
+         einer Zeile Luft darueber. Die beiden Masse setzt ask(). */
+      .kill-ask {
+        position: fixed;
+        inset: auto var(--kill-right, 16px) var(--kill-bottom, 16px) auto;
+        width: auto;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--edge);
+        border-radius: 10px;
+        background: var(--panel-2);
+        color: var(--ink);
+        /* Zwei Schatten: der weiche traegt das Schild ueber die Zeile,
+           der harte zeichnet seine Kante im Dunkeln nach. */
+        box-shadow:
+          0 10px 24px -8px light-dark(rgb(24 19 30 / 0.28), rgb(0 0 0 / 0.62)),
+          0 1px 0 light-dark(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.04)) inset;
+        /* Die Spitze steht ausserhalb -- sie darf nicht abgeschnitten
+           werden. */
+        overflow: visible;
+      }
+      /* Nur im offenen Zustand eine Zeile: ohne [open] uebersteuerte das
+         display die eingebaute Regel, und das Schild stuende immer da. */
+      .kill-ask[open] {
+        display: block;
+        animation: kill-ask-in 0.13s cubic-bezier(0.2, 0, 0.2, 1);
+      }
+      /* Es kommt von unten, aus dem Griff heraus. */
+      @keyframes kill-ask-in {
+        from {
+          opacity: 0;
+          translate: 0 5px;
+        }
+      }
+      /* Die Spitze zeigt auf den Griff: ein gedrehtes Quadrat, das nur
+         seine zwei unteren Kanten zeigt -- so setzt es den Rand des
+         Schildes fort, statt ihn zu kreuzen. 13 px von rechts ist die
+         Mitte des 26 px breiten Griffs darunter. */
+      .kill-ask::after {
+        content: '';
+        position: absolute;
+        right: 8.5px;
+        bottom: -5px;
+        width: 9px;
+        height: 9px;
+        rotate: 45deg;
+        border-right: 1px solid var(--edge);
+        border-bottom: 1px solid var(--edge);
+        border-bottom-right-radius: 2px;
+        background: var(--panel-2);
+      }
+      /* Durchsichtig: das Schild gehoert zur Zeile, es legt die Seite
+         nicht stumm. Klickbar bleibt der Hintergrund trotzdem -- so
+         schliesst ein Klick daneben. */
+      .kill-ask::backdrop {
+        background: transparent;
+      }
+      .kill-ask-in {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 8px 7px 13px;
+      }
+      /* Die Frage traegt das Schild, sie muss nicht rufen. */
+      .kill-ask-text {
+        margin-inline-end: 5px;
+        font-size: 12.5px;
+        letter-spacing: -0.008em;
+        white-space: nowrap;
+      }
+      .kill-ask-in button {
+        min-height: 27px;
+        padding-inline: 12px;
+        border-radius: 7px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: background 0.12s, color 0.12s, border-color 0.12s;
+      }
+      /* Die Antwort, die etwas zerstoert, traegt die Warnfarbe -- aber
+         getoent, nicht gefuellt. Gefuellt sass sie als korallener Klotz
+         im Schild und sah aus wie der Hauptweg der App, nicht wie ein
+         Loeschen. */
+      .kill-ask-yes {
+        border: 1px solid color-mix(in srgb, var(--bad) 34%, transparent);
+        background: var(--bad-bg);
+        color: var(--bad);
+      }
+      .kill-ask-yes:hover {
+        border-color: color-mix(in srgb, var(--bad) 60%, transparent);
+        background: color-mix(in srgb, var(--bad) 17%, var(--bad-bg));
+      }
+      /* Die Antwort, die nichts tut, ist die leiseste: kein Rand, keine
+         Flaeche, bis jemand hinzeigt. */
+      .kill-ask-no {
+        border: 1px solid transparent;
+        background: none;
+        color: var(--dim);
+      }
+      .kill-ask-no:hover {
+        border-color: var(--edge);
+        color: var(--ink);
+        background: var(--ghost);
+      }
+
       .menu {
         position: absolute;
         top: calc(100% + 6px);
@@ -257,12 +381,6 @@ type Tab = 'alle' | 'songs' | 'tests';
         border-radius: var(--radius-sm);
         background: var(--panel-2);
         box-shadow: 0 14px 30px -12px light-dark(rgb(24 19 30 / 0.3), rgb(0 0 0 / 0.6));
-      }
-      /* Die letzten Zeilen haengen ihr Menue nach oben, sonst steht es
-         ausserhalb des Blattes. */
-      .menu.up {
-        top: auto;
-        bottom: calc(100% + 6px);
       }
       .menu > * {
         display: flex;
@@ -403,9 +521,11 @@ type Tab = 'alle' | 'songs' | 'tests';
         </div>
       </div>
 
-      @if (jobs.jobs().length === 0) {
-        <p class="empty">Noch keine Jobs.</p>
-      } @else if (filtered().length === 0) {
+      <!-- Den Fall "gar keine Jobs" gibt es hier nicht mehr: dann wird
+           die Liste erst gar nicht eingehaengt (siehe app.ts). Bleibt der
+           Fall, der sich durch einen Klick aufloest -- ein Reiter ohne
+           Treffer, waehrend andere welche haben. -->
+      @if (filtered().length === 0) {
         <p class="empty">In dieser Sicht steht nichts.</p>
       }
 
@@ -486,46 +606,23 @@ type Tab = 'alle' | 'songs' | 'tests';
             }
           </div>
 
-          <span
-            class="menu-wrap"
-            (focusout)="closeMenu($event, job.id)"
-            (keydown.escape)="menu.set(null)"
+          <!-- Loeschen ist das Einzige, was die Zeile selbst anbietet:
+               die Spuren speichert man im Deck, wo man sie auch hoert.
+               Ein Menue fuer einen einzigen Eintrag waere ein Klick zu
+               viel, also steht der Griff direkt da.
+
+               Die Rueckfrage stellt er nicht in der Zeile: dort hat sie
+               entweder den Weg ins Deck zugedeckt oder die Spalten zur
+               Seite geschoben. Sie steht unten im Dialog. -->
+          <button
+            class="dots kill"
+            type="button"
+            [attr.aria-label]="'Löschen: ' + name(job).title"
+            title="Job löschen"
+            (click)="ask(job, $event)"
           >
-            <button
-              class="dots"
-              [attr.aria-label]="'Weitere Aktionen zu ' + name(job).title"
-              [attr.aria-expanded]="menu() === job.id"
-              (click)="toggleMenu(job.id)"
-            >
-              <app-icon name="ellipsis" />
-            </button>
-            @if (menu() === job.id) {
-              <div class="menu" role="menu" [class.up]="i >= visible().length - 3">
-                @for (stem of job.stems; track stem.slug) {
-                  @if (job.site === 'server') {
-                    <a role="menuitem" [href]="stem.download_url" [download]="stem.name + '.wav'">
-                      <app-icon name="download" />{{ short(stem.name) }} speichern
-                    </a>
-                  } @else if (!gone(job)) {
-                    <!-- Im Browserpfad gibt es keine Datei, auf die ein
-                         Link zeigen koennte. Die WAV wird beim Klick
-                         geschrieben — vier Spuren im Voraus waeren 190 MB,
-                         die niemand angefordert hat. -->
-                    <button role="menuitem" (click)="save(job, stem)">
-                      <app-icon name="download" />{{ short(stem.name) }} speichern
-                    </button>
-                  }
-                }
-                @if (job.stems.length) {
-                  <hr />
-                }
-                <button class="danger" role="menuitem" (click)="armOrRemove(job)">
-                  <app-icon name="trash" />
-                  {{ armed() === job.id ? 'Wirklich löschen?' : 'Job löschen' }}
-                </button>
-              </div>
-            }
-          </span>
+            <app-icon name="trash" />
+          </button>
         </article>
       }
 
@@ -558,11 +655,39 @@ type Tab = 'alle' | 'songs' | 'tests';
         </nav>
       }
     </section>
+
+    <!-- Die Rueckfrage: ein kleines Schild ueber dem Griff, der sie
+         ausgeloest hat. Mehr als die Frage und zwei Knoepfe steht nicht
+         darin.
+
+         <dialog> statt eines gewoehnlichen Feldes, weil es mitbringt,
+         was eine Rueckfrage braucht: oberste Ebene (die Liste schneidet
+         mit overflow: hidden ab, ein Schild in der Zeile waere also
+         abgeschnitten), Escape und Tastaturfang. Der Hintergrund bleibt
+         durchsichtig -- es soll ein Schild sein, kein Blatt vor der
+         Seite --, faengt aber den Klick daneben ab und schliesst.
+
+         Wo es steht, rechnet ask() aus der Lage des Griffs aus. -->
+    <dialog
+      #confirm
+      class="kill-ask"
+      data-testid="ask-delete"
+      (close)="pending.set(null)"
+      (click)="confirm.close()"
+    >
+      @if (pending(); as job) {
+        <!-- Der Klick im Schild darf nicht als Klick daneben gelten. -->
+        <div class="kill-ask-in" (click)="$event.stopPropagation()">
+          <span class="kill-ask-text">Wirklich löschen?</span>
+          <button type="button" class="kill-ask-yes" (click)="remove(job)">Ja</button>
+          <button type="button" class="kill-ask-no" (click)="confirm.close()">Nein</button>
+        </div>
+      }
+    </dialog>
   `,
 })
 export class JobListComponent {
   readonly jobs = inject(JobsService);
-  private readonly store = inject(StemStore);
   readonly selectedId = input<string | null>(null);
   readonly open = output<Job>();
   readonly closed = output<string>();
@@ -575,8 +700,10 @@ export class JobListComponent {
     { key: 'tests', label: 'Testläufe' },
   ];
 
-  /** Job, dessen Loeschen angefragt, aber noch nicht bestaetigt ist. */
-  readonly armed = signal<string | null>(null);
+  /** Job, dessen Loeschen im Dialog gerade zur Frage steht. */
+  readonly pending = signal<Job | null>(null);
+  private readonly confirm =
+    viewChild.required<ElementRef<HTMLDialogElement>>('confirm');
   /** Dasselbe fuer das grosse Aufraeumen. */
   readonly purgeArmed = signal(false);
   /** Welches Menue offen ist: eine Job-Kennung oder 'liste'. */
@@ -672,7 +799,6 @@ export class JobListComponent {
 
   toggleMenu(key: string): void {
     this.menu.update((open) => (open === key ? null : key));
-    this.armed.set(null);
     this.purgeArmed.set(false);
   }
 
@@ -683,12 +809,7 @@ export class JobListComponent {
     const next = event.relatedTarget;
     if (next instanceof Node && wrap.contains(next)) return;
     this.menu.set(null);
-    this.armed.set(null);
     this.purgeArmed.set(false);
-  }
-
-  short(name: string): string {
-    return shortStemName(name);
   }
 
   /**
@@ -705,15 +826,6 @@ export class JobListComponent {
     'Die Spuren lagen nur im Arbeitsspeicher dieser Sitzung und sind einem ' +
     'neueren Ergebnis gewichen. Denselben Song erneut zu trennen geht.';
 
-  /** Schreibt eine Spur als WAV — erst jetzt, beim Klick. */
-  save(job: Job, stem: Stem): void {
-    const held = this.store.get(job.id);
-    const found = held?.stems.find((s) => s.source === stem.slug);
-    if (!held || !found) return;
-    this.menu.set(null);
-    downloadWav(found.channels, held.sampleRate, `${stem.name}.wav`);
-  }
-
   formatDuration(seconds: number): string {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
@@ -729,15 +841,27 @@ export class JobListComponent {
   }
 
   /**
-   * Erster Klick fragt, zweiter loescht. Eine Trennung kostet Minuten und
-   * kommt nicht zurueck, deshalb nicht beim ersten Treffer loeschen.
+   * Fragt nach, statt zu loeschen. Eine Trennung kostet Minuten und kommt
+   * nicht zurueck -- ein Griff von 26 px soll sie nicht im Vorbeiklicken
+   * ausloesen koennen.
    */
-  async armOrRemove(job: Job): Promise<void> {
-    if (this.armed() !== job.id) {
-      this.armed.set(job.id);
-      return;
-    }
-    this.armed.set(null);
+  ask(job: Job, event: Event): void {
+    const griff = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const schild = this.confirm().nativeElement;
+    // Rechts buendig mit dem Griff, sechs Pixel darueber. Von rechts und
+    // unten gemessen, damit die Breite des Schildes keine Rolle spielt --
+    // sie steht erst fest, wenn es schon sichtbar ist.
+    schild.style.setProperty('--kill-right', `${window.innerWidth - griff.right}px`);
+    schild.style.setProperty('--kill-bottom', `${window.innerHeight - griff.top + 6}px`);
+    this.pending.set(job);
+    schild.showModal();
+  }
+
+  /** Der zweite Schritt: hier faellt die Entscheidung. */
+  async remove(job: Job): Promise<void> {
+    // Erst zu, dann loeschen: schliesst der Dialog spaeter, steht er
+    // kurz ueber einer Liste, in der die Zeile schon fehlt.
+    this.confirm().nativeElement.close();
     this.menu.set(null);
     if (job.id === this.selectedId()) this.closed.emit(job.id);
     await this.jobs.remove(job);

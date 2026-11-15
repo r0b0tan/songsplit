@@ -3,90 +3,349 @@
  * Eigene Datei statt der Stilangaben der Anwendung: diese Seiten stehen
  * ohne Angular, ohne Javascript und sollen auch dann lesbar bleiben, wenn
  * vom Bau nichts da ist. Die Farbmarken sind dieselben wie in
- * src/styles.css -- wer sie dort aendert, aendert sie hier mit. */
+ * src/styles.css -- wer sie dort aendert, aendert sie hier mit.
+ *
+ * Die Form ist die des Verlaufs auf der Startseite
+ * (src/app/components/job-list.ts), nicht die der Importkarte: keine
+ * Flaeche, kein Rand, kein Kasten um das Ganze. Die Seite liegt auf dem
+ * Grund der Anwendung, und was sie gliedert, sind Haarlinien zwischen den
+ * Abschnitten -- genau wie dort die Zeilen. Ein Rechtstext muss nicht
+ * auftreten; er muss auffindbar sein.
+ *
+ * Die Spaltenkante ist dieselbe wie die von Importkarte, Verlauf und
+ * Fusslinie: --bleed-width und --bleed-margin, mit denselben Zahlen wie in
+ * src/app/app.ts. */
 
 :root {
   color-scheme: light dark;
   --bg: light-dark(#eeedf0, #121216);
-  --panel: light-dark(#f8f7fa, #1c1b22);
+  --panel-2: light-dark(#f1eff4, #22212a);
   --edge: light-dark(#d5d1db, #35333f);
+  --edge-soft: light-dark(#e4e1e9, #282730);
   --ink: light-dark(#23212a, #f0eef4);
   --dim: light-dark(#5f5869, #b2acbe);
   --faint: light-dark(#8b8495, #827b8e);
   --accent: light-dark(#a6433a, #ffa497);
-  --radius: 18px;
+  --radius-sm: 8px;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono',
+    Menlo, monospace;
+
+  /* Der Ueberstand ueber die Spalte, als Paar: 115 % breit heisst 7,5 %
+     nach jeder Seite hinaus. Die Zahlen stehen auch in app.ts. */
+  --bleed-width: 100%;
+  --bleed-margin: 0;
+}
+/* Erst ab einem Schirm, der den Ueberstand hergibt. Darunter bleibt alles
+   in der Spalte, sonst schoebe es die Seite seitlich. */
+@media (min-width: 960px) {
+  :root {
+    --bleed-width: 115%;
+    --bleed-margin: -7.5%;
+  }
+}
+@media (min-width: 1040px) {
+  :root {
+    --bleed-width: 125%;
+    --bleed-margin: -12.5%;
+  }
 }
 
 * { box-sizing: border-box; }
 
+html { -webkit-text-size-adjust: 100%; }
+
+/* Die Seite ist eine Spalte ueber die volle Hoehe: Inhalt oben, Fuss
+   unten. Ohne das haengt der Fuss beim kurzen Impressum mitten auf dem
+   Schirm. */
 body {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--ink);
-  font: 15px/1.6 var(--sans);
+  font: 14px/1.5 var(--sans);
   letter-spacing: -0.006em;
 }
 
-.shell {
-  max-width: 760px;
+/* Dieselbe Spalte wie die Anwendung, mit demselben Seitenrand. */
+.shell,
+.legal {
+  width: 100%;
+  max-width: 900px;
   margin: 0 auto;
-  padding: clamp(22px, 5vw, 64px) max(16px, env(safe-area-inset-left, 0px)) 72px
-    max(16px, env(safe-area-inset-right, 0px));
+  padding-inline: max(14px, env(safe-area-inset-left, 0px))
+    max(14px, env(safe-area-inset-right, 0px));
+}
+.shell {
+  /* Unten dieselben 72 px wie die Spalte der Anwendung: der Fuss folgt
+     dem Inhalt, er wird nicht an den unteren Rand geheftet -- auf der
+     Startseite steht er genauso. */
+  padding-block: clamp(22px, 5vw, 64px) 72px;
 }
 
-/* ------------------------------------------------------------- Kopfzeile */
+/* Das Blatt steht so weit ueber der Spalte wie der Verlauf: gleiche
+   Kante, gleiche Breite. Es ist sein eigener Behaelter, damit die
+   Abschnitte darin auf die Blattbreite reagieren und nicht auf die des
+   Fensters. */
+.sheet {
+  width: var(--bleed-width);
+  margin-inline: var(--bleed-margin);
+  container-type: inline-size;
+}
+
+/* ---------------------------------------------------------- Kopfleiste */
+/* Marke links, Rueckweg rechts. Die eine Linie der Seite steht hier: sie
+   trennt den Weg hinaus vom Text. Zwischen den Abschnitten zieht nichts
+   mehr -- dort traegt der Abstand die Gliederung. */
 .bar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--edge);
+  flex-wrap: wrap;
+  padding: 0 21px 16px;
+  border-bottom: 1px solid var(--edge-soft);
 }
-.bar img { display: block; width: 28px; height: 28px; flex: none; }
-.bar a { color: inherit; text-decoration: none; font-weight: 700; }
-.bar a:hover { color: var(--accent); }
-
-h1 {
-  font-size: clamp(28px, 6vw, 40px);
-  font-weight: 700;
-  letter-spacing: -0.045em;
-  line-height: 1.05;
-  margin: 28px 0 6px;
-}
-.stand { color: var(--faint); font-size: 13px; margin: 0 0 28px; }
-
-h2 {
-  font-size: 17px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 650;
-  letter-spacing: -0.02em;
-  margin: 34px 0 8px;
 }
-h3 { font-size: 14.5px; font-weight: 650; margin: 20px 0 6px; }
-p, li { color: var(--dim); }
-p { margin: 0 0 12px; }
-ul { margin: 0 0 12px; padding-left: 20px; }
-li { margin-bottom: 4px; }
-a { color: var(--accent); }
+/* Dasselbe Zeichen wie in der Kopfleiste der Anwendung, eine Spur
+   kleiner: hier traegt es keine Karte, sondern steht frei. Ohne eigene
+   Rundung -- die bringt das Zeichen selbst mit. */
+.brand img {
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
 
-/* Anschriften stehen als Block, nicht als Fliesstext. */
+/* Der Rueckweg ist ein Knopf -- derselbe, den die Anwendung ueberall
+   benutzt (src/styles.css): Flaeche, Rand, kleine Rundung, und beim
+   Hinzeigen faerbt sich der Rand. Ein Verweis bleibt er trotzdem, denn er
+   fuehrt auf eine andere Seite: <a> statt <button>, damit Mittelklick,
+   neuer Reiter und Vorlesesoftware tun, was sie sollen. */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 33px;
+  padding: 5px 11px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  color: var(--ink);
+  font-size: 13px;
+  letter-spacing: -0.006em;
+  text-decoration: none;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.back:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Der Pfeil gehoert zur Bewegung, nicht zum Wort: er ruckt mit. */
+.back .arrow { transition: transform 0.12s; }
+.back:hover .arrow { transform: translateX(2px); }
+
+/* --------------------------------------------------------------- Titel */
+/* Der Titel steht fuer sich, der Stand als Zeile darunter -- nicht neben
+   ihm: zwei Angaben in einer Zeile lesen sich als Gegensatz, und das sind
+   sie nicht. */
+.head {
+  padding: 28px 21px 0;
+}
+h1 {
+  margin: 0;
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.stand {
+  margin: 8px 0 0;
+  color: var(--faint);
+  font: 11.5px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------- Abschnitt */
+/* Ueberschrift, darunter der Text. Was die Abschnitte trennt, ist allein
+   der Abstand -- deutlich groesser als der zwischen zwei Absaetzen, damit
+   er die Gliederung auch ohne Linie traegt.
+
+   Der Text hat ein Mass, die Seite nicht: ueber 1000 px liefe eine Zeile
+   auf hundert Zeichen hinaus, und die liest niemand gern zu Ende. */
+.row {
+  padding-inline: 21px;
+  margin-top: 50px;
+}
+.row h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.body {
+  max-width: 600px;
+  margin-top: 10px;
+}
+.row h3 {
+  margin: 18px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.body > :first-child { margin-top: 0; }
+
+/* Fliesztext im Grau der Anwendung, eine Stufe unter den Ueberschriften
+   -- die Gliederung traegt die Farbe, nicht die Groesse. Etwas luftiger
+   als die Bedienoberflaeche: hier wird gelesen, nicht geklickt. */
+p, li {
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.62;
+}
+p { margin: 10px 0 0; }
+ul { margin: 10px 0 0; padding-left: 19px; }
+li { margin-top: 3px; }
+
+a {
+  color: var(--accent);
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 2px;
+}
+a:hover { text-decoration-color: currentColor; }
+
+/* Anschriften stehen als Block, nicht als Fliesztext -- ohne Kasten
+   darum: dass sie in der Farbe der Ueberschriften stehen, reicht. */
 address {
   font-style: normal;
   color: var(--ink);
-  background: var(--panel);
-  border: 1px solid var(--edge);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 10px 0 0;
 }
 
-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
-  margin-top: 44px;
-  padding-top: 18px;
-  border-top: 1px solid var(--edge);
-  font-size: 13px;
+:where(a, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Auf schmalen Schirmen rueckt der Rand nach -- dieselben Masse wie im
+   Verlauf. */
+@container (max-width: 700px) {
+  .row,
+  .bar,
+  .head {
+    padding-inline: 14px;
+  }
+}
+
+/* ---------------------------------------------------------------- Fuss */
+/* Derselbe Fuss wie auf der Startseite (src/app/app.ts, .legal): kein
+   Band, keine eigene Flaeche -- derselbe Grund wie die Seite, nach oben
+   mit einer Linie abgeschlossen, die so breit ist wie das Blatt darueber.
+   Wer ihn dort aendert, aendert ihn hier mit. */
+.legal {
+  /* Der Fuss sitzt am unteren Seitenende, auch wenn der Text kurz ist:
+     die Spalte ist mindestens so hoch wie das Fenster, und dieser Rand
+     schiebt ihn ans Ende. Bei langem Text folgt er wie gehabt dem
+     Inhalt. */
+  margin-top: auto;
+  font-size: 12.5px;
   color: var(--faint);
+}
+.legal-inner {
+  /* Dieselbe Kante wie das Blatt. */
+  width: var(--bleed-width);
+  margin-inline: var(--bleed-margin);
+  display: flex;
+  gap: 2px 18px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  min-width: 0;
+  border-top: 1px solid var(--edge-soft);
+  /* Oben die Luft zur Linie, unten der Abstand zum Seitenende. */
+  padding-block: 14px 26px;
+}
+.legal-mark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* Dasselbe Zeichen wie oben, nur kleiner und ohne Hintergrund. Es ist
+   breiter als hoch (1342:894), also bekommt es seine eigene Breite: in
+   ein Quadrat gezwungen wuerde es gestaucht. */
+.legal-logo {
+  display: block;
+  width: 27px;
+  height: 18px;
+  flex: none;
+}
+.legal-links {
+  display: flex;
+  gap: 0;
+  align-items: center;
+  flex: none;
+}
+.legal-dot { flex: none; }
+/* Ein Verweis ist eine Flaeche, kein Wort: hoch genug, um ihn mit Maus
+   und Daumen zu treffen. Das Polster bleibt knapp, damit der Punkt
+   dazwischen nicht in der Luft haengt. */
+.legal a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding-inline: 7px;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 28%, transparent);
+  text-underline-offset: 3px;
+  transition: color 0.12s;
+}
+.legal a:hover {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+/* Die Seite, auf der man steht, ist kein Ziel: der Verweis bleibt stehen
+   (der Fuss soll ueberall gleich aussehen), gibt aber keine Farbe her. */
+.legal a[aria-current='page'] {
+  color: var(--faint);
+  text-decoration-color: transparent;
+}
+
+/* Der Finger braucht mehr als die Maus. */
+@media (pointer: coarse) {
+  .legal a {
+    min-height: 44px;
+    padding-inline: 9px;
+  }
+  .back { min-height: 44px; }
+}
+
+/* Auf schmalen Schirmen bricht die Fusszeile; dann sollen Marke und
+   Verweise links buendig untereinander stehen, nicht auseinander
+   gezogen. */
+@media (max-width: 420px) {
+  .legal-inner {
+    justify-content: flex-start;
+  }
+  .legal-links {
+    margin-inline-start: -7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.001ms !important; }
 }

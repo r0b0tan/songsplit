@@ -315,11 +315,22 @@ import { StemStore } from './separate/stem-store';
         </div>
       }
 
-      <app-job-list
-        [selectedId]="selected()?.id ?? null"
-        (open)="openJob($event)"
-        (closed)="closeJob()"
-      />
+      <!-- Der Verlauf erscheint erst, wenn er etwas zu zeigen hat. Eine
+           Liste, die nur mitteilt, dass sie leer ist, kostet beim ersten
+           Besuch Platz und Aufmerksamkeit und sagt nichts, was die
+           Importkarte darueber nicht schon klarmacht.
+
+           Die Bedingung steht hier und nicht in der Liste selbst: der
+           Wirt ist eine Flex-Spalte mit Abstand zwischen den Kindern, und
+           ein leeres, aber vorhandenes Element nimmt diesen Abstand
+           trotzdem mit -- es bliebe eine Luecke ueber dem Fuss. -->
+      @if (jobs.jobs().length) {
+        <app-job-list
+          [selectedId]="selected()?.id ?? null"
+          (open)="openJob($event)"
+          (closed)="closeJob()"
+        />
+      }
 
     </main>
 
@@ -393,7 +404,7 @@ import { StemStore } from './separate/stem-store';
 export class AppComponent {
   readonly api = inject(ApiService);
   private readonly engine = inject(MixEngine);
-  private readonly jobs = inject(JobsService);
+  protected readonly jobs = inject(JobsService);
   private readonly store = inject(StemStore);
   private readonly device = inject(DeviceSeparator);
 
