@@ -191,6 +191,22 @@ interface Fixtures {
               <dd [class.bad]="s.adapter.software">
                 {{ s.adapter.software ? 'ja — das rechnet auf der CPU' : 'nein' }}
               </dd>
+              <!-- Steht nur da, wo es zutrifft: im Kernmodus waere „nein"
+                   eine Zeile ohne Aussage. Trifft es zu, gehoert es in die
+                   Messung — die Grenzen sind kleiner, und ein Vergleich mit
+                   einem Kern-Lauf vergliche dann zwei verschiedene Dinge. -->
+              @if (s.adapter.compat) {
+                <dt>Compatibility-Modus</dt>
+                <dd>ja — kleinere Grenzen als im Kernmodus</dd>
+              }
+            }
+            <!-- Die Gegenprobe ueber WebGL. Sie steht nur da, wo WebGPU
+                 nichts hergab — dann aber als Erstes nach dem Adapter, weil
+                 sie die Frage beantwortet, die der leere Adapter aufwirft:
+                 ob ueberhaupt eine Grafikeinheit da ist. -->
+            @if (s.renderer) {
+              <dt>WebGL meldet</dt>
+              <dd>{{ s.renderer }}</dd>
             }
             @if (s.reason) {
               <dt>Grund</dt>

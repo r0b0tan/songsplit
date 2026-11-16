@@ -37,6 +37,7 @@ import {
   ensureWasmBinary,
   loadRuntime,
   probeWebGpu,
+  readWebGlRenderer,
   type ExecutionProof,
   type WebGpuSupport,
 } from './runtime';
@@ -159,7 +160,28 @@ scope.addEventListener('message', (event: MessageEvent<ToWorker>) => {
 });
 
 async function handleProbe(): Promise<void> {
-  const support = await probeWebGpu();
+  // Eingepackt, weil ein Fehler hier nicht nur diese Pruefung verlor,
+  // sondern die Antwort selbst: ohne `probed` wartete die Oberflaeche acht
+  // Sekunden und meldete danach, die Runtime antworte nicht — eine Aussage
+  // ueber etwas, das gar nicht gefragt worden war. Ein Grund steht jetzt in
+  // jedem Fall da, und sei es dieser.
+  let support: WebGpuSupport;
+  try {
+    support = await probeWebGpu();
+  } catch (err) {
+    support = {
+      available: false,
+      adapter: null,
+      reason:
+        `Die Geräteprüfung brach ab: ${describe(err)}. Getrennt wird dann ` +
+        'auf dem Prozessor.',
+      // Die Pruefung brach ab, bevor sie etwas herausfand — da ist die
+      // WebGL-Auskunft das einzige, was ueberhaupt noch etwas ueber das
+      // Geraet sagt. Sie steht auf einem eigenen Weg und ist von dem
+      // Fehler oben nicht betroffen.
+      renderer: readWebGlRenderer(),
+    };
+  }
   let runtimeVersion: string | null = null;
   try {
     const ort = await loadRuntime();

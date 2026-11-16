@@ -1,4 +1,5 @@
 import { fetchCachedJson, fetchWeights } from './model-cache';
+import { isMobileDevice } from './platform';
 
 /**
  * Laedt die ONNX-Runtime und weist nach, worauf sie wirklich rechnet.
@@ -72,6 +73,16 @@ export interface AdapterReport {
   /** Der Browser bietet nur eine Software-Umsetzung an. */
   software: boolean;
   isFallback: boolean;
+  /**
+   * Nur ueber den Compatibility-Modus erreichbar.
+   *
+   * Dieser Modus laeuft auf OpenGL ES 3.1 und Direct3D 11 und hat kleinere
+   * Grenzen als der Kernmodus. Er steht hier, weil er auf Android der
+   * Unterschied zwischen „rechnet auf der Grafikkarte" und „rechnet gar
+   * nicht darauf" sein kann — und weil er an der Messung sichtbar bleiben
+   * soll: ein Lauf darauf ist ein GPU-Lauf, aber nicht derselbe.
+   */
+  compat: boolean;
 }
 
 export type Provider = 'webgpu' | 'wasm';
@@ -93,13 +104,40 @@ export interface WebGpuSupport {
   adapter: AdapterReport | null;
   /** Grund, falls nicht nutzbar — im Klartext fuer die Oberflaeche. */
   reason: string | null;
+  /**
+   * Was WebGL ueber die verbaute Grafikeinheit sagt — oder `null`.
+   *
+   * Gefuellt nur, wenn WebGPU keinen Adapter hergab. Dann ist es die
+   * einzige Stelle, an der sich die Frage „ist ueberhaupt eine Grafikkarte
+   * da?" beantworten laesst, und sie wird gestellt: wer auf dem Handy
+   * liest, WebGPU sei nicht verfuegbar, haelt das fuer einen Fehler der
+   * Seite — das Geraet hat ja sichtbar eine GPU. Steht ihr Name da, ist
+   * klar, dass sie erkannt wurde und der Browser sie trotzdem nicht
+   * freigibt.
+   */
+  renderer: string | null;
 }
 
-function describeAdapter(info: GPUAdapterInfo, isFallback: boolean): AdapterReport {
-  const vendor = info.vendor ?? '';
-  const architecture = info.architecture ?? '';
-  const device = info.device ?? '';
-  const description = info.description ?? '';
+/**
+ * Fasst zusammen, was der Adapter ueber sich sagt.
+ *
+ * `info` ist absichtlich als fehlend zugelassen, obwohl die Typen es als
+ * gesetzt fuehren: das Attribut gibt es erst ab Chromium 128, davor hiess
+ * es `requestAdapterInfo()`. Ohne diesen Vorbehalt warf ein Zugriff auf
+ * `info.vendor` dort einen `TypeError`, und weil der Aufruf im Worker in
+ * keinem `catch` stand, kam die Antwort auf die Geraetepruefung nie an. Was
+ * der Mensch dann sah, war nach acht Sekunden Wartezeit die Meldung, die
+ * Runtime antworte nicht — auf einem Geraet, das WebGPU durchaus kann.
+ */
+function describeAdapter(
+  info: GPUAdapterInfo | undefined,
+  isFallback: boolean,
+  compat: boolean,
+): AdapterReport {
+  const vendor = info?.vendor ?? '';
+  const architecture = info?.architecture ?? '';
+  const device = info?.device ?? '';
+  const description = info?.description ?? '';
   const haystack = `${vendor} ${architecture} ${device} ${description}`.toLowerCase();
   return {
     vendor,
@@ -108,6 +146,7 @@ function describeAdapter(info: GPUAdapterInfo, isFallback: boolean): AdapterRepo
     description,
     software: SOFTWARE_HINTS.some((hint) => haystack.includes(hint)),
     isFallback,
+    compat,
   };
 }
 
@@ -118,6 +157,68 @@ export function adapterLabel(a: AdapterReport | null): string {
 }
 
 /**
+ * Fragt WebGL, welche Grafikeinheit verbaut ist.
+ *
+ * Der Umweg lohnt genau dann, wenn WebGPU nichts hergibt. WebGL laeuft auf
+ * praktisch jedem Geraet, auch auf denen, fuer die Chrome WebGPU noch nicht
+ * freigegeben hat, und `WEBGL_debug_renderer_info` nennt den echten
+ * Treiberstring statt der maskierten Fassung.
+ *
+ * Das aendert nichts daran, dass nicht gerechnet werden kann — es ist eine
+ * Auskunft, kein Rechenweg. Aber es beantwortet die Frage, die sonst offen
+ * bleibt und die jeder zuerst stellt: liegt es am Geraet oder an der Seite?
+ * Steht „Samsung Xclipse 540" in der Meldung, ist beides beantwortet.
+ *
+ * Nicht ueberall zu haben: Firefox fuehrt die Erweiterung als veraltet und
+ * schaltet sie beim Fingerprinting-Schutz ab. Dann bleibt der maskierte
+ * `RENDERER`, und taugt auch der nichts, gibt es eben `null` — die Meldung
+ * kommt ohne aus.
+ *
+ * Laeuft im Worker wie im Fenster: `OffscreenCanvas` gibt es in beiden, und
+ * der Kontext wird sofort wieder freigegeben.
+ */
+let rendererCache: string | null | undefined;
+
+export function readWebGlRenderer(): string | null {
+  // Gemerkt, weil zwei Stellen fragen — die Meldung und der Bericht — und
+  // jede Frage sonst einen eigenen WebGL-Kontext kostete. Die verbaute
+  // Grafikeinheit wechselt waehrend einer Sitzung nicht.
+  if (rendererCache !== undefined) return rendererCache;
+  rendererCache = probeWebGlRenderer();
+  return rendererCache;
+}
+
+function probeWebGlRenderer(): string | null {
+  const Canvas = (globalThis as { OffscreenCanvas?: typeof OffscreenCanvas }).OffscreenCanvas;
+  if (!Canvas) return null;
+  let gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
+  try {
+    const canvas = new Canvas(1, 1);
+    gl = (canvas.getContext('webgl2') ??
+      canvas.getContext('webgl')) as WebGL2RenderingContext | null;
+    if (!gl) return null;
+
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const raw: unknown = debugInfo
+      ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER);
+    const name = typeof raw === 'string' ? raw.trim() : '';
+    return name.length ? name : null;
+  } catch {
+    return null;
+  } finally {
+    // Ohne das bliebe ein WebGL-Kontext offen. Browser halten nur eine
+    // begrenzte Zahl davon und raeumen den aeltesten weg — hier waere das
+    // moeglicherweise einer, den die Oberflaeche noch braucht.
+    try {
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    } catch {
+      // Dann eben nicht; der Kontext faellt mit dem Canvas weg.
+    }
+  }
+}
+
+/**
  * Prueft, ob der Browser WebGPU mit echter Hardware anbietet.
  *
  * Das laeuft vor jedem Download: ein 174-MB-Modell zu holen und erst dann
@@ -125,51 +226,189 @@ export function adapterLabel(a: AdapterReport | null): string {
  * Reihenfolge.
  */
 export async function probeWebGpu(): Promise<WebGpuSupport> {
+  const { report, reason } = await requestUsableAdapter();
+  const available = reason === null && report !== null;
+  // Nur im Fehlerfall gefragt: liegt ein Adapter vor, sagt der schon alles,
+  // und ein WebGL-Kontext waere Aufwand fuer nichts.
+  return {
+    available,
+    adapter: report,
+    reason,
+    renderer: available ? null : readWebGlRenderer(),
+  };
+}
+
+/**
+ * Was `lib.dom` in TypeScript 6.0 noch nicht kennt.
+ *
+ * `featureLevel` steht in der WebGPU-Spezifikation und in `@webgpu/types`,
+ * aber die mitgelieferte `lib.dom` fuehrt eine aeltere Fassung von
+ * `GPURequestAdapterOptions` und gewinnt gegen das Paket. Nachdeklariert
+ * statt weggecastet: so bleibt das Feld getippt, und faellt es eines Tages
+ * mit der echten Deklaration zusammen, meldet der Compiler es.
+ */
+interface AdapterOptionsWithLevel extends GPURequestAdapterOptions {
+  featureLevel?: string;
+}
+
+/** Was die Adaptersuche gefunden hat — mit dem rohen Adapter dazu. */
+interface AdapterAttempt {
+  /**
+   * Der Adapter selbst, fuer `env.webgpu.adapter`.
+   *
+   * Bleibt absichtlich aus `WebGpuSupport` heraus: ein `GPUAdapter` ist
+   * nicht strukturklonbar, und `WebGpuSupport` geht per `postMessage` aus
+   * dem Worker in die Oberflaeche. Stuende er darin, waere die Nachricht
+   * nicht zustellbar.
+   */
+  adapter: GPUAdapter | null;
+  report: AdapterReport | null;
+  /** Grund, falls nicht nutzbar — im Klartext fuer die Oberflaeche. */
+  reason: string | null;
+}
+
+/**
+ * Sucht einen Adapter, auf dem sich rechnen laesst — in zwei Anlaeufen.
+ *
+ * Der zweite Anlauf ist der Grund fuer diese Funktion. Chrome gibt WebGPU
+ * auf Android nur fuer einen Teil der Grafikeinheiten frei; auf den
+ * uebrigen ist `navigator.gpu` da und `requestAdapter()` liefert trotzdem
+ * `null`. Seit Chrome 146 gibt es dafuer den Compatibility-Modus, der auf
+ * OpenGL ES 3.1 aufsetzt und genau diese Geraete erreichen soll.
+ *
+ * Er kostet nichts, wo er nicht gebraucht wird: angefragt wird er nur,
+ * wenn der Kernmodus nichts geliefert hat. Kennt ein Browser `featureLevel`
+ * nicht, ignoriert er das unbekannte Feld, und der zweite Anlauf scheitert
+ * genau wie der erste — ohne Schaden.
+ *
+ * Eine Zusage ist er nicht. Seine Grenzen sind kleiner als die des
+ * Kernmodus, und ob die Shaders des Modells darin uebersetzen, zeigt erst
+ * das Anlegen der Sitzung. Deshalb steht `compat` im Bericht: geht es dort
+ * schief, soll in der Messung stehen, worauf es schiefging.
+ */
+async function requestUsableAdapter(): Promise<AdapterAttempt> {
   const gpu = (globalThis.navigator as Navigator | undefined)?.gpu;
   if (!gpu) {
     return {
-      available: false,
       adapter: null,
-      reason:
-        'Dieser Browser bietet kein WebGPU. Auf dem Gerät trennen geht damit ' +
-        'nicht — es braucht Chrome oder Edge in einer aktuellen Fassung.',
+      report: null,
+      reason: isMobileDevice()
+        ? 'Dieser Browser bietet kein WebGPU. Auf Android kann es Chrome ab ' +
+          'Fassung 121; Firefox und ältere Fassungen von Samsung Internet ' +
+          'liefern es nicht.'
+        : 'Dieser Browser bietet kein WebGPU. Auf dem Gerät trennen geht damit ' +
+          'nicht — es braucht Chrome oder Edge in einer aktuellen Fassung.',
     };
   }
+
   let adapter: GPUAdapter | null = null;
+  let openError: string | null = null;
   try {
     adapter = await gpu.requestAdapter();
   } catch (err) {
-    return {
-      available: false,
-      adapter: null,
-      reason: `WebGPU ließ sich nicht öffnen: ${describe(err)}`,
-    };
+    openError = describe(err);
   }
+
+  let compat = false;
+  if (!adapter) {
+    const compatOptions: AdapterOptionsWithLevel = { featureLevel: 'compatibility' };
+    try {
+      adapter = await gpu.requestAdapter(compatOptions);
+      compat = adapter !== null;
+    } catch {
+      // Bleibt bei `null`. Der Grund steht unten; der des ersten Anlaufs
+      // ist der aussagekraeftigere und hat deshalb Vorrang.
+    }
+  }
+
   if (!adapter) {
     return {
-      available: false,
       adapter: null,
+      report: null,
       reason:
-        'WebGPU ist vorhanden, liefert aber keinen Grafikadapter. Oft hilft ' +
-        'ein aktueller Grafiktreiber; in einer virtuellen Maschine ist ' +
-        'WebGPU häufig abgeschaltet.',
+        openError !== null
+          ? `WebGPU ließ sich nicht öffnen: ${openError}`
+          : noAdapterReason(),
     };
   }
+
+  // Eine Anfrage im Compatibility-Modus darf auch einen Kern-Adapter
+  // zurueckgeben. Welcher es geworden ist, sagt dieses Feature — kennt der
+  // Browser es nicht, bleibt es bei der Annahme aus der Anfrage.
+  if (compat && adapter.features.has('core-features-and-limits')) compat = false;
+
   const report = describeAdapter(
     adapter.info,
     // `isFallbackAdapter` ist aelter als `info` und fehlt in neuen Fassungen.
     (adapter as unknown as { isFallbackAdapter?: boolean }).isFallbackAdapter === true,
+    compat,
   );
   if (report.software || report.isFallback) {
     return {
-      available: false,
-      adapter: report,
+      adapter,
+      report,
       reason:
         `WebGPU läuft hier über eine Software-Umsetzung (${adapterLabel(report)}). ` +
         'Das rechnet auf der CPU und ist für eine Trennung zu langsam.',
     };
   }
-  return { available: true, adapter: report, reason: null };
+  return { adapter, report, reason: null };
+}
+
+/**
+ * Warum es keinen Adapter gibt — und was der Mensch dagegen tun kann.
+ *
+ * Auf dem Handy: nichts, und das steht da auch. Der vorige Text riet hier
+ * zu einem neueren Grafiktreiber und erwaehnte virtuelle Maschinen — auf
+ * einem Android-Telefon ist das erste unmoeglich und das zweite sinnlos.
+ * Ein Rat, den niemand befolgen kann, ist schlechter als keiner: er laesst
+ * den Fehler beim Menschen suchen, wo keiner ist.
+ */
+function noAdapterReason(): string {
+  // WebGL laeuft auch dort, wo WebGPU nichts hergibt, und nennt den
+  // Treiberstring. Steht der in der Meldung, erledigt sich die naechste
+  // Frage von selbst: die Grafikeinheit ist erkannt, sie wird nur nicht
+  // freigegeben. Ohne diesen Namen liest sich dieselbe Meldung wie ein
+  // Fehler der Seite.
+  const renderer = readWebGlRenderer();
+
+  // Der Treiberstring kann selbst eine Software-Umsetzung benennen — unter
+  // WSL2 und in Testbrowsern steht da regelmaessig SwiftShader. „Die
+  // Grafikeinheit ist erkannt" waere dann das Gegenteil der Wahrheit, und
+  // zwar die bequeme Richtung: es klaenge, als fehle nur eine Freigabe, wo
+  // in Wirklichkeit nichts zu rechnen ist. Also wird derselbe Massstab
+  // angelegt wie beim WebGPU-Adapter.
+  const rendererIsSoftware =
+    renderer !== null && SOFTWARE_HINTS.some((hint) => renderer.toLowerCase().includes(hint));
+
+  let named = '';
+  if (renderer !== null && rendererIsSoftware) {
+    named =
+      ` Auch WebGL rechnet hier auf dem Prozessor (meldet „${renderer}“) — ` +
+      'eine nutzbare Grafikeinheit ist also nicht vorhanden.';
+  } else if (renderer !== null) {
+    named =
+      ` Erkannt wird sie durchaus — WebGL meldet „${renderer}“ —, für WebGPU ` +
+      'gibt der Browser sie nur nicht frei.';
+  }
+
+  if (isMobileDevice()) {
+    return (
+      'WebGPU ist vorhanden, der Browser gibt die Grafikeinheit dieses ' +
+      'Geräts aber nicht frei — auch nicht im Compatibility-Modus.' +
+      named +
+      ' Das liegt am Gerät: Chrome schaltet WebGPU auf Android bisher nur ' +
+      'für einen Teil der verbauten Grafikeinheiten frei. Daran lässt sich ' +
+      'hier nichts ändern.'
+    );
+  }
+  return (
+    'WebGPU ist vorhanden, liefert aber keinen Grafikadapter — auch nicht ' +
+    'im Compatibility-Modus.' +
+    named +
+    ' Oft hilft ein aktueller Grafiktreiber; in einer virtuellen Maschine ' +
+    'ist WebGPU häufig abgeschaltet.'
+  );
 }
 
 /** Die Runtime, so wie sie aus der vendorierten Datei kommt. */
@@ -260,20 +499,38 @@ export async function createSession(
   const ort = await loadRuntime();
   const evidence: string[] = [];
   let adapter: AdapterReport | null = null;
+  let usable = false;
 
   if (options.preferGpu) {
-    const support = await probeWebGpu();
-    adapter = support.adapter;
-    if (support.available) {
-      evidence.push(`Adapter gemeldet: ${adapterLabel(support.adapter)}`);
+    const attempt = await requestUsableAdapter();
+    adapter = attempt.report;
+    if (attempt.reason === null && attempt.adapter !== null) {
+      usable = true;
+      evidence.push(`Adapter gemeldet: ${adapterLabel(attempt.report)}`);
+      if (attempt.report?.compat) {
+        evidence.push(
+          'Adapter nur über den Compatibility-Modus erreichbar — kleinere ' +
+            'Grenzen als im Kernmodus',
+        );
+      }
+      // Genau diesen Adapter soll die Runtime nehmen, und das ist keine
+      // Feinheit: fragte sie selbst, fragte sie ohne `featureLevel`. Auf
+      // einem Geraet, das nur ueber den Compatibility-Modus erreichbar ist,
+      // bekaeme sie damit `null` zurueck — und das Anlegen der Sitzung
+      // schluge fehl, obwohl die Pruefung eben noch einen Adapter hatte.
+      ort.env.webgpu.adapter = attempt.adapter;
     } else {
-      evidence.push(`Kein nutzbarer Adapter: ${support.reason}`);
+      evidence.push(`Kein nutzbarer Adapter: ${attempt.reason}`);
     }
   } else {
     evidence.push('WASM ausdrücklich verlangt');
   }
 
-  const wantGpu = options.preferGpu && adapter !== null && !adapter.software;
+  // Frueher stand hier `adapter !== null && !adapter.software`. Das liess
+  // einen Rueckfall-Adapter ohne Software-Kennung durch, obwohl die
+  // Geraetepruefung ihn als unbrauchbar meldete — zwei Stellen, zwei
+  // Urteile. Jetzt entscheidet beides dieselbe Funktion.
+  const wantGpu = options.preferGpu && usable;
   const session = await ort.InferenceSession.create(
     model instanceof Uint8Array ? model : new Uint8Array(model),
     {

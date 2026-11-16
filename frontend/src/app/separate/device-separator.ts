@@ -146,6 +146,11 @@ export class DeviceSeparator {
         reason:
           'Der Trennvorgang ließ sich nicht vorbereiten. Die ONNX-Runtime ' +
           'unter /vendor/onnxruntime/ antwortet nicht.',
+        // Hier bewusst nicht nachgesehen: der Worker schweigt, es geht also
+        // gar nicht um die Grafikeinheit. Ein Treibername waere an dieser
+        // Stelle eine Antwort auf eine Frage, die niemand gestellt hat —
+        // und zoege `runtime.ts` ins Hauptbuendel, nur fuer diesen Fall.
+        renderer: null,
       });
     }
     await this.refreshModels();

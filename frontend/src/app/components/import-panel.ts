@@ -9,6 +9,7 @@ import { stemColor } from '../core/stem-colors';
 import { VARIANT } from '../core/variant';
 import { DeviceSeparator } from '../separate/device-separator';
 import { probeDuration } from '../separate/decode';
+import { isMobileDevice } from '../separate/platform';
 import {
   SHORTEST_WORTH_SUGGESTING_S,
   asMinutes,
@@ -878,15 +879,33 @@ const ACCEPTED = /\.(mp3|wav)$/i;
            Warnung und keine Sperre: gerechnet wird dann auf dem Prozessor,
            und das dauert. Wer die Wartezeit in Kauf nimmt, soll trennen
            können — aber vorher wissen, worauf er sich einlässt, und nicht
-           erst nach zehn Minuten. -->
+           erst nach zehn Minuten.
+
+           Die Zeitangabe hängt am Gerät, und das ist kein Feinschliff: „eher
+           zehn Minuten als eine" galt für eine Desktop-CPU. Auf einem Handy
+           rechnet derselbe Weg einfädig auf langsameren Kernen, und der
+           Arbeitsspeicher ist die härtere Grenze als die Zeit. Dieselbe Zahl
+           dort zu nennen, hieße jemanden in eine Stunde Wartezeit schicken,
+           die als zehn Minuten angekündigt war. -->
       @if (site() === 'device' && deviceProblem(); as why) {
         <div class="notice" style="margin-top: 12px" data-testid="no-webgpu">
           <span>
             <strong>Keine Grafikbeschleunigung:</strong> {{ why }}
-            Getrennt wird dann auf dem Prozessor — das geht, dauert aber ein
-            Vielfaches, bei einem ganzen Lied eher zehn Minuten als eine.
-            @if (jobs.serverAvailable) {
-              Über „Auf diesem Rechner“ läuft es in Sekunden.
+            @if (isMobile) {
+              Getrennt wird dann auf dem Prozessor — auf einem Handy heißt
+              das: einfädig, nach 174 MB Download und mit knapp einem
+              Gigabyte Arbeitsspeicher. Realistisch ist eine Stunde, und
+              wird der Speicher knapp, beendet der Browser den Tab.
+              @if (jobs.serverAvailable) {
+                Über „Auf diesem Rechner“ läuft es in Sekunden — auf dem
+                Handy ist das der Weg, der funktioniert.
+              }
+            } @else {
+              Getrennt wird dann auf dem Prozessor — das geht, dauert aber ein
+              Vielfaches, bei einem ganzen Lied eher zehn Minuten als eine.
+              @if (jobs.serverAvailable) {
+                Über „Auf diesem Rechner“ läuft es in Sekunden.
+              }
             }
           </span>
         </div>
@@ -1052,6 +1071,13 @@ export class ImportPanelComponent {
     if (!support) return null; // wird noch geprüft
     return support.available ? null : support.reason;
   });
+
+  /**
+   * Handy oder nicht — entscheidet, welche Wartezeit die Warnung nennt.
+   *
+   * Ein Feld, kein Signal: das Geraet wechselt waehrend einer Sitzung nicht.
+   */
+  protected readonly isMobile = isMobileDevice();
 
   /**
    * Wechselt den Ort und zieht den Trennmodus mit.

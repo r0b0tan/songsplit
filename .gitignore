@@ -54,4 +54,4 @@ out-tsc/
 /.run/
 
 # Zugangsdaten fuer deploy.sh — Passwoerter, gehoeren nicht in die Historie
-/.env.deploy
+/.env.deploy*
