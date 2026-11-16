@@ -55,3 +55,7 @@ out-tsc/
 
 # Zugangsdaten fuer deploy.sh — Passwoerter, gehoeren nicht in die Historie
 /.env.deploy*
+
+# Der Token fuer den Modal-Endpunkt. Steht als Secret bei Modal und hier
+# nur als Kopie zum Testen — siehe cloud/app.py.
+/cloud/.token

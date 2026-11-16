@@ -40,8 +40,22 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 
 
 def _install_demucs_alias() -> None:
+    """Macht die in audio-separator mitgelieferte Demucs-Fassung als `demucs`
+    importierbar — fuer die Torch-Seite dieses Moduls.
+
+    Fehlt das Paket, passiert nichts. Das ist kein Nachlassen, sondern der
+    Serverweg: `cloud/app.py` importiert dieses Modul fuer die numpy-Kette
+    allein, und in jenem Image gibt es audio-separator nicht — es soll ihn
+    auch nicht geben, sonst waere das Image um den ganzen Torch-Stack
+    groesser und der Cold Start entsprechend laenger. Gebraucht wird der
+    Alias erst in `torch_reference`, und dort schlaegt der Import dann von
+    selbst fehl, laut und an der richtigen Stelle.
+    """
     base = "audio_separator.separator.uvr_lib_v5.demucs"
-    vendored = importlib.import_module(base)
+    try:
+        vendored = importlib.import_module(base)
+    except ModuleNotFoundError:
+        return
     sys.modules.setdefault("demucs", vendored)
     for sub in ("demucs", "hdemucs", "htdemucs", "spec", "states", "transformer"):
         sys.modules.setdefault(
