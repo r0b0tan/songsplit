@@ -21,7 +21,7 @@ import type { Job, ModelInfo } from './models';
 import { VARIANT } from './variant';
 
 /** Woher die Oberfläche einen Job rechnen lässt. */
-export type Site = 'device' | 'server' | 'cloud';
+export type Site = 'device' | 'backend' | 'cloud';
 
 @Injectable({ providedIn: 'root' })
 export class JobsService {
@@ -75,7 +75,7 @@ export class JobsService {
    */
   openable(job: Job): boolean {
     if (job.status !== 'done') return false;
-    if (job.site === 'server') return true;
+    if (job.site === 'backend') return true;
     return this.store.available().has(job.id);
   }
 
@@ -87,7 +87,7 @@ export class JobsService {
    * sonst weiter einen Knopf zeigen, der nichts mehr tut.
    */
   unavailableReason(job: Job): string | null {
-    if (job.status !== 'done' || job.site === 'server') return null;
+    if (job.status !== 'done' || job.site === 'backend') return null;
     if (this.store.available().has(job.id)) return null;
     return 'Ergebnis nicht mehr im Speicher';
   }
@@ -109,7 +109,7 @@ export class JobsService {
     for (const job of device) this.device.remove(job.id);
     const cloud = jobs.filter((j) => j.site === 'cloud');
     for (const job of cloud) this.cloud.remove(job.id);
-    const server = jobs.filter((j) => j.site === 'server').map((j) => j.id);
+    const server = jobs.filter((j) => j.site === 'backend').map((j) => j.id);
     const gone = server.length ? await this.api.removeMany(server) : [];
     return [...device.map((j) => j.id), ...cloud.map((j) => j.id), ...gone];
   }

@@ -926,7 +926,7 @@ type LoopEnd = 'a' | 'b';
                   @case ('error') { {{ track.error }} }
                   @default {
                     {{ megabytes(track.bytes) }} MB
-                    @if (job().site === 'server') {
+                    @if (job().site === 'backend') {
                       <a
                         class="wav"
                         [href]="track.downloadUrl"

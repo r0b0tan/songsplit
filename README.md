@@ -27,7 +27,7 @@ models/     heruntergeladene Modellgewichte (ca. 84 MB je Demucs-Modell)
 | | **lokal** | **öffentlich** |
 |---|---|---|
 | Trennung | Python, `audio-separator`, CUDA | Browser, `onnxruntime-web`, WebGPU |
-| Trennorte in der Oberfläche | Auswahlfeld mit „Browser“ **und** „Lokal“ | nur „Alles auf diesem Gerät“, ohne Wahl |
+| Trennorte in der Oberfläche | Auswahlfeld mit „WebGPU“ **und** „CUDA“ | nur „Alles auf diesem Gerät“, ohne Wahl |
 | Braucht | Python, FFmpeg, NVIDIA-Treiber | einen Browser mit WebGPU |
 | Verlauf | überlebt den Neustart (`data/*/job.json`) | gilt für die Sitzung |
 | Bauen | `npm run build` | `npm run build:public` |
@@ -347,7 +347,7 @@ Die Seite ist eine Spalte von 900 px, keine Fläche über den ganzen Schirm:
 die Importkarte, darunter der Verlauf. Die Breite richtet sich nach der
 Verlaufszeile: Stück, Trennmodus, Länge und Spurzahl stehen dort
 nebeneinander und brauchen den Platz. Oben in der Karte eine Leiste mit
-Marke und rechts **„Modus" als Auswahlfeld** — „Browser" oder „Lokal" —
+Marke und rechts **„Modus" als Auswahlfeld** — „WebGPU" oder „CUDA" —
 mit einem ⓘ daneben. Das Wort steht in der
 Schriftfarbe, Feld und ⓘ in der Akzentfarbe: so ist auf einen Blick zu
 sehen, was nur beschriftet und was anzufassen ist.
@@ -1578,7 +1578,7 @@ die zehnte ist mit dem Browserweg dazugekommen und zweimal gelaufen:
 | Verlauf trennt Songs von Testläufen | Alle 7 · Songs 2 · Testläufe 5, und 2 + 5 = 7 |
 | Aufräumen fragt erst nach | „Wirklich? 7 löschen", nach dem Verlassen wieder „Alle", nichts gelöscht |
 | Trennort steht zur Wahl, auf dem Gerät als Vorgabe | 2 Einträge in der Liste, gewählt `device` |
-| Menschlicher Tastendruck wählt den Ort und klappt die Liste zu | Knopf zeigt „Lokal" |
+| Menschlicher Tastendruck wählt den Ort und klappt die Liste zu | Knopf zeigt „CUDA" |
 | Liste nennt beide Orte mit Verfahren und Gerät, ohne umzuschalten | Browser: WebGPU · nvidia · lovelace — Lokal: CUDA · NVIDIA GeForce RTX 4070 Laptop GPU |
 | Trennfenster trägt die ausführlichen Angaben | CUDA, RTX 4070 Laptop GPU, 6,85 von 8 GB frei, PyTorch 2.15.0+cu132 |
 | Trennung öffnet ein Fortschrittsfenster | modal, mit Dateiname, Modell und laufender Phase |

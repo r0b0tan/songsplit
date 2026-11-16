@@ -79,9 +79,13 @@ export class DeviceFacts {
    * zählt: wohin die Datei geht.
    */
   private cloudSummary(): Summary {
+    // Hier steht der Ort und nicht die Karte: welche es wird, entscheidet
+    // sich erst beim Start des Containers, und raten waere das Gegenteil
+    // einer Auskunft. Der Ort dagegen steht fest — und er ist ohnehin das,
+    // was an diesem Weg zaehlt.
     return {
-      method: this.cloud.where() || 'unser Server',
-      device: 'Grafikkarte wird zugeteilt',
+      method: 'Server',
+      device: this.cloud.where() || 'unser Server',
     };
   }
 

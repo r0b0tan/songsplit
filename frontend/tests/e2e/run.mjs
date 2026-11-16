@@ -113,7 +113,7 @@ async function main() {
     await entries.filter({ has: page.locator('[value="device"]') }).innerText(),
   );
   const serverEntry = clean(
-    await entries.filter({ has: page.locator('[value="server"]') }).innerText(),
+    await entries.filter({ has: page.locator('[value="backend"]') }).innerText(),
   );
   // Je Eintrag zwei Zeilen: womit gerechnet wird und worauf. Mehr gehoert
   // nicht in eine Liste, in der man sich entscheidet — die lange Fassung
@@ -139,7 +139,7 @@ async function main() {
   // sein Ziel weg. Genau das war der Fall, und `click()` ging trotzdem
   // durch: die Pruefung bestand, waehrend die Oberflaeche nicht zu
   // bedienen war.
-  const serverEntryEl = entries.filter({ has: page.locator('[value="server"]') });
+  const serverEntryEl = entries.filter({ has: page.locator('[value="backend"]') });
   const box = await serverEntryEl.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 10 });
   await page.mouse.down();
@@ -147,7 +147,7 @@ async function main() {
   await page.mouse.up();
   const switched = await until(
     async () =>
-      (await sitePick.innerText()).trim() === 'Lokal' &&
+      (await sitePick.innerText()).trim() === 'CUDA' &&
       (await page.locator('[data-testid="site-panel"]').count()) === 0
         ? true
         : null,

@@ -799,7 +799,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                 (keydown.arrowdown)="onPickKey($event)"
                 (keydown.arrowup)="onPickKey($event)"
               >
-                <span id="site-pick-value">{{ currentSite().short }}</span>
+                <span id="site-pick-value">{{ currentShort() }}</span>
                 <app-icon
                   [name]="pickOpen() ? 'chevron-up' : 'chevron-down'"
                   [weight]="2.6"
@@ -829,12 +829,16 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                         [disabled]="busy()"
                         (change)="chooseSite(s.key)"
                       />
-                      <span class="pick-head">{{ s.short }}</span>
-                      <!-- Zwei Zeilen, mehr nicht: womit gerechnet wird und
-                           worauf. Alles Weitere steht im Fenster der
-                           laufenden Trennung — dort wartet man ohnehin. -->
-                      <span class="pick-sum">{{ facts.summary(s.key).method }}</span>
-                      <span class="pick-sum dim">{{ facts.summary(s.key).device }}</span>
+                      <span class="pick-head">{{ shortFor(s.key) }}</span>
+                      <!-- Eine Zeile darunter, mehr nicht: worauf gerechnet
+                           wird. Der Rechenweg steht schon in der Kopfzeile,
+                           ihn zu wiederholen waere eine Zeile fuer nichts. -->
+                      <!-- Das Geraet — und wenn es noch keines gibt, der
+                           Stand statt einer leeren Zeile: ein Backend, das
+                           nicht laeuft, stuende sonst wortlos da. -->
+                      <span class="pick-sum dim">{{
+                        facts.summary(s.key).device || facts.summary(s.key).method
+                      }}</span>
                     </label>
                   }
                 </div>
@@ -1002,7 +1006,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
              wird beim Start, siehe ask() weiter unten. Der Backendpfad bleibt stehen,
              weil dort ein Befehl steht, den jemand abtippen koennen muss —
              in einer Sprechblase waere er nicht zu markieren. -->
-        @if (m.site === 'server' && !m.downloaded) {
+        @if (m.site === 'backend' && !m.downloaded) {
           <div class="notice" style="margin-top: 12px">
             <span>
               <strong>{{ m.mode }}</strong> ({{ m.name }}) wird beim ersten Lauf
@@ -1167,39 +1171,42 @@ export class ImportPanelComponent {
 
   readonly ALL_SITES: readonly {
     key: Site;
-    label: string;
-    /** Was auf dem Knopf und ueber dem Eintrag steht. Ein Wort. */
+    /**
+     * Das eine Wort auf dem zugeklappten Knopf.
+     *
+     * Der Rechenweg, wo er den Unterschied macht — WebGPU gegen CUDA sind
+     * Faktor zwei auf derselben Karte (18,3 s gegen 9,1 s auf 4:33). Beim
+     * Serverweg steht der Ort, denn dort laeuft auch CUDA; das
+     * Unterscheidende ist, dass die Datei den Rechner verlaesst.
+     */
     short: string;
-    where: string;
+    /** Steht als Titel am Eintrag — ein Satz zum Nachlesen. */
     hint: string;
   }[] = [
     {
       key: 'device',
-      label: 'Auf diesem Gerät',
-      short: 'Browser',
-      where: 'im Browser, WebGPU',
+      short: 'WebGPU',
       hint:
-        'Rechnet im Browser auf der Grafikkarte. Kein Backend nötig, die ' +
-        'Datei verlässt das Gerät nicht. Beim ersten Lauf werden die ' +
-        'Modellgewichte geladen.',
+        'Rechnet im Browser auf der Grafikkarte dieses Rechners. Die Datei ' +
+        'bleibt hier. Braucht kein laufendes Backend; beim ersten Lauf ' +
+        'werden einmalig 174 MB Modellgewichte geladen. Rund 18 s für ' +
+        'viereinhalb Minuten.',
     },
     {
-      key: 'server',
-      label: 'Auf diesem Rechner',
-      short: 'Lokal',
-      where: 'Python, CUDA',
+      key: 'backend',
+      short: 'CUDA',
       hint:
-        'Rechnet im lokalen Python-Dienst mit CUDA. Deutlich schneller, ' +
-        'braucht aber das laufende Backend.',
+        'Rechnet auf derselben Grafikkarte, aber über CUDA statt WebGPU — ' +
+        'rund doppelt so schnell (9 s statt 18 s). Die Datei bleibt hier. ' +
+        'Braucht den laufenden Python-Dienst und kennt mehr Modelle.',
     },
     {
       key: 'cloud',
-      label: 'Über unseren Server',
       short: 'Server',
-      where: 'unser Server, USA',
       hint:
-        'Für Geräte, die ihre Grafikeinheit nicht freigeben. Die Datei ' +
-        'wird dafür hochgeladen und in den USA verarbeitet.',
+        'Für Geräte, die ihre Grafikeinheit nicht freigeben. Als einziger ' +
+        'der drei Wege verlässt die Datei dabei diesen Rechner: sie wird ' +
+        'hochgeladen und in den USA verarbeitet.',
     },
   ];
 
@@ -1289,6 +1296,38 @@ export class ImportPanelComponent {
   readonly currentSite = computed(
     () => this.ALL_SITES.find((s) => s.key === this.site()) ?? this.ALL_SITES[0],
   );
+
+  /**
+   * Das eine Wort auf dem zugeklappten Knopf.
+   *
+   * Meist der hinterlegte Kurzname — beim Geraetepfad aber das, was dort
+   * **wirklich** rechnet. „WebGPU" waere auf einem Geraet ohne
+   * Grafikfreigabe schlicht falsch: eine Zeile tiefer stuende in der
+   * Liste „Prozessor (WASM)", und zwei Angaben, die sich widersprechen,
+   * sind schlechter als eine ungenaue.
+   *
+   * Solange die Geraetepruefung laeuft, steht der Kurzname da. Das ist die
+   * Annahme, nicht die Messung — sie haelt hoechstens eine Sekunde, und
+   * ein Platzhalter an dieser Stelle liesse die Kopfzeile springen.
+   */
+  readonly currentShort = computed(() => this.shortFor(this.site()));
+
+  /**
+   * Der Name eines Ortes — am Knopf wie im Eintrag derselbe.
+   *
+   * Beim Geraetepfad das, was dort **wirklich** rechnet: „WebGPU" waere
+   * auf einem Geraet ohne Grafikfreigabe falsch, dort steht „WASM".
+   * Solange die Pruefung laeuft, steht der hinterlegte Name da — das ist
+   * die Annahme, nicht die Messung, sie haelt hoechstens eine Sekunde,
+   * und ein Platzhalter liesse die Kopfzeile springen.
+   */
+  shortFor(key: Site): string {
+    const ort = this.ALL_SITES.find((s) => s.key === key) ?? this.ALL_SITES[0];
+    if (key !== 'device') return ort.short;
+    const support = this.device.support();
+    if (!support) return ort.short;
+    return support.available ? 'WebGPU' : 'WASM';
+  }
 
   /**
    * Klappt zu, sobald der Fokus die Liste verlaesst.

@@ -287,6 +287,25 @@ info "Uebertrage $DEPLOY_DIST/ -> $REMOTE:$DEPLOY_TARGET"
 [ "$DRYRUN" -eq 1 ] && info "(Probelauf, es wird nichts geschrieben)"
 "${RSYNC[@]}" "$DEPLOY_DIST/" "$REMOTE:$DEPLOY_TARGET"
 
+# cloud.json: nur anlegen, nie ueberschreiben.
+#
+# Der Abgleich oben laesst sie aus, damit ein Deploy nicht die auf dem
+# Server hinterlegte Fassung mit Adresse und Token plattmacht. Genau das
+# hiesse aber auch: auf einem Server, der sie noch nicht hat, kaeme sie nie
+# an — und die Seite fragte bei jedem Aufruf eine Datei ab, die es nicht
+# gibt. Ein 404 in jedem Protokoll, bei jedem Besucher.
+#
+# Deshalb ein zweiter, winziger Abgleich mit --ignore-existing: fehlt sie,
+# wird die leere Fassung aus dem Bau hinterlegt; ist sie da, bleibt sie
+# unangetastet. --delete steht hier bewusst nicht dabei.
+if [ -f "$DEPLOY_DIST/cloud.json" ]; then
+  info "cloud.json anlegen, falls sie dort fehlt"
+  rsync -rlt --chmod=F644 --ignore-existing \
+    -e "$(printf '%q ' "${SSH[@]}")" \
+    $([ "$DRYRUN" -eq 1 ] && printf '%s' --dry-run) \
+    "$DEPLOY_DIST/cloud.json" "$REMOTE:$DEPLOY_TARGET"
+fi
+
 if [ "$DRYRUN" -eq 1 ]; then
   info "Probelauf beendet."
   exit 0

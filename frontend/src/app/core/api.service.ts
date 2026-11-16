@@ -19,7 +19,7 @@ const POLL_IDLE_MS = 5000;
 function fromServer(job: Job): Job {
   return {
     ...job,
-    site: 'server',
+    site: 'backend',
     progress_of: job.progress === null ? null : 'blöcke',
     // Das Backend liefert die Restzeit mit, sobald es sie messen kann;
     // fehlt das Feld (aeltere Fassung), bleibt es bei `null`.
@@ -28,7 +28,7 @@ function fromServer(job: Job): Job {
 }
 
 function modelFromServer(model: ModelInfo): ModelInfo {
-  return { ...model, site: 'server' };
+  return { ...model, site: 'backend' };
 }
 
 @Injectable({ providedIn: 'root' })
