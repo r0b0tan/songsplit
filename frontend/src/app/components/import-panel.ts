@@ -3,6 +3,7 @@ import { Component, ElementRef, computed, inject, output, signal, viewChild } fr
 import { ApiService, describeHttp } from '../core/api.service';
 import { IconComponent } from '../core/icon';
 import { DeviceFacts } from '../core/device-facts';
+import { CloudSeparator } from '../separate/cloud-separator';
 import { JobsService, type Site } from '../core/jobs.service';
 import type { Job, ModelInfo } from '../core/models';
 import { stemColor } from '../core/stem-colors';
@@ -645,6 +646,21 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         border-color: var(--accent);
         color: var(--accent);
       }
+      .transfer {
+        margin-top: 12px;
+        font-size: 0.92rem;
+      }
+      .transfer summary {
+        cursor: pointer;
+        color: var(--muted, inherit);
+      }
+      .transfer p {
+        margin: 8px 0 0;
+        color: var(--muted, inherit);
+      }
+      .transfer .est {
+        opacity: 0.85;
+      }
       button.start {
         min-height: 38px;
         padding: 8px 14px;
@@ -710,7 +726,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                Die Eintraege sind echte Optionsfelder in einer
                Radiogruppe: Pfeiltasten, Auswahl und Vorlesesoftware
                kommen damit ohne eigenen Code zurecht. -->
-          @if (jobs.serverAvailable) {
+          @if (jobs.serverAvailable || cloudOffered()) {
             <span class="mode-group">
             <span class="mode-label" id="site-label">Modus:</span>
             <div class="pick" (focusout)="onPickBlur($event)">
@@ -737,7 +753,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                   data-testid="site-panel"
                   (keydown.escape)="closePick()"
                 >
-                  @for (s of SITES; track s.key) {
+                  @for (s of sites(); track s.key) {
                     <label
                       class="pick-opt"
                       [class.on]="site() === s.key"
@@ -941,6 +957,31 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         }
       }
 
+      <!-- Was der Serverweg bedeutet — vor dem Klick, nicht danach.
+           Zugeklappt eine Zeile, damit die Karte kompakt bleibt; aufgeklappt
+           steht alles da, worauf sich die Einwilligung stuetzt. Die
+           Reihenfolge ist der Punkt: nach dem Hochladen waere der Hinweis
+           eine Mitteilung, keine Entscheidungsgrundlage. -->
+      @if (site() === 'cloud') {
+        <details class="transfer" data-testid="cloud-transfer">
+          <summary>Was passiert mit meiner Datei?</summary>
+          <p>
+            Sie wird auf unseren Server hochgeladen und dort getrennt — der
+            steht in den <strong>USA</strong> ({{ cloud.where() }}). Die
+            fertigen Spuren löschen wir nach {{ cloud.keepHours() }} Stunden;
+            beim Rechenanbieter können Datei und Ergebnis bis zu
+            {{ cloud.providerKeepDays() }} Tage gespeichert bleiben.
+            Einzelheiten stehen in der
+            <a href="datenschutz.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+          </p>
+          @if (cloudEstimate(); as dauer) {
+            <p class="est">Geschätzte Dauer: {{ dauer }}. Dazu kommt die
+              Wartezeit auf eine freie Grafikkarte — die lässt sich nicht
+              vorhersagen.</p>
+          }
+        </details>
+      }
+
       @if (error(); as e) {
         <div class="notice bad" style="margin-top: 12px"><span>{{ e }}</span></div>
       }
@@ -1002,6 +1043,7 @@ export class ImportPanelComponent {
   readonly api = inject(ApiService);
   readonly device = inject(DeviceSeparator);
   readonly facts = inject(DeviceFacts);
+  readonly cloud = inject(CloudSeparator);
   private readonly jobs = inject(JobsService);
 
   readonly VARIANT = VARIANT;
@@ -1022,7 +1064,48 @@ export class ImportPanelComponent {
    * öffentliche Variante überhaupt hat. „Auf diesem Rechner" meint den
    * Python-Dienst mit CUDA — schneller, aber er muss laufen.
    */
-  readonly SITES: readonly {
+  /**
+   * Wird der Serverweg hier ueberhaupt angeboten?
+   *
+   * Nur, wenn dieses Geraet selbst **nicht** rechnen kann. Das Kriterium
+   * ist absichtlich die Faehigkeit und nicht die Bauform: es gibt Handys
+   * mit nutzbarem WebGPU — die sollen lokal rechnen, statt eine Datei
+   * hochzuladen, die hierbleiben koennte — und es gibt Rechner ohne, in
+   * einer virtuellen Maschine, mit Software-Renderer oder abgeriegeltem
+   * Browser, die sonst nur der stundenlange WASM-Weg bliebe.
+   *
+   * `support()` ist `null`, solange geprueft wird; dann wird nichts
+   * angeboten. Lieber eine Zeile spaeter als eine falsche Zeile frueh.
+   */
+  readonly cloudOffered = computed(() => {
+    if (!this.jobs.cloudAvailable()) return false;
+    const support = this.device.support();
+    return support !== null && !support.available;
+  });
+
+  /**
+   * „etwa 40 Sekunden" — oder `null`.
+   *
+   * Beides muss vorliegen: die Länge der Datei und ein gemessener Wert vom
+   * Endpunkt. Fehlt eines, steht keine Zahl da. Geraten wird nicht; der
+   * Satz über die Wartezeit auf eine Karte steht ohnehin daneben, und zwei
+   * Unsicherheiten in einer Zahl zusammenzufassen hieße, keine zu nennen.
+   */
+  readonly cloudEstimate = computed(() => {
+    const seconds = this.fileSeconds();
+    if (seconds === null) return null;
+    const geschaetzt = this.cloud.estimateSeconds(seconds);
+    if (geschaetzt === null) return null;
+    if (geschaetzt < 90) return `etwa ${Math.round(geschaetzt / 5) * 5} Sekunden`;
+    return `etwa ${Math.round(geschaetzt / 30) / 2} Minuten`.replace('.', ',');
+  });
+
+  readonly sites = computed(() => [
+    ...this.ALL_SITES.filter((s) => s.key !== 'cloud'),
+    ...(this.cloudOffered() ? this.ALL_SITES.filter((s) => s.key === 'cloud') : []),
+  ]);
+
+  readonly ALL_SITES: readonly {
     key: Site;
     label: string;
     /** Was auf dem Knopf und ueber dem Eintrag steht. Ein Wort. */
@@ -1049,9 +1132,20 @@ export class ImportPanelComponent {
         'Rechnet im lokalen Python-Dienst mit CUDA. Deutlich schneller, ' +
         'braucht aber das laufende Backend.',
     },
+    {
+      key: 'cloud',
+      label: 'Über unseren Server',
+      short: 'Server',
+      where: 'unser Server, USA',
+      hint:
+        'Für Geräte, die ihre Grafikeinheit nicht freigeben. Die Datei ' +
+        'wird dafür hochgeladen und in den USA verarbeitet.',
+    },
   ];
 
   readonly file = signal<File | null>(null);
+  /** Länge der gewählten Datei in Sekunden, sobald gelesen. */
+  private readonly fileSeconds = signal<number | null>(null);
   /** Vorgabe: auf dem Gerät. */
   readonly site = signal<Site>('device');
   readonly model = signal('htdemucs');
@@ -1133,7 +1227,7 @@ export class ImportPanelComponent {
     viewChild<ElementRef<HTMLButtonElement>>('pickButton');
 
   readonly currentSite = computed(
-    () => this.SITES.find((s) => s.key === this.site()) ?? this.SITES[0],
+    () => this.ALL_SITES.find((s) => s.key === this.site()) ?? this.ALL_SITES[0],
   );
 
   /**
@@ -1314,6 +1408,13 @@ export class ImportPanelComponent {
     this.file.set(chosen);
     // Die Zusage galt der vorigen Datei und ihrer Länge, nicht dieser.
     this.memoryAgreed = null;
+    // Die Länge wird ohnehin gebraucht (Speicherwächter); hier wird sie
+    // einmal gelesen und gemerkt, damit die Dauerschätzung des
+    // Serverwegs ohne zweites Dekodieren auskommt.
+    this.fileSeconds.set(null);
+    if (chosen) {
+      void probeDuration(chosen).then((s) => this.fileSeconds.set(s));
+    }
   }
 
   /**
@@ -1497,7 +1598,9 @@ export class ImportPanelComponent {
       const job =
         this.site() === 'device'
           ? await this.device.start(file, this.model())
-          : await this.api.upload(file, this.model());
+          : this.site() === 'cloud'
+            ? await this.cloud.start(file)
+            : await this.api.upload(file, this.model());
       this.file.set(null);
       // Auch das Eingabefeld leeren. Sonst steht dort weiter ein Dateiname,
       // waehrend "Trennen" deaktiviert ist, und dieselbe Datei nochmal zu

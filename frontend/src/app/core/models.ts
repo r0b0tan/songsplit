@@ -3,12 +3,17 @@ export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 /**
  * Wo ein Job gerechnet wurde.
  *
- * `device` ist der Browser mit WebGPU, `server` das Python-Backend mit CUDA.
- * Beides steht im Verlauf nebeneinander, denn beides ist derselbe Song mit
+ * `device` ist der Browser mit WebGPU, `server` das Python-Backend mit CUDA,
+ * `cloud` unser Endpunkt für Geräte, die ihre Grafikeinheit nicht hergeben.
+ * Alle drei stehen im Verlauf nebeneinander, denn es ist derselbe Song mit
  * denselben Spuren — nur mit anderer Wartezeit und, messbar, demselben
  * Klang.
+ *
+ * Der Unterschied, der am Job hängen bleiben muss: bei `cloud` hat die
+ * Datei das Gerät verlassen. Deshalb steht die Herkunft in der Zeile des
+ * Verlaufs und nicht nur im Protokoll.
  */
-export type JobSite = 'device' | 'server';
+export type JobSite = 'device' | 'server' | 'cloud';
 
 export interface Stem {
   name: string;

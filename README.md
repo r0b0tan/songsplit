@@ -726,7 +726,12 @@ Zwei Dinge, die **nicht** helfen, beide gemessen und deshalb nicht eingebaut:
 
 - **Mehr `shifts`.** Demucs kann über zufällig verschobene Durchläufe mitteln.
   Von 1 auf 5 brachte das 0,22 dB bei fünffacher Laufzeit. Es bleibt überall
-  bei 1.
+  bei **0** — und das ist nicht dasselbe wie 1. `shifts=1` mittelt nichts: es
+  verschiebt die Eingabe um einen zufälligen Betrag und rechnet einmal. Man
+  bekommt also den Zufall ohne den Nutzen, und zwar sichtbar: zwei Läufe mit
+  `shifts=1` über dasselbe Lied stimmten auf der Gesangsspur nur auf 18,6 dB
+  überein. `shifts=0` überspringt den Zweig, ist reproduzierbar, eine Spur
+  schneller und entspricht dem, was der Browserpfad und der Serverweg rechnen.
 - **Zwei Schritte hintereinander** (erst Gesang abtrennen, dann die Begleitung
   zerlegen). Klingt plausibel, war aber deutlich schlechter: 8,10 dB gegenüber
   11,68 dB für einen einzelnen `htdemucs`-Durchlauf. Der zweite Durchlauf
@@ -1324,7 +1329,10 @@ python tools\make_test_wavs.py ..\testsignale
 
 Alle folgenden Zahlen sind auf dieser Maschine entstanden: RTX 4070 Laptop
 GPU (8 GB), 32 GB RAM, Treiber 596.21, CUDA 13.2, PyTorch 2.15.0+cu132,
-`audio-separator` 0.48.0, `shifts=1`.
+`audio-separator` 0.48.0, `shifts=1`. (Die Vorgabe ist inzwischen `shifts=0`
+— siehe „Welches Modell". Die Zahlen unten sind deshalb eher eine obere
+Schranke für die Laufzeit; am Klang ändert sich nichts, was über die Streuung
+der zufälligen Verschiebung hinausgeht.)
 
 ### Der ONNX-Export ist dasselbe Modell
 

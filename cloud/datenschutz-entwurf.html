@@ -1,0 +1,150 @@
+<!--
+  ENTWURF — nicht ausgeliefert, nicht geprüft.
+
+  Zwei Eingriffe in frontend/public/datenschutz.html:
+
+    A) Abschnitt 2 bekommt einen Vorbehalt. Seine heutige Zusage ist nach
+       dem Serverweg nicht mehr uneingeschränkt wahr, und eine
+       Datenschutzerklärung, die an einer Stelle zu viel verspricht, ist an
+       allen anderen auch nichts mehr wert.
+    B) Ein neuer Abschnitt beschreibt den Serverweg. Er ist unten als
+       fertiges Markup formuliert und folgt dem Muster von Abschnitt 4
+       (Cloudflare) — dort steht die Übermittlung in die USA schon einmal
+       sauber beschrieben.
+
+  WAS NOCH FEHLT und von mir nicht erfunden wurde — jede dieser Stellen ist
+  mit [[ ]] markiert:
+
+    1. Vollständige Firmierung und Anschrift des Rechenanbieters.
+    2. Ob ein Auftragsverarbeitungsvertrag nach Art. 28 DSGVO besteht —
+       und wenn nicht, muss er vor dem Start geschlossen werden.
+    3. Ob der Anbieter nach dem EU-U.S. Data Privacy Framework
+       zertifiziert ist. Falls ja: Art. 45 wie bei Cloudflare. Falls nein:
+       die Einwilligung nach Art. 49 Abs. 1 lit. a trägt allein — dann muss
+       der Hinweis auf das Risiko im Text deutlicher ausfallen, und die
+       entsprechende Variante unten ist zu wählen.
+
+  Dies ist ein Entwurf von einem Sprachmodell, keine Rechtsberatung. Vor dem
+  Ausliefern anwaltlich prüfen lassen — es geht um eine Übermittlung in ein
+  Drittland, und die ist der Teil, bei dem Abmahnungen teuer werden.
+-->
+
+<!-- ============ A) Abschnitt 2 ersetzen ============================== -->
+
+<section class="row">
+  <h2>2. Ihre Musik bleibt auf Ihrem Gerät</h2>
+  <div class="body">
+    <p>
+      MixApart trennt einen Song in einzelne Spuren. Diese Trennung läuft
+      vollständig in Ihrem Browser: Die Datei, die Sie auswählen oder in das
+      Feld ziehen, wird von Ihrem Gerät gelesen, dort entschlüsselt und dort
+      gerechnet. Sie wird nicht hochgeladen.
+    </p>
+    <p>
+      An unseren Server geht dabei weder die Datei noch ihr Name, ihre Länge
+      oder sonst eine Angabe daraus. Die getrennten Spuren entstehen im
+      Arbeitsspeicher des Browser-Tabs und sind verschwunden, sobald Sie ihn
+      schließen oder die Seite neu laden. Wer eine Spur behalten will,
+      speichert sie selbst als Datei auf seinem Gerät.
+    </p>
+    <p>
+      <strong>Eine Ausnahme gibt es, und sie geschieht nur auf Ihren
+      ausdrücklichen Wunsch:</strong> Geräte, deren Browser die
+      Grafikeinheit nicht freigibt, können hier nicht rechnen. Für sie
+      bieten wir an, die Trennung auf einem Server vornehmen zu lassen.
+      Dieser Weg steht nicht zur Auswahl, solange Ihr Gerät selbst rechnen
+      kann, und er startet nie von allein. Was dabei passiert, steht in
+      Abschnitt [[NUMMER]].
+    </p>
+  </div>
+</section>
+
+<!-- ============ B) Neuer Abschnitt =================================== -->
+
+<section class="row">
+  <h2>[[NUMMER]]. Trennen über unseren Server (freiwillig)</h2>
+  <div class="body">
+    <p>
+      Nicht jedes Gerät kann die Trennung selbst rechnen. Insbesondere auf
+      Android-Geräten geben die Browser die Grafikeinheit bisher nur für
+      einen Teil der verbauten Modelle frei. Für diese Geräte bieten wir an,
+      die Trennung auf einem Server vornehmen zu lassen. Sie entscheiden das
+      selbst: Der Weg erscheint nur dann zur Auswahl, wenn Ihr Gerät nicht
+      selbst rechnen kann, und er wird nur gegangen, wenn Sie ihn
+      ausdrücklich wählen.
+    </p>
+
+    <h3>Welche Daten verarbeitet werden</h3>
+    <p>
+      Wählen Sie diesen Weg, wird die von Ihnen ausgewählte Audiodatei an
+      den Server übertragen und dort in Spuren getrennt. Übertragen werden
+      dabei die Datei selbst, ihr Dateiname und Ihre IP-Adresse. Die
+      getrennten Spuren werden an Ihr Gerät zurückgesendet.
+    </p>
+
+    <h3>Wo verarbeitet wird</h3>
+    <p>
+      Die Verarbeitung findet auf Servern in den
+      <strong>Vereinigten Staaten von Amerika</strong> statt (Region
+      us-east, Virginia). Betreiber ist [[FIRMIERUNG UND ANSCHRIFT DES
+      RECHENANBIETERS]].
+    </p>
+
+    <h3>Rechtsgrundlage</h3>
+    <p>
+      Rechtsgrundlage der Verarbeitung ist Ihre Einwilligung nach Art. 6
+      Abs. 1 lit. a DSGVO. Da die Daten in die USA und damit in ein
+      Drittland übermittelt werden, stützt sich diese Übermittlung auf Ihre
+      ausdrückliche Einwilligung nach Art. 49 Abs. 1 lit. a DSGVO. Sie
+      erteilen sie, indem Sie den Serverweg auswählen und die Trennung
+      starten.
+    </p>
+    <p>
+      <!-- Variante 1 — nur verwenden, wenn [[3]] mit "ja" beantwortet ist. -->
+      [[FALLS ZERTIFIZIERT:]] Mit dem Anbieter besteht ein Vertrag zur
+      Auftragsverarbeitung gemäß Art. 28 DSGVO. Der Anbieter ist nach dem
+      EU-U.S. Data Privacy Framework zertifiziert; die Übermittlung stützt
+      sich ergänzend auf den Angemessenheitsbeschluss der EU-Kommission
+      (Art. 45 DSGVO) sowie auf die vertraglich vereinbarten
+      Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO).
+    </p>
+    <p>
+      <!-- Variante 2 — wenn nicht zertifiziert. Dann ist dieser Hinweis
+           Pflicht und nicht Beiwerk: Art. 49 verlangt, dass Sie über die
+           Risiken unterrichtet wurden. -->
+      [[FALLS NICHT ZERTIFIZIERT:]] Wir weisen darauf hin, dass in den USA
+      kein Datenschutzniveau besteht, das dem der Europäischen Union
+      entspricht. Insbesondere können US-Behörden unter bestimmten
+      Voraussetzungen auf dort gespeicherte Daten zugreifen, ohne dass Ihnen
+      dagegen wirksame Rechtsbehelfe zur Verfügung stehen. Eine Übermittlung
+      findet ausschließlich statt, wenn Sie sich in Kenntnis dieses Risikos
+      ausdrücklich dafür entscheiden.
+    </p>
+
+    <h3>Wie lange gespeichert wird</h3>
+    <p>
+      Die getrennten Spuren löschen wir automatisch spätestens sechs Stunden
+      nach ihrer Entstehung. Unabhängig davon speichert der Rechenanbieter
+      die an eine Funktion übergebenen Daten und ihre Ergebnisse nach
+      eigenen Angaben bis zu sieben Tage und löscht sie danach. Eine
+      dauerhafte Speicherung Ihrer Musik findet nicht statt; ein Nutzerkonto
+      gibt es nicht, und die Dateien werden keinem Konto zugeordnet.
+    </p>
+    <p>
+      Ihre Musik wird nicht ausgewertet, nicht an Dritte weitergegeben und
+      nicht zum Trainieren von Modellen verwendet. Das verwendete
+      Trennmodell ist dasselbe, das auch auf Ihrem Gerät liefe; es lernt
+      nicht aus den Dateien, die es trennt.
+    </p>
+
+    <h3>Widerruf</h3>
+    <p>
+      Sie können Ihre Einwilligung jederzeit für die Zukunft widerrufen,
+      indem Sie den Serverweg nicht mehr auswählen. Die Rechtmäßigkeit der
+      bis zum Widerruf erfolgten Verarbeitung bleibt davon unberührt. Da wir
+      die Daten ohne Konto verarbeiten und automatisch löschen, ist eine
+      vorzeitige Löschung einzelner Dateien technisch nur über eine Anfrage
+      an die in Abschnitt 1 genannte Adresse möglich.
+    </p>
+  </div>
+</section>

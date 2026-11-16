@@ -269,8 +269,14 @@ fi
 # -rlt statt -a: Besitzer, Gruppe und lokale Rechte bleiben draussen, nginx
 # bekommt stattdessen feste 755/644. .well-known gehoert certbot, nicht dem
 # Bau — --delete darf es nicht wegraeumen.
+#
+# cloud.json ebenso: im Bau steht sie mit leeren Werten, auf dem Server mit
+# Adresse und Token des Trennendpunkts. Ohne diese Ausnahme wuerde jeder
+# Deploy den Serverweg abschalten, und zwar lautlos — die Seite verhielte
+# sich dann einfach so, als gaebe es ihn nicht.
 
-RSYNC=(rsync -rlt --human-readable --info=stats1 --chmod=D755,F644 --exclude='.well-known')
+RSYNC=(rsync -rlt --human-readable --info=stats1 --chmod=D755,F644 \
+       --exclude='.well-known' --exclude='cloud.json')
 # Fortschrittsbalken nur im Terminal — in einem Log waere er nur Rauschen.
 [ -t 1 ] && RSYNC+=(--info=progress2)
 [ "$DELETE" -eq 1 ] && RSYNC+=(--delete)

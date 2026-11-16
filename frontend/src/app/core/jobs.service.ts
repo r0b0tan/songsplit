@@ -13,6 +13,7 @@
  */
 import { Injectable, computed, inject } from '@angular/core';
 
+import { CloudSeparator } from '../separate/cloud-separator';
 import { DeviceSeparator } from '../separate/device-separator';
 import { StemStore } from '../separate/stem-store';
 import { ApiService } from './api.service';
@@ -20,19 +21,30 @@ import type { Job, ModelInfo } from './models';
 import { VARIANT } from './variant';
 
 /** Woher die Oberfläche einen Job rechnen lässt. */
-export type Site = 'device' | 'server';
+export type Site = 'device' | 'server' | 'cloud';
 
 @Injectable({ providedIn: 'root' })
 export class JobsService {
   private readonly api = inject(ApiService);
   private readonly device = inject(DeviceSeparator);
+  private readonly cloud = inject(CloudSeparator);
   private readonly store = inject(StemStore);
 
   /** Gibt es überhaupt eine Wahl, oder nur „Auf diesem Gerät"? */
   readonly serverAvailable = VARIANT.backend;
 
+  /**
+   * Steht der Serverweg zur Verfügung?
+   *
+   * Nur ob er **eingerichtet** ist — nicht, ob er angeboten werden soll.
+   * Das entscheidet die Fähigkeitsprüfung am Gerät: wo der Browser selbst
+   * rechnen kann, taucht er gar nicht erst auf. Ein PC mit Grafikkarte
+   * soll nicht aus Neugier Rechenzeit verbrauchen, die jemand bezahlt.
+   */
+  readonly cloudAvailable = computed(() => this.cloud.available());
+
   readonly jobs = computed(() =>
-    [...this.device.jobs(), ...this.api.jobs()].sort(
+    [...this.device.jobs(), ...this.cloud.jobs(), ...this.api.jobs()].sort(
       (a, b) => b.created_at - a.created_at,
     ),
   );
@@ -40,6 +52,7 @@ export class JobsService {
   /** Modi beider Orte, für die Importkarte. */
   readonly models = computed((): ModelInfo[] => [
     ...this.device.models(),
+    ...this.cloud.models(),
     ...this.api.models(),
   ]);
 
@@ -50,7 +63,7 @@ export class JobsService {
   async init(): Promise<void> {
     // Beides gleichzeitig: das Abfragen des Geräts dauert, weil es die
     // Runtime lädt, und das Backend soll darauf nicht warten.
-    await Promise.all([this.api.init(), this.device.init()]);
+    await Promise.all([this.api.init(), this.device.init(), this.cloud.init()]);
   }
 
   /**
@@ -84,15 +97,21 @@ export class JobsService {
       this.device.remove(job.id);
       return;
     }
+    if (job.site === 'cloud') {
+      this.cloud.remove(job.id);
+      return;
+    }
     await this.api.remove(job.id);
   }
 
   async removeMany(jobs: readonly Job[]): Promise<string[]> {
     const device = jobs.filter((j) => j.site === 'device');
     for (const job of device) this.device.remove(job.id);
+    const cloud = jobs.filter((j) => j.site === 'cloud');
+    for (const job of cloud) this.cloud.remove(job.id);
     const server = jobs.filter((j) => j.site === 'server').map((j) => j.id);
     const gone = server.length ? await this.api.removeMany(server) : [];
-    return [...device.map((j) => j.id), ...gone];
+    return [...device.map((j) => j.id), ...cloud.map((j) => j.id), ...gone];
   }
 
   /**
@@ -103,8 +122,8 @@ export class JobsService {
    * ein laufender Job seine Puffer noch braucht.
    */
   async removeFinished(): Promise<{ deleted: string[]; kept: number }> {
-    const onDevice = this.device.removeFinished();
-    const keptOnDevice = this.device.jobs().length;
+    const onDevice = [...this.device.removeFinished(), ...this.cloud.removeFinished()];
+    const keptOnDevice = this.device.jobs().length + this.cloud.jobs().length;
     if (!this.api.enabled) {
       return { deleted: onDevice, kept: keptOnDevice };
     }

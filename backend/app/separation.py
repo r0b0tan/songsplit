@@ -56,10 +56,28 @@ class ModelPreset:
     #: Abweichende Anzeigenamen fuer einzelne Spuren dieses Modells.
     #: Bei einem Zweispurmodell heisst "other" eben Begleitung, nicht Rest.
     stem_labels: tuple[tuple[str, str], ...] = ()
-    # Demucs mittelt ueber zufaellig verschobene Durchlaeufe. Gemessen bringt
-    # das fast nichts (+0,2 dB bei fuenffacher Laufzeit), deshalb bleibt es
-    # ueberall bei 1. Siehe README, Abschnitt "Welches Modell".
-    shifts: int = 1
+    #: Wie viele zufaellig verschobene Durchlaeufe gemittelt werden. Null.
+    #:
+    #: Hier stand lange 1, in der Annahme, das sei "ein Durchlauf" und damit
+    #: der neutrale Wert. Das ist es nicht. In ``apply_model`` heisst
+    #: ``shifts=1``: verschiebe die Eingabe um einen **zufaelligen** Betrag,
+    #: rechne, schiebe zurueck — und mittele ueber genau diese eine Ziehung.
+    #: Gemittelt wird also nichts, der Zufall bleibt. ``shifts=0``
+    #: ueberspringt den Zweig ganz (``if shifts:``).
+    #:
+    #: Der Unterschied ist messbar, und zwar genau dort, wo er wehtut:
+    #: zwei Laeufe mit ``shifts=1`` ueber dasselbe Lied stimmten auf der
+    #: Gesangsspur nur auf 18,6 dB ueberein. Dieselbe Trennung zweimal
+    #: angestossen ergab also hoerbar verschiedene Spuren — und beim
+    #: Vergleich des Serverwegs gegen das Backend war dieser Zufall der
+    #: ganze gemessene Abstand.
+    #:
+    #: Null kostet nichts: der Nutzen faengt erst beim Mitteln an, und von
+    #: 1 auf 5 waren es 0,22 dB bei fuenffacher Laufzeit. Ohne Verschiebung
+    #: ist die Trennung reproduzierbar, eine Spur schneller, und sie
+    #: entspricht dem, was der Browser und der Serverweg rechnen.
+    #: Siehe README, Abschnitt "Welches Modell".
+    shifts: int = 0
     is_default: bool = False
 
 
@@ -196,7 +214,7 @@ def check_available() -> tuple[bool, str | None]:
         return True, "audio-separator (Version unbekannt)"
 
 
-def _get_separator(output_dir: Path, shifts: int = 1):
+def _get_separator(output_dir: Path, shifts: int = 0):
     """Baut einen Separator fuer dieses Ausgabeverzeichnis."""
     from audio_separator.separator import Separator
 
@@ -206,8 +224,10 @@ def _get_separator(output_dir: Path, shifts: int = 1):
         output_dir=str(output_dir),
         output_format="WAV",
         sample_rate=44_100,
-        # shifts mittelt ueber zufaellig verschobene Durchlaeufe. Mehr heisst
-        # weniger Artefakte bei linear steigender Laufzeit.
+        # shifts mittelt ueber zufaellig verschobene Durchlaeufe. Ab zwei
+        # heisst mehr: etwas weniger Artefakte bei linear steigender
+        # Laufzeit. Bei eins heisst es nur Zufall ohne Mittelung — siehe
+        # `ModelPreset.shifts`.
         demucs_params={
             "segment_size": "Default",
             "shifts": shifts,

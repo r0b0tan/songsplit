@@ -128,6 +128,21 @@ async function main() {
 
     console.log('\nOEFFENTLICHE VARIANTE (Chromium, kein Backend)\n');
 
+    // Der Geraetehinweis wegklicken, falls er aufgeht.
+    //
+    // Er geht hier auf, und zwar zu Recht: der Testbrowser hat unter WSL2
+    // keinen Grafikadapter, also sagt die Seite genau das. Als modaler
+    // Dialog faengt er alle Klicks ab, und jede folgende Pruefung lief in
+    // einen Timeout, ohne dass am Dialog etwas falsch waere.
+    //
+    // Weggeklickt wird ueber den Knopf und nicht ueber Escape: so wird
+    // nebenbei geprueft, dass der Weg hinaus auch wirklich einer ist.
+    const hinweis = page.locator('dialog.device-modal[open]');
+    if (await hinweis.count()) {
+      await hinweis.getByRole('button', { name: 'Verstanden' }).click();
+      await hinweis.waitFor({ state: 'hidden', timeout: 5_000 });
+    }
+
     // ------------------------------------------------- 1. kein Backend
     await page.waitForTimeout(1500);
     check(
@@ -519,7 +534,7 @@ async function main() {
     );
 
     const foreign = [...new Set(requests)].filter(
-      (p) => !/^\/(index\.html|$|main|styles|worker|polyfills|favicon|app-icon|mixapart|legal|robots|impressum|datenschutz|apple-touch|vendor|models|reference|chunk)/.test(p),
+      (p) => !/^\/(index\.html|$|main|styles|worker|polyfills|favicon|app-icon|mixapart|legal|robots|impressum|datenschutz|apple-touch|icon_no_bg|vendor|models|reference|chunk|cloud\.json)/.test(p),
     );
     check(
       'Keine Anfrage außer eigenen Dateien',

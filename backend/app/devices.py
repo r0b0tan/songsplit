@@ -9,7 +9,10 @@ from .config import settings
 log = logging.getLogger(__name__)
 
 # Auf einer RTX 4070 Laptop (8 GB) gemessen, 4:33 Stereo, shifts=1,
-# als belegte Spitze / reservierte Spitze:
+# als belegte Spitze / reservierte Spitze. Die Vorgabe ist inzwischen
+# shifts=0; das polstert die Eingabe nicht mehr um eine halbe Sekunde und
+# braucht damit eher etwas weniger. Die Zahlen bleiben als obere Schranke
+# stehen:
 #   htdemucs          0,53 / 0,71 GiB
 #   htdemucs_6s       0,57 / 0,73 GiB
 #   htdemucs_ft       1,01 / 1,18 GiB

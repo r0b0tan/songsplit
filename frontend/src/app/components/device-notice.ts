@@ -56,7 +56,7 @@ import { isMobileDevice } from '../separate/platform';
            trotzdem, und vorgelesen wird ueber aria-labelledby die
            Ueberschrift. -->
       <div class="sheet" #sheet tabindex="-1">
-        <h2 id="device-notice-title">Leider wird Ihr Gerät momentan nicht unterstützt</h2>
+        <h2 id="device-notice-title">{{ title() }}</h2>
 
         <p>{{ lead() }}</p>
 
@@ -64,6 +64,7 @@ import { isMobileDevice } from '../separate/platform';
              wer hier liest, sucht einen Ausweg, keine Systemvoraussetzungen
              — und eine Angabe wie „ab Chrome 121" waere in einem Jahr
              falsch, ohne dass es jemandem auffiele. -->
+        @if (!jobs.cloudAvailable()) {
         <p class="where">
           Gut läuft MixApart auf einem Rechner mit Windows, macOS oder Linux
           und einem aktuellen Chrome oder Edge. Auf Smartphones und Tablets
@@ -71,6 +72,7 @@ import { isMobileDevice } from '../separate/platform';
           Hersteller erweitern das schrittweise, es lohnt sich also, später
           noch einmal vorbeizuschauen.
         </p>
+        }
 
         <!-- Der Code steht fuer sich, gross genug zum Vorlesen. Er ist der
              Grund, warum niemand einen Treiberstring abtippen muss. -->
@@ -191,7 +193,7 @@ import { isMobileDevice } from '../separate/platform';
 })
 export class DeviceNoticeComponent {
   protected readonly device = inject(DeviceSeparator);
-  private readonly jobs = inject(JobsService);
+  protected readonly jobs = inject(JobsService);
 
   private readonly dlg = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
   private readonly sheet = viewChild.required<ElementRef<HTMLElement>>('sheet');
@@ -230,6 +232,20 @@ export class DeviceNoticeComponent {
    * dieses Fenster liest, hat die Seite gerade erst geoeffnet und will
    * wissen, ob er bleiben kann, nicht welcher Adapter fehlt.
    */
+  /**
+   * Die Ueberschrift haengt daran, ob es einen Ausweg gibt.
+   *
+   * „Nicht unterstuetzt" waere falsch, sobald der Serverweg bereitsteht:
+   * benutzbar ist die Anwendung dann sehr wohl, nur nicht auf diesem
+   * Rechenweg. Eine Ueberschrift, die mehr behauptet als zutrifft,
+   * vertreibt Leute, die bleiben koennten.
+   */
+  protected title(): string {
+    return this.jobs.cloudAvailable()
+      ? 'Dieses Gerät kann nicht selbst trennen'
+      : 'Leider wird Ihr Gerät momentan nicht unterstützt';
+  }
+
   protected lead(): string {
     return this.mobile
       ? 'MixApart trennt die Spuren direkt hier im Browser und braucht dafür ' +
@@ -250,6 +266,18 @@ export class DeviceNoticeComponent {
    * endet — und niemand haette es vorher gesagt.
    */
   protected foot(): string {
+    // Mit Serverweg ist das die Auskunft, die zaehlt — und sie nennt den
+    // Preis gleich mit. Ein Angebot, dessen Haken erst spaeter auftaucht,
+    // waere schlechter als keines: die Datei ist dann schon unterwegs.
+    if (this.jobs.cloudAvailable()) {
+      return (
+        'Sie können trotzdem trennen: In der Karte darunter steht „Über ' +
+        'unseren Server“ zur Wahl. Dabei wird Ihre Datei hochgeladen und in ' +
+        'den USA verarbeitet — was das genau heißt, steht dort zum ' +
+        'Aufklappen. Auf diesem Gerät bliebe sonst nur der Prozessor, und ' +
+        'der braucht für ein ganzes Lied ein Vielfaches der Zeit.'
+      );
+    }
     return this.mobile
       ? 'Weiterklicken können Sie trotzdem: dann rechnet der Prozessor. Das ' +
           'dauert bei einem ganzen Lied eher eine Stunde als zehn Minuten, und ' +

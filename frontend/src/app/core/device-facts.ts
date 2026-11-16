@@ -12,6 +12,7 @@
  */
 import { Injectable, inject } from '@angular/core';
 
+import { CloudSeparator } from '../separate/cloud-separator';
 import { DeviceSeparator } from '../separate/device-separator';
 import { adapterLabel } from '../separate/runtime';
 import { ApiService } from './api.service';
@@ -34,13 +35,18 @@ export interface Summary {
 export class DeviceFacts {
   private readonly api = inject(ApiService);
   private readonly browser = inject(DeviceSeparator);
+  private readonly cloud = inject(CloudSeparator);
 
   summary(site: Site): Summary {
-    return site === 'device' ? this.browserSummary() : this.serverSummary();
+    if (site === 'device') return this.browserSummary();
+    if (site === 'cloud') return this.cloudSummary();
+    return this.serverSummary();
   }
 
   rows(site: Site): Fact[] {
-    return site === 'device' ? this.browserRows() : this.serverRows();
+    if (site === 'device') return this.browserRows();
+    if (site === 'cloud') return this.cloudRows();
+    return this.serverRows();
   }
 
   private browserSummary(): Summary {
@@ -59,6 +65,53 @@ export class DeviceFacts {
       method: device.effective.toUpperCase(),
       device: device.gpu_name ?? 'Prozessor dieses Rechners',
     };
+  }
+
+  /**
+   * Die zwei Zeilen in der Auswahl.
+   *
+   * Die Karte steht hier **nicht**, und das ist kein Vergessen: welche es
+   * wird, entscheidet sich erst beim Start des Containers — der Endpunkt
+   * fragt eine Liste an und nimmt die nächste freie. Eine Karte vorher zu
+   * nennen hieße, sie zu raten.
+   *
+   * Was stattdessen dasteht, ist die Angabe, die für die Entscheidung
+   * zählt: wohin die Datei geht.
+   */
+  private cloudSummary(): Summary {
+    return {
+      method: this.cloud.where() || 'unser Server',
+      device: 'Grafikkarte wird zugeteilt',
+    };
+  }
+
+  /**
+   * Die lange Fassung, im Fenster der laufenden Trennung.
+   *
+   * Die wichtigste Zeile darin ist „Modell": sie beantwortet die Frage,
+   * die sonst offenbliebe — ob man sich mit dem Serverweg ein schlechteres
+   * Ergebnis einhandelt. Tut man nicht, es ist derselbe Graph und dieselbe
+   * Laufzeitfassung wie im Browser, und das ist gemessen.
+   */
+  private cloudRows(): Fact[] {
+    const run = this.cloud.run();
+    const rows: Fact[] = [
+      { label: 'Ort', value: this.cloud.where() || 'unbekannt' },
+      {
+        label: 'Grafikkarte',
+        value: run?.karte || 'wird zugeteilt',
+      },
+      { label: 'Modell', value: 'htdemucs — dasselbe wie auf dem Gerät' },
+      { label: 'Spuren', value: 'MP3, 192 kbit/s' },
+      {
+        label: 'Aufbewahrung',
+        value:
+          `Spuren ${this.cloud.keepHours()} Stunden · beim Anbieter bis zu ` +
+          `${this.cloud.providerKeepDays()} Tage`,
+      },
+      { label: 'Daten', value: 'die Datei hat dieses Gerät verlassen' },
+    ];
+    return rows;
   }
 
   private browserRows(): Fact[] {

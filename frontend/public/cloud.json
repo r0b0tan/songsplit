@@ -1,0 +1,8 @@
+{
+  "_": "Der Serverweg. Leere Werte heissen: es gibt ihn nicht, und die Seite verhaelt sich, als waere nichts. Die ausgelieferte Fassung auf dem Server traegt Adresse und Token; deploy.sh laesst sie in Ruhe (--exclude). DIESE Datei steht in Git — den Token also hier NICHT eintragen, sondern direkt auf dem Server.",
+  "url": "",
+  "token": "",
+  "region": "us-east · Virginia, USA",
+  "keep_hours": 6,
+  "provider_keep_days": 7
+}
