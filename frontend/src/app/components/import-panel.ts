@@ -397,18 +397,63 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       .pick::after {
         content: '';
         position: absolute;
+        /* „top: 50%" statt gar nichts. Ohne Angabe stand das Kaestchen an
+           seiner statischen Stelle — also dort, wo es im Textfluss gelandet
+           waere — und wurde von Hand zurechtgeschoben. Das haelt nur so
+           lange, wie Schriftgroesse und Zeilenhoehe daneben sich nicht
+           aendern. */
+        top: 50%;
+        /* In px, und das ist gemessen und nicht aus Bequemlichkeit so.
+           Die naheliegende Idee ist em: dann skalierten Kaestchen und
+           Schrift gemeinsam, und der Ausgleich unten stimmte bei jeder
+           Schriftgroesse mit. Ausprobiert und gegengemessen — er stimmt
+           schlechter:
+
+             Schrift     in px      in em
+              11px       -0,33      -0,33
+              16px       -0,38      -1,09
+              22px       +0,02      -1,08
+              30px       +0,41      -1,19
+                       (Abweichung des Schwerpunkts in px)
+
+           Der Ausgleich hat zwei Anteile, und nur einer haengt an der
+           Schriftgroesse; der andere haengt an der Groesse des Kaestchens.
+           Skaliert man das Kaestchen mit, skaliert man dessen Fehleranteil
+           gleich mit, statt ihn loszuwerden. Wer also hier auf em
+           umstellen will: die Zahlen oben sind der Grund, es nicht zu
+           tun. */
         right: 6px;
         width: 4px;
         height: 4px;
-        border-right: 1.2px solid currentColor;
-        border-bottom: 1.2px solid currentColor;
-        transform: translateY(-1.5px) rotate(45deg);
-        opacity: 0.75;
+        border-right: 1.8px solid currentColor;
+        border-bottom: 1.8px solid currentColor;
+        /* Die Haelfte der eigenen Hoehe setzt das Kaestchen auf die Mitte
+           des Knopfes. Das reicht nicht: gedreht faellt die sichtbare
+           Tinte nicht mit der Mitte des Kaestchens zusammen, und die
+           Schrift daneben hat ihre eigene Mitte — die ihrer Glyphen, und
+           die liegt bei einem Wort ohne Unterlaengen hoeher als die der
+           Zeilenbox.
+
+           Die 1,7 px stammen aus dem **Bild**: Knopf achtfach
+           aufgenommen, Zeile fuer Zeile ausgewertet, Schwerpunkt der
+           Schrift gegen Schwerpunkt des Winkels. Vorher stand hier eine
+           Zahl aus einer Rechnung ueber Transformationsmatrix und
+           measureText — die war um gut zwei Pixel daneben, weil der
+           Browser die Oberlaenge anders zeichnet, als das Canvas sie
+           meldet. Gegen ein Modell zu messen hilft nichts, wenn das
+           Modell der Fehler ist. */
+        transform: translateY(calc(-50% - 1.7px)) rotate(45deg);
+        opacity: 0.9;
         pointer-events: none;
       }
-      /* Aufgeklappt zeigt das Winkelchen nach oben. */
+      /* Aufgeklappt zeigt das Winkelchen nach oben. Der Ausgleich ist
+         **nicht** der gespiegelte von oben, auch wenn das naheliegt: die
+         Drehung um 225 Grad legt dieselbe Tinte auf die andere Seite der
+         Kaestchenmitte. Gespiegelt gerechnet lag der Winkel vier Pixel
+         zu hoch. Auch dieser Wert ist am Bild gemessen, nicht
+         hergeleitet. */
       .pick:has([aria-expanded='true'])::after {
-        transform: translateY(1px) rotate(225deg);
+        transform: translateY(calc(-50% + 1.1px)) rotate(225deg);
       }
       /* Das Wort steht in der Schriftfarbe, das Bedienbare daneben in der
          Akzentfarbe: so ist auf einen Blick zu sehen, was hier nur
@@ -685,6 +730,42 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         font-size: 12px;
       }
 
+      /* Schmale Karte: alles untereinander, nichts nebeneinander.
+         Zwei Modi nebeneinander ergeben auf einem Handy zwei schmale
+         Kaestchen, in denen „Instrumente" umbricht und die dritte Karte
+         allein in der naechsten Zeile steht — eine Reihe, die halb leer
+         ist. Untereinander sind sie gleich breit, gleich hoch und in
+         derselben Reihenfolge lesbar wie angeordnet.
+
+         Die Grenze liegt bei 460px und nicht bei den 350px darunter: ein
+         Telefon im Hochformat hat 360 bis 430 CSS-Pixel, und genau dort
+         trat der Fall auf. Die 350er-Regel bleibt daneben stehen, sie
+         macht etwas anderes — sie nimmt Polster weg, wenn es wirklich eng
+         wird. */
+      @container (max-width: 460px) {
+        .modes {
+          grid-template-columns: 1fr;
+        }
+        /* Mittig, weil die Karte jetzt die ganze Breite hat: linksbuendig
+           stuende die Schrift an einer Kante, zu der sonst nichts mehr
+           ausgerichtet ist. */
+        .mode {
+          align-items: center;
+          text-align: center;
+        }
+        .go {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        button.demo,
+        button.start {
+          width: 100%;
+          /* Die Knoepfe sind inline-flex mit Zeichen und Beschriftung;
+             ohne diese Zeile klebte beides am linken Rand eines Knopfes,
+             der die ganze Breite einnimmt. */
+          justify-content: center;
+        }
+      }
       @container (max-width: 350px) {
         .inner {
           padding: 13px;
