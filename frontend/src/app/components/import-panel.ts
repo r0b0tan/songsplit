@@ -391,70 +391,19 @@ const ACCEPTED = /\.(mp3|wav)$/i;
          der Text, der vorher dort stand. Erst beim Zeigen zeigt es, dass
          es eines ist.
 
-         Das Winkelchen zeichnet der Rahmen eines leeren Kaestchens, nicht
-         der Pfeil des Systems: dessen Groesse und Farbe richten sich nach
-         der Oberflaeche des Betriebssystems und passten hier zu nichts. */
-      .pick::after {
-        content: '';
-        position: absolute;
-        /* „top: 50%" statt gar nichts. Ohne Angabe stand das Kaestchen an
-           seiner statischen Stelle — also dort, wo es im Textfluss gelandet
-           waere — und wurde von Hand zurechtgeschoben. Das haelt nur so
-           lange, wie Schriftgroesse und Zeilenhoehe daneben sich nicht
-           aendern. */
-        top: 50%;
-        /* In px, und das ist gemessen und nicht aus Bequemlichkeit so.
-           Die naheliegende Idee ist em: dann skalierten Kaestchen und
-           Schrift gemeinsam, und der Ausgleich unten stimmte bei jeder
-           Schriftgroesse mit. Ausprobiert und gegengemessen — er stimmt
-           schlechter:
+         Das Winkelchen war lange ein um 45 Grad gedrehtes Quadrat aus zwei
+         Raendern. Das sieht sparsam aus und ist es nicht: gedreht liegt
+         die sichtbare Tinte eines solchen Kaestchens nicht in seiner Box,
+         sondern daneben, und jede Zentrierung braucht einen Ausgleich von
+         Hand. Drei Anlaeufe, drei Messungen, dreimal daneben — und beim
+         naechsten Eingriff an Schrift oder Zeilenhoehe waere es wieder
+         krumm gewesen.
 
-             Schrift     in px      in em
-              11px       -0,33      -0,33
-              16px       -0,38      -1,09
-              22px       +0,02      -1,08
-              30px       +0,41      -1,19
-                       (Abweichung des Schwerpunkts in px)
-
-           Der Ausgleich hat zwei Anteile, und nur einer haengt an der
-           Schriftgroesse; der andere haengt an der Groesse des Kaestchens.
-           Skaliert man das Kaestchen mit, skaliert man dessen Fehleranteil
-           gleich mit, statt ihn loszuwerden. Wer also hier auf em
-           umstellen will: die Zahlen oben sind der Grund, es nicht zu
-           tun. */
-        right: 6px;
-        width: 4px;
-        height: 4px;
-        border-right: 1.8px solid currentColor;
-        border-bottom: 1.8px solid currentColor;
-        /* Die Haelfte der eigenen Hoehe setzt das Kaestchen auf die Mitte
-           des Knopfes. Das reicht nicht: gedreht faellt die sichtbare
-           Tinte nicht mit der Mitte des Kaestchens zusammen, und die
-           Schrift daneben hat ihre eigene Mitte — die ihrer Glyphen, und
-           die liegt bei einem Wort ohne Unterlaengen hoeher als die der
-           Zeilenbox.
-
-           Die 1,7 px stammen aus dem **Bild**: Knopf achtfach
-           aufgenommen, Zeile fuer Zeile ausgewertet, Schwerpunkt der
-           Schrift gegen Schwerpunkt des Winkels. Vorher stand hier eine
-           Zahl aus einer Rechnung ueber Transformationsmatrix und
-           measureText — die war um gut zwei Pixel daneben, weil der
-           Browser die Oberlaenge anders zeichnet, als das Canvas sie
-           meldet. Gegen ein Modell zu messen hilft nichts, wenn das
-           Modell der Fehler ist. */
-        transform: translateY(calc(-50% - 1.7px)) rotate(45deg);
-        opacity: 0.9;
-        pointer-events: none;
-      }
-      /* Aufgeklappt zeigt das Winkelchen nach oben. Der Ausgleich ist
-         **nicht** der gespiegelte von oben, auch wenn das naheliegt: die
-         Drehung um 225 Grad legt dieselbe Tinte auf die andere Seite der
-         Kaestchenmitte. Gespiegelt gerechnet lag der Winkel vier Pixel
-         zu hoch. Auch dieser Wert ist am Bild gemessen, nicht
-         hergeleitet. */
-      .pick:has([aria-expanded='true'])::after {
-        transform: translateY(calc(-50% + 1.1px)) rotate(225deg);
-      }
+         Jetzt steht dort das Lucide-Zeichen aus app-icon. Dessen Pfad
+         ist symmetrisch zur Mitte des Zeichenfelds (m6 9 6 6 6-6: Tinte
+         von 9 bis 15 bei 24 Einheiten), und der Knopf ist ein Flexkasten
+         mit align-items: center. Die Mitte macht damit der Umbruch, und
+         es gibt keine Zahl mehr, die falsch werden kann. */
       /* Das Wort steht in der Schriftfarbe, das Bedienbare daneben in der
          Akzentfarbe: so ist auf einen Blick zu sehen, was hier nur
          beschriftet und was anzufassen ist. */
@@ -563,15 +512,41 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       }
       .local .site-pick {
         appearance: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 1px;
+        /* Groesse des Zeichens, relativ zur Kopfzeilenschrift: so bleiben
+           Wort und Winkel im Verhaeltnis, auch wenn die Schrift sich
+           aendert. */
+        --icon-size: 1.4em;
         color: var(--accent);
         margin-left: -4px;
-        padding: 1px 15px 1px 4px;
+        padding: 1px 2px 1px 4px;
         border: 1px solid transparent;
         border-radius: 6px;
         background: transparent;
         font: inherit;
         cursor: pointer;
       }
+      /* Hier stand lange ein Ausgleich. Es braucht keinen.
+
+         Das Lucide-Zeichen ist symmetrisch zur Mitte seines Zeichenfelds,
+         der Knopf zentriert es mit align-items: center, und damit sitzt
+         es auf der Mitte der Schrift daneben. Gemessen, je Element
+         einzeln aufgenommen und in Seitenkoordinaten verglichen:
+
+           Versatz                       11px     16px     30px
+           ohne                          0,14    -0,06    -0,28
+           (1cap - 1em) / 2             -1,56    -3,05    -4,95
+           (1cap - 1em) / 4             -0,70    -1,80    -2,11
+           (1cap - 1em) / 8             -0,78    -0,67    -1,44
+
+         Jeder Ausgleich verschlechtert es. Die vier Anlaeufe davor
+         korrigierten einen Fehler, der aus dem gedrehten Rand-Kaestchen
+         kam und mit dem Zeichen verschwunden ist — und sie wurden gegen
+         DejaVu Sans gemessen, waehrend auf dem Zielrechner Segoe UI
+         steht. Wer hier wieder eine Zahl eintragen will: die Tabelle
+         oben ist der Grund, es nicht zu tun. */
       .local .site-pick:hover:not(:disabled) {
         filter: brightness(1.12);
       }
@@ -825,6 +800,10 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                 (keydown.arrowup)="onPickKey($event)"
               >
                 <span id="site-pick-value">{{ currentSite().short }}</span>
+                <app-icon
+                  [name]="pickOpen() ? 'chevron-up' : 'chevron-down'"
+                  [weight]="2.6"
+                />
               </button>
               @if (pickOpen()) {
                 <div

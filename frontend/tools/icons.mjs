@@ -38,6 +38,8 @@ const WANTED = {
   trash: 'Job löschen',
   'chevron-left': 'Jobliste: eine Seite zurück',
   'chevron-right': 'Jobliste: eine Seite vor',
+  'chevron-down': 'Auswahl des Trennorts: zugeklappt',
+  'chevron-up': 'Auswahl des Trennorts: aufgeklappt',
   'square-arrow-out-up-right': 'Verlauf: Job im Deck öffnen',
   ellipsis: 'Verlauf: weitere Aktionen zu einem Job',
   clock: 'Verlauf: Job wartet oder laeuft',
