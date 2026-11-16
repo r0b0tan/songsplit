@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 
 import { MixEngine } from './audio/mix-engine';
+import { DeviceNoticeComponent } from './components/device-notice';
 import { ImportPanelComponent } from './components/import-panel';
 import { JobListComponent } from './components/job-list';
 import { PlayerComponent } from './components/player';
@@ -47,6 +48,7 @@ import { StemStore } from './separate/stem-store';
   selector: 'app-root',
   standalone: true,
   imports: [
+    DeviceNoticeComponent,
     ImportPanelComponent,
     JobListComponent,
     PlayerComponent,
@@ -135,6 +137,16 @@ import { StemStore } from './separate/stem-store';
         width: 100%;
         max-width: 900px;
         margin: 0 auto;
+        /* Und hier erst wird aus der Vollhoehe oben ein Fuss unten.
+           Der Wirt ist laengst eine Spalte ueber 100dvh, aber ohne diese
+           Zeile standen Inhalt und Fuss einfach gestapelt am oberen Rand:
+           bei wenig Inhalt -- ein frisch geladener Verlauf, ein hohes
+           Fenster -- blieben darunter mehrere hundert Pixel nackte
+           Flaeche, und der Fuss schwebte mitten auf dem Schirm. Das auto
+           nimmt den uebrigen Platz vorweg und schiebt ihn nach unten;
+           reicht der Inhalt ueber den Schirm hinaus, ist nichts uebrig
+           und die Zeile tut nichts. Beide Faelle, eine Regel. */
+        margin-top: auto;
         padding-inline: max(14px, env(safe-area-inset-left, 0px))
           max(14px, env(safe-area-inset-right, 0px));
         font-size: 12.5px;
@@ -399,6 +411,12 @@ import { StemStore } from './separate/stem-store';
         <app-player [job]="job" (close)="closeJob()" />
       }
     </dialog>
+
+    <!-- ------------------------------------------- Geraet kann es nicht -->
+    <!-- Steht zuletzt im Baum und trotzdem ueber allem: ein Dialog in der
+         Top-Layer kennt keine Reihenfolge im Dokument. Er meldet sich von
+         selbst, sobald die Geraetepruefung durch ist. -->
+    <app-device-notice />
   `,
 })
 export class AppComponent {

@@ -17,7 +17,11 @@
  * src/app/app.ts. */
 
 :root {
-  color-scheme: light dark;
+  /* Dunkel wie die Anwendung, und aus demselben Grund: siehe den Kopf von
+     src/styles.css. Impressum und Datenschutz liegen als eigene Seiten
+     daneben und laden dieses Blatt statt jenes -- stuende hier noch
+     `light dark`, waeren sie die einzigen hellen Seiten des Angebots. */
+  color-scheme: dark;
   --bg: light-dark(#eeedf0, #121216);
   --panel-2: light-dark(#f1eff4, #22212a);
   --edge: light-dark(#d5d1db, #35333f);

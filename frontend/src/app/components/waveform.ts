@@ -230,8 +230,12 @@ export class WaveformComponent {
       onCleanup(() => observer.disconnect());
     });
 
-    // Das Farbthema kommt vom Betriebssystem. Wechselt es, gilt eine andere
-    // Haelfte jedes light-dark()-Paares, und das Canvas muss nachziehen.
+    // Seit `color-scheme: dark` in styles.css steht, aendert ein Wechsel am
+    // Betriebssystem hier nichts mehr: es gilt immer dieselbe Haelfte jedes
+    // light-dark()-Paares. Der Horcher bleibt trotzdem stehen — er kostet
+    // nichts, zeichnet im schlimmsten Fall dasselbe Bild noch einmal, und
+    // kaeme die helle Fassung je zurueck, zoege das Canvas sofort wieder
+    // mit. Ohne ihn behielte es beim Wechsel die Farben von vorher.
     effect((onCleanup) => {
       const query = globalThis.matchMedia?.('(prefers-color-scheme: dark)');
       if (!query) return;

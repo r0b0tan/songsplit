@@ -172,6 +172,7 @@ async function handleProbe(): Promise<void> {
     support = {
       available: false,
       adapter: null,
+      code: 'GPU-05',
       reason:
         `Die Geräteprüfung brach ab: ${describe(err)}. Getrennt wird dann ` +
         'auf dem Prozessor.',

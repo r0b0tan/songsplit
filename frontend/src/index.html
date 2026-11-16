@@ -19,10 +19,16 @@
     <meta name="apple-mobile-web-app-title" content="MixApart" />
 
     <!-- Die Farbe, die der Browser um die Seite legt: dieselbe Flaeche, die
-         hinter ihr liegt (--bg), in beiden Farbwelten. -->
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#eeedf0" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121216" />
+         hinter ihr liegt (--bg). Eine Angabe, kein Paar — die Oberflaeche
+         ist dunkel, unabhaengig davon, was das Geraet sonst bevorzugt.
+
+         Das steht hier und nicht nur im Stylesheet, weil es frueher
+         gebraucht wird als jedes CSS: der Browser faerbt Adressleiste und
+         Seitengrund damit, bevor die erste Regel geladen ist. Stuende hier
+         weiter ein helles Paar, blitzte auf einem hell eingestellten Handy
+         bei jedem Aufruf kurz Weiss auf, bevor die Seite dunkel wird. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#121216" />
 
     <!-- Im Reiter steht die reduzierte Marke mit drei Linien
          (favicon.svg): das Zeichen der App hat sieben Balken, und die sind

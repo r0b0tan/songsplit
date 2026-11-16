@@ -99,11 +99,40 @@ export interface ExecutionProof {
   wasmThreads: number;
 }
 
+/**
+ * Kurzname fuer den Zustand, den die Pruefung vorgefunden hat.
+ *
+ * Der Grund steht als ganzer Satz daneben und ist fuer den Menschen vor dem
+ * Geraet gedacht. Dieser Code ist fuer den Weg zurueck: er laesst sich
+ * vorlesen, in eine Nachricht tippen und ohne Nachfrage zuordnen, waehrend
+ * ein Treiberstring wie „ANGLE (Samsung Xclipse 540, Vulkan 1.3)" das
+ * sicher nicht ueberlebt.
+ *
+ * Die Nummern sind Namen, keine Rangfolge. Einmal vergeben, bleiben sie —
+ * ein Code, der in einer alten Nachricht steht, soll in einem Jahr noch
+ * dasselbe bedeuten. Faellt ein Zustand weg, bleibt seine Nummer frei.
+ */
+export type GpuCode =
+  /** `navigator.gpu` fehlt — der Browser kennt WebGPU nicht. */
+  | 'GPU-01'
+  /** `requestAdapter()` hat geworfen. */
+  | 'GPU-02'
+  /** Kein Adapter, auch nicht im Compatibility-Modus. */
+  | 'GPU-03'
+  /** Adapter da, aber Software-Umsetzung oder Rueckfallweg. */
+  | 'GPU-04'
+  /** Die Pruefung selbst brach mit einem Fehler ab. */
+  | 'GPU-05'
+  /** Der Worker antwortete nicht — die Runtime laedt nicht. */
+  | 'GPU-06';
+
 export interface WebGpuSupport {
   available: boolean;
   adapter: AdapterReport | null;
   /** Grund, falls nicht nutzbar — im Klartext fuer die Oberflaeche. */
   reason: string | null;
+  /** Kurzname des Zustands, oder `null`, wenn alles in Ordnung ist. */
+  code: GpuCode | null;
   /**
    * Was WebGL ueber die verbaute Grafikeinheit sagt — oder `null`.
    *
@@ -226,7 +255,7 @@ function probeWebGlRenderer(): string | null {
  * Reihenfolge.
  */
 export async function probeWebGpu(): Promise<WebGpuSupport> {
-  const { report, reason } = await requestUsableAdapter();
+  const { report, reason, code } = await requestUsableAdapter();
   const available = reason === null && report !== null;
   // Nur im Fehlerfall gefragt: liegt ein Adapter vor, sagt der schon alles,
   // und ein WebGL-Kontext waere Aufwand fuer nichts.
@@ -234,6 +263,7 @@ export async function probeWebGpu(): Promise<WebGpuSupport> {
     available,
     adapter: report,
     reason,
+    code,
     renderer: available ? null : readWebGlRenderer(),
   };
 }
@@ -263,6 +293,8 @@ interface AdapterAttempt {
    */
   adapter: GPUAdapter | null;
   report: AdapterReport | null;
+  /** Kurzname des Zustands, oder `null`, wenn alles in Ordnung ist. */
+  code: GpuCode | null;
   /** Grund, falls nicht nutzbar — im Klartext fuer die Oberflaeche. */
   reason: string | null;
 }
@@ -292,6 +324,7 @@ async function requestUsableAdapter(): Promise<AdapterAttempt> {
     return {
       adapter: null,
       report: null,
+      code: 'GPU-01',
       reason: isMobileDevice()
         ? 'Dieser Browser bietet kein WebGPU. Auf Android kann es Chrome ab ' +
           'Fassung 121; Firefox und ältere Fassungen von Samsung Internet ' +
@@ -325,6 +358,7 @@ async function requestUsableAdapter(): Promise<AdapterAttempt> {
     return {
       adapter: null,
       report: null,
+      code: openError !== null ? 'GPU-02' : 'GPU-03',
       reason:
         openError !== null
           ? `WebGPU ließ sich nicht öffnen: ${openError}`
@@ -347,12 +381,13 @@ async function requestUsableAdapter(): Promise<AdapterAttempt> {
     return {
       adapter,
       report,
+      code: 'GPU-04',
       reason:
         `WebGPU läuft hier über eine Software-Umsetzung (${adapterLabel(report)}). ` +
         'Das rechnet auf der CPU und ist für eine Trennung zu langsam.',
     };
   }
-  return { adapter, report, reason: null };
+  return { adapter, report, code: null, reason: null };
 }
 
 /**

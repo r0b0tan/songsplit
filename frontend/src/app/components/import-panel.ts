@@ -890,7 +890,11 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       @if (site() === 'device' && deviceProblem(); as why) {
         <div class="notice" style="margin-top: 12px" data-testid="no-webgpu">
           <span>
-            <strong>Keine Grafikbeschleunigung:</strong> {{ why }}
+            <!-- Beschriftung und Code stehen als ein Ausdruck da, nicht als
+                 zwei Elemente nebeneinander: Angular raeumt Leerraum
+                 zwischen Elementen weg, und heraus kam
+                 „Keine Grafikbeschleunigung(GPU-03) :". -->
+            <strong>{{ noticeLabel() }}</strong> {{ why }}
             @if (isMobile) {
               Getrennt wird dann auf dem Prozessor — auf einem Handy heißt
               das: einfädig, nach 174 MB Download und mit knapp einem
@@ -1078,6 +1082,20 @@ export class ImportPanelComponent {
    * Ein Feld, kein Signal: das Geraet wechselt waehrend einer Sitzung nicht.
    */
   protected readonly isMobile = isMobileDevice();
+
+  /**
+   * Die Beschriftung der Warnung, mit Fehlercode, falls einer vorliegt.
+   *
+   * Der Code steht in Klammern dahinter, damit er genannt werden kann,
+   * ohne den Satz zu zerreissen — und damit niemand den langen Grund
+   * abtippen muss, um zu sagen, was los ist.
+   */
+  protected readonly noticeLabel = computed(() => {
+    const code = this.device.support()?.code;
+    return code
+      ? `Keine Grafikbeschleunigung (${code}):`
+      : 'Keine Grafikbeschleunigung:';
+  });
 
   /**
    * Wechselt den Ort und zieht den Trennmodus mit.

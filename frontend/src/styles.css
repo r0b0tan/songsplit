@@ -10,10 +10,23 @@
  * color-scheme von selbst. Wichtig: ein Token ist fuer Javascript nur
  * Text, kein Farbwert. Wer eine Farbe lesen muss (Canvas), liest eine
  * echte Eigenschaft wie `color`, nie `--token`.
+ *
+ * **Die Oberflaeche ist dunkel, und zwar immer.** Das entscheidet die
+ * Zeile `color-scheme: dark` unten: sie waehlt aus jedem light-dark()-Paar
+ * den zweiten Wert und stellt zugleich die nativen Regler, Auswahlfelder
+ * und Rollbalken dunkel. Eine helle Fassung gab es, aber sie war nie die
+ * entworfene — sie entstand nebenher, weil light-dark() sie geschenkt
+ * bekam, und sah entsprechend aus.
+ *
+ * Die hellen Werte bleiben trotzdem stehen. Sie kosten nichts, solange
+ * niemand sie waehlt, und sie sind der ganze Rueckweg: aus `dark` wieder
+ * `light dark` zu machen, bringt beide Themen zurueck. Sie zu loeschen
+ * waere eine Entscheidung, die sich nicht in einer Zeile zuruecknehmen
+ * laesst.
  */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
   /* ------------------------------------------------------------ Flaechen */
   --bg: light-dark(#eeedf0, #121216);

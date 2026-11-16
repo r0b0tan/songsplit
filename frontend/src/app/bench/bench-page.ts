@@ -208,6 +208,10 @@ interface Fixtures {
               <dt>WebGL meldet</dt>
               <dd>{{ s.renderer }}</dd>
             }
+            @if (s.code) {
+              <dt>Code</dt>
+              <dd>{{ s.code }}</dd>
+            }
             @if (s.reason) {
               <dt>Grund</dt>
               <dd>{{ s.reason }}</dd>

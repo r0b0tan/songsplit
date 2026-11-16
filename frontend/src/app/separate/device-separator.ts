@@ -26,7 +26,7 @@ import {
 } from './catalog';
 import { ACCEPTED_TYPES, decodeForModel } from './decode';
 import { cachedBytes, isCached } from './model-cache';
-import type { ExecutionProof, WebGpuSupport } from './runtime';
+import { adapterLabel, type ExecutionProof, type WebGpuSupport } from './runtime';
 import { StemStore } from './stem-store';
 import { TEST_DURATION_S, TEST_SAMPLE_RATE, makeTestStems } from './test-signals';
 import type { FromWorker, Phase, StartMessage } from './separate.worker';
@@ -143,6 +143,7 @@ export class DeviceSeparator {
       this.support.set({
         available: false,
         adapter: null,
+        code: 'GPU-06',
         reason:
           'Der Trennvorgang ließ sich nicht vorbereiten. Die ONNX-Runtime ' +
           'unter /vendor/onnxruntime/ antwortet nicht.',
@@ -234,6 +235,39 @@ export class DeviceSeparator {
     } else {
       this.modelProblem.set(null);
     }
+  }
+
+  /**
+   * Alles, was zur Geräteprüfung zu sagen ist — in einem Stück zum Kopieren.
+   *
+   * Entstanden aus einem Satz, der die Lage genau beschreibt: „Ich tipp das
+   * nicht ab." Ein Treiberstring wie „ANGLE (Samsung Xclipse 540, Vulkan
+   * 1.3.0)" überlebt das Abschreiben nicht, und ohne ihn ist aus der Ferne
+   * nicht zu sagen, ob die Grafikeinheit fehlt oder nur gesperrt ist. Also
+   * steht hier ein Block, den ein Knopf in die Zwischenablage legt.
+   *
+   * Bewusst ohne alles, was niemanden angeht: keine Dateinamen, keine Jobs,
+   * keine Kennungen. Was hier steht, steht über das Gerät, nicht über den
+   * Menschen davor — und es geht nur weg, wenn er es selbst verschickt.
+   */
+  diagnosis(): string {
+    const s = this.support();
+    const nav = globalThis.navigator;
+    const lines = [
+      'MixApart — Gerätebericht',
+      `Code: ${s?.code ?? (s?.available ? 'in Ordnung' : 'unbekannt')}`,
+      `WebGPU: ${s?.available ? 'nutzbar' : 'nicht nutzbar'}`,
+    ];
+    if (s?.adapter) lines.push(`Adapter: ${adapterLabel(s.adapter)}`);
+    if (s?.renderer) lines.push(`WebGL: ${s.renderer}`);
+    if (s?.reason) lines.push(`Grund: ${s.reason}`);
+    if (this.runtimeVersion()) lines.push(`Runtime: ${this.runtimeVersion()}`);
+    lines.push(`Browser: ${nav?.userAgent ?? 'unbekannt'}`);
+    lines.push(
+      `Kerne: ${nav?.hardwareConcurrency ?? '?'} · isoliert: ` +
+        (globalThis.crossOriginIsolated ? 'ja' : 'nein'),
+    );
+    return lines.join('\n');
   }
 
   /** Modell-Kennung aus dem Modellnamen, für `start`. */
