@@ -681,6 +681,22 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       .transfer .est {
         opacity: 0.85;
       }
+      /* Die ruhige Fassung einer Auskunft, die keine Warnung ist:
+         dieselbe Flaeche wie die Karte, kein Balken, kein Ausrufezeichen. */
+      .cant {
+        margin-top: 12px;
+        padding: 9px 11px;
+        border: 1px solid var(--edge);
+        border-radius: var(--radius-sm);
+        background: var(--panel-2);
+        color: var(--dim);
+        font-size: 12.5px;
+        line-height: 1.45;
+      }
+      .cant strong {
+        color: var(--ink);
+        font-weight: 650;
+      }
       button.start {
         min-height: 38px;
         padding: 8px 14px;
@@ -972,32 +988,32 @@ const ACCEPTED = /\.(mp3|wav)$/i;
            Arbeitsspeicher ist die härtere Grenze als die Zeit. Dieselbe Zahl
            dort zu nennen, hieße jemanden in eine Stunde Wartezeit schicken,
            die als zehn Minuten angekündigt war. -->
-      @if (site() === 'device' && deviceProblem(); as why) {
-        <div class="notice" style="margin-top: 12px" data-testid="no-webgpu">
-          <span>
-            <!-- Beschriftung und Code stehen als ein Ausdruck da, nicht als
-                 zwei Elemente nebeneinander: Angular raeumt Leerraum
-                 zwischen Elementen weg, und heraus kam
-                 „Keine Grafikbeschleunigung(GPU-03) :". -->
-            <strong>{{ noticeLabel() }}</strong> {{ why }}
-            @if (isMobile) {
-              Getrennt wird dann auf dem Prozessor — auf einem Handy heißt
-              das: einfädig, nach 174 MB Download und mit knapp einem
-              Gigabyte Arbeitsspeicher. Realistisch ist eine Stunde, und
-              wird der Speicher knapp, beendet der Browser den Tab.
-              @if (jobs.serverAvailable) {
-                Über „Auf diesem Rechner“ läuft es in Sekunden — auf dem
-                Handy ist das der Weg, der funktioniert.
-              }
-            } @else {
-              Getrennt wird dann auf dem Prozessor — das geht, dauert aber ein
-              Vielfaches, bei einem ganzen Lied eher zehn Minuten als eine.
-              @if (jobs.serverAvailable) {
-                Über „Auf diesem Rechner“ läuft es in Sekunden.
-              }
-            }
-          </span>
-        </div>
+      @if (site() === 'device' && deviceProblem()) {
+        <!-- Keine Warnoptik, und kein Absatz.
+
+             Das Gelb der Warnbox sagt „pass auf, du machst gleich etwas
+             falsch" — hier macht niemand etwas falsch, das Geraet kann es
+             schlicht nicht. Dieselbe Begruendung steht seit laengerem in
+             device-notice.ts; sie galt nur fuer das Fenster und nicht
+             fuer diese Stelle, und das war ein Widerspruch.
+
+             Kurz ist es auch, weil der ganze Grund schon im Fenster beim
+             Start stand. Hier bleibt die Folge und der Code — damit kann
+             man sagen, was los ist, ohne einen Treiberstring abzutippen. -->
+        <p class="cant" data-testid="no-webgpu">
+          <strong>{{ noticeLabel() }}</strong>
+          @if (isMobile) {
+            Getrennt wird dann auf dem Prozessor — bei einem ganzen Lied
+            realistisch eine Stunde.
+          } @else {
+            Getrennt wird dann auf dem Prozessor — eher zehn Minuten als eine.
+          }
+          @if (cloudOffered()) {
+            Über „Server“ dauert es gut eine Minute.
+          } @else if (jobs.serverAvailable) {
+            Über „CUDA“ läuft es in Sekunden.
+          }
+        </p>
       }
 
       @if (selectedModel(); as m) {
