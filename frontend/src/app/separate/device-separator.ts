@@ -31,6 +31,46 @@ import { StemStore } from './stem-store';
 import { TEST_DURATION_S, TEST_SAMPLE_RATE, makeTestStems } from './test-signals';
 import type { FromWorker, Phase, StartMessage } from './separate.worker';
 
+/**
+ * Die Modusliste, bevor eine einzige Beschreibung gelesen ist.
+ *
+ * Sie stammt allein aus `BROWSER_MODELS` — aus dem, was im Quelltext steht,
+ * nicht aus dem, was ausgeliefert ist. Das ist ein Zugestaendnis, und zwar
+ * ein gemessenes: bis die drei `manifest.json` ueber das Netz da waren,
+ * vergingen auf einer gedrosselten Mobilverbindung knapp zwei Sekunden, und
+ * so lange stand die Importkarte mit leerer Modusliste. Dann klappten drei
+ * Karten auf, schoben den Hinweis darunter und die Knopfleiste nach unten
+ * — Lighthouse mass dafuer 0,175 Cumulative Layout Shift, der groesste
+ * Einzelposten der Seite.
+ *
+ * `refreshModels()` ersetzt die Liste, sobald die Manifeste gelesen sind.
+ * Was dort fehlt, verschwindet dann doch noch — der Grundsatz „angeboten
+ * wird nur, was wirklich ausgeliefert ist" gilt also weiter, er greift nur
+ * eine Sekunde spaeter. Gestartet werden kann bis dahin nicht:
+ * `modelsVerified` steht erst danach, und die Importkarte haelt den
+ * Startknopf so lange zu.
+ *
+ * Was hier bewusst fehlt, sind die Zahlen aus dem Manifest —
+ * `download_bytes` und `peak_stems`. Geraten wird nichts: der
+ * Speicherwaechter haelt sich ohne Spurzahl heraus, und die Downloadfrage
+ * stellt sich erst beim Start, wenn die echte Liste laengst steht.
+ */
+function provisionalModels(): ModelInfo[] {
+  return BROWSER_MODELS.map((model) => ({
+    name: model.name,
+    mode: model.mode,
+    label: model.label,
+    description: model.description,
+    stems: model.display.map((s) => STEM_LABELS[s] ?? s),
+    is_default: model.name === 'htdemucs',
+    available: true,
+    detail: null,
+    downloaded: false,
+    missing_files: [],
+    site: 'device' as const,
+  }));
+}
+
 /** Dieselben Anzeigenamen wie `STEM_LABELS` im Backend. */
 const STEM_LABELS: Record<string, string> = {
   vocals: 'Gesang',
@@ -90,7 +130,16 @@ export class DeviceSeparator {
 
   /** Jobs dieser Sitzung, jüngster zuerst. */
   readonly jobs = signal<Job[]>([]);
-  readonly models = signal<ModelInfo[]>([]);
+  readonly models = signal<ModelInfo[]>(provisionalModels());
+
+  /**
+   * Steht die Liste auf gelesenen Manifesten — oder noch auf dem Katalog?
+   *
+   * Solange hier `false` steht, zeigt die Karte zwar schon ihre Modi, aber
+   * die Zahlen dahinter (Download, Spitzenspuren, liegt es im Cache) fehlen
+   * noch. Gestartet wird in diesem Zustand nicht.
+   */
+  readonly modelsVerified = signal(false);
   readonly support = signal<WebGpuSupport | null>(null);
   readonly runtimeVersion = signal<string | null>(null);
   readonly run = signal<DeviceRun | null>(null);
@@ -208,6 +257,7 @@ export class DeviceSeparator {
       }
     }
     this.models.set(infos);
+    this.modelsVerified.set(true);
     if (broken.length) {
       this.modelProblem.set(
         'Diese Trennmodi liegen nicht in lesbarer Form vor: ' +

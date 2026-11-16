@@ -147,9 +147,14 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       /* Die Leiste sagt etwas Beruhigendes, und Beruhigendes muss nicht
          laut sein: kein Zustandspunkt, nur Text, eine Stufe schwaecher als
          jedes andere Grau der Oberflaeche. */
+      /* Eine Stufe schwaecher als --faint, aber nicht schwaecher als
+         lesbar: #635d70 auf der Karte waren 2,7:1 und damit der klarste
+         Kontrastfehler der Seite. Der neue Wert liegt bei 5,0:1 und bleibt
+         trotzdem unter --faint (5,3:1) — die Abstufung, um die es hier
+         geht, steht also weiter, nur eben oberhalb der Grenze. */
       .local {
         font-size: 11px;
-        color: light-dark(#9f98a8, #635d70);
+        color: light-dark(#706a80, #8e879b);
       }
       .what-wrap {
         position: relative;
@@ -1275,7 +1280,15 @@ export class ImportPanelComponent {
   readonly canStart = computed(() => {
     if (!this.file() || this.busy()) return false;
     if (!this.selectedModel()) return false;
-    if (this.site() === 'device') return !this.device.busy();
+    // Beim Browserpfad kommt eines dazu: die Modusliste steht schon, bevor
+    // die Manifeste gelesen sind (siehe `provisionalModels` in
+    // device-separator.ts). Bis dahin fehlen dem gewaehlten Modus die
+    // Zahlen, an denen Speicherwaechter und Downloadfrage haengen — also
+    // wird so lange nicht gestartet. Die Wartezeit faellt nicht auf: eine
+    // Datei auszuwaehlen dauert laenger als die drei kleinen Abrufe.
+    if (this.site() === 'device') {
+      return this.device.modelsVerified() && !this.device.busy();
+    }
     return true;
   });
 

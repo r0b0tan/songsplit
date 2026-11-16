@@ -200,9 +200,24 @@ export async function loadManifest(id: string): Promise<ModelManifest | null> {
 export async function availableModels(): Promise<
   { model: BrowserModel; manifest: ModelManifest }[]
 > {
+  // Je Kennung einmal, nicht je Eintrag: „Schnell" und „Minimum" zeigen auf
+  // denselben Ordner, und ohne diese Zwischenablage gingen beim Start zwei
+  // Anfragen fuer dasselbe `manifest.json` hinaus. Nebeneinander gestartet
+  // hilft auch der Cache nichts — die zweite ist schon unterwegs, bevor die
+  // erste antwortet. Also wird das Versprechen geteilt, nicht die Antwort.
+  const pending = new Map<string, Promise<ModelManifest | null>>();
+  const once = (id: string): Promise<ModelManifest | null> => {
+    let p = pending.get(id);
+    if (!p) {
+      p = loadManifest(id);
+      pending.set(id, p);
+    }
+    return p;
+  };
+
   const found = await Promise.all(
     BROWSER_MODELS.map(async (model) => {
-      const manifest = await loadManifest(model.id);
+      const manifest = await once(model.id);
       return manifest ? { model, manifest } : null;
     }),
   );

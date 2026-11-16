@@ -407,8 +407,22 @@ import { StemStore } from './separate/stem-store';
       (pointerdown)="markBackdrop($event, deckDialog)"
       (click)="closeOnBackdrop($event, deckDialog)"
     >
-      @if (selected(); as job) {
-        <app-player [job]="job" (close)="closeJob()" />
+      <!-- Das Deck wird nachgeladen, nicht mitgeliefert. Player,
+           Wellenform, Zeitlineal, Mischpult und Signalsmith sind zusammen
+           der groesste Posten des Hauptbuendels — und beim ersten Aufruf
+           der Seite braucht sie niemand: gesehen wird die Importkarte, und
+           ob ueberhaupt je ein Job geoeffnet wird, entscheidet sich
+           spaeter. Lighthouse hat 43 KiB ungenutztes JavaScript gezaehlt;
+           das ist im Wesentlichen das hier.
+
+           „prefetch on idle" nimmt dem Tausch die Kehrseite: sobald der
+           Hauptstrang nichts mehr zu tun hat, liegt das Stueck bereit.
+           Wer also irgendwann einen Job oeffnet, wartet nicht darauf — es
+           ist nur nicht mehr im Weg, solange er es nicht tut. -->
+      @defer (when selected(); prefetch on idle) {
+        @if (selected(); as job) {
+          <app-player [job]="job" (close)="closeJob()" />
+        }
       }
     </dialog>
 

@@ -40,7 +40,14 @@
   /* ------------------------------------------------------------- Schrift */
   --ink: light-dark(#23212a, #f0eef4);
   --dim: light-dark(#5f5869, #b2acbe);
-  --faint: light-dark(#8b8495, #827b8e);
+  /* Das leiseste Grau der Oberflaeche — aber nicht leiser, als sich lesen
+     laesst. Die Werte davor (#8b8495 hell, #827b8e dunkel) lagen auf der
+     Grenze: 3,1:1 im hellen Thema, 4,6:1 im dunklen. Lighthouse hat den
+     Fuss der Seite deshalb als zu schwach angestrichen. Jetzt traegt das
+     Paar auf jeder Flaeche der Oberflaeche — Seitengrund, Karte, Karte
+     zwei Stufen heller — mindestens 4,9:1 und damit Abstand zu den
+     geforderten 4,5:1. */
+  --faint: light-dark(#6f6879, #938ca0);
 
   /* -------------------------------------------------------------- Akzent */
   --accent: light-dark(#a6433a, #ffa497);
