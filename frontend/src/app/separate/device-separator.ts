@@ -366,6 +366,7 @@ export class DeviceSeparator {
       status: 'processing',
       progress: null,
       progress_of: null,
+      remaining_seconds: null,
       stage: PHASE_TEXT['warten'],
       error: null,
       is_test_path: false,
@@ -431,6 +432,7 @@ export class DeviceSeparator {
       status: 'done',
       progress: 1,
       progress_of: null,
+      remaining_seconds: null,
       stage: null,
       error: null,
       is_test_path: true,
@@ -561,7 +563,7 @@ export class DeviceSeparator {
           message.phase === 'modell-laden' ||
           message.phase === 'laufzeit-laden'
             ? {}
-            : { progress: null, progress_of: null }),
+            : { progress: null, progress_of: null, remaining_seconds: null }),
         });
         return;
       }
@@ -582,6 +584,10 @@ export class DeviceSeparator {
         this.patch(message.jobId, {
           progress: share,
           progress_of: 'modell',
+          // Der Download hat seine eigene Dauer, die mit der Rechenzeit
+          // nichts zu tun hat. Eine Restzeit aus Bloecken waere hier die
+          // Antwort auf eine andere Frage.
+          remaining_seconds: null,
           stage: message.fromCache
             ? 'Modell liegt bereit'
             : `Modell wird geladen (${mb(message.loaded)} von ${mb(message.total)})`,
@@ -592,21 +598,25 @@ export class DeviceSeparator {
         const share = message.blocksTotal
           ? message.blocksDone / message.blocksTotal
           : null;
-        const perBlock = message.elapsedMs / Math.max(1, message.blocksDone);
-        const remaining = (message.blocksTotal - message.blocksDone) * perBlock;
+        const remaining = remainingMs(
+          message.blocksDone,
+          message.blocksTotal,
+          message.elapsedMs,
+        );
         this.run.update((r) =>
           r
             ? {
                 ...r,
                 blocksDone: message.blocksDone,
                 blocksTotal: message.blocksTotal,
-                remainingMs: message.blocksDone >= 1 ? remaining : null,
+                remainingMs: remaining,
               }
             : r,
         );
         this.patch(message.jobId, {
           progress: share,
           progress_of: 'blöcke',
+          remaining_seconds: remaining === null ? null : remaining / 1000,
           stage: `Wird getrennt (Block ${message.blocksDone} von ${message.blocksTotal})`,
         });
         return;
@@ -678,6 +688,7 @@ export class DeviceSeparator {
       stage: null,
       progress: 1,
       progress_of: 'blöcke',
+      remaining_seconds: null,
       finished_at: Date.now() / 1000,
       duration_seconds: message.samples / message.sampleRate,
       device: message.proof.gpuConfirmed ? 'WebGPU' : 'WASM (CPU)',
@@ -696,6 +707,7 @@ export class DeviceSeparator {
       stage: null,
       progress: null,
       progress_of: null,
+      remaining_seconds: null,
       finished_at: Date.now() / 1000,
     });
     if (this.activeId === jobId) {
@@ -765,6 +777,37 @@ function message(error: unknown): string {
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Wie lange die Trennung noch dauert — in Millisekunden, oder `null`.
+ *
+ * Dass sich das überhaupt sagen lässt, liegt am Verfahren: htdemucs
+ * arbeitet den Song in Blöcken zu festen 7,8 Sekunden ab, und jeder Block
+ * ist dieselbe Rechnung durch denselben Graphen. Die Zeit je Block ist
+ * damit eine Konstante des Geräts, kein Durchschnitt über Ungleiches, und
+ * der Rest ist ein Dreisatz.
+ *
+ * **Die ersten beiden Blöcke zählen nicht.** Im ersten übersetzt WebGPU
+ * noch die Shader, und er dauert ein Vielfaches. Nähme man ihn als Maßstab,
+ * stünde dort anfangs eine viel zu hohe Zahl, die danach die ganze Zeit
+ * unterboten wird — eine Anzeige, die immer schneller wird, ist genauso
+ * unehrlich wie eine, die hängt. Solange nichts Belastbares vorliegt, gibt
+ * es `null`, und die Oberfläche zeigt dann eben keine Restzeit.
+ *
+ * Ab dem dritten Block steht die verstrichene Gesamtzeit im Zähler, der
+ * teure erste Block also eingeschlossen. Das setzt die Schätzung leicht zu
+ * hoch an, und zwar mit Absicht: eine Anzeige, die eine Spur früher fertig
+ * ist als angekündigt, ärgert niemanden — umgekehrt schon.
+ */
+export function remainingMs(
+  blocksDone: number,
+  blocksTotal: number,
+  elapsedMs: number,
+): number | null {
+  if (blocksDone < 3 || blocksTotal <= 0 || blocksDone > blocksTotal) return null;
+  const perBlock = elapsedMs / blocksDone;
+  return Math.max(0, (blocksTotal - blocksDone) * perBlock);
 }
 
 function mb(bytes: number): string {

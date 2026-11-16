@@ -50,6 +50,15 @@ class Job:
     job_dir: Path
     status: str = "queued"
     stage: str | None = "Wartet in der Warteschlange"
+    #: Anteil der fertigen Bloecke, 0 bis 1 — oder None.
+    #:
+    #: None heisst „nicht zaehlbar" und ist kein Versehen: nur die
+    #: Demucs-Modelle melden ihre Bloecke (siehe
+    #: ``separation._demucs_fortschritt``), das Roformer-Modell nicht. Dort
+    #: bleibt es bei der Phase im Klartext und einem Lauflicht.
+    progress: float | None = None
+    #: Geschaetzte Restzeit in Sekunden, gemessen — oder None.
+    remaining_seconds: float | None = None
     error: str | None = None
     is_test_path: bool = False
     device: str | None = None
@@ -119,7 +128,8 @@ class Job:
             "model": self.model,
             "model_label": self.model_label,
             "status": self.status,
-            "progress": None,
+            "progress": self.progress,
+            "remaining_seconds": self.remaining_seconds,
             "stage": self.stage,
             "error": self.error,
             "is_test_path": self.is_test_path,
@@ -142,7 +152,14 @@ class Job:
 
 
 # Signatur des eigentlichen Trenners: (job, Statusmeldung-Callback) -> Spurliste
-SeparateFn = Callable[[Job, Callable[[str], None]], list[Stem]]
+#: Was der Worker aufruft: Job, Phasenmeldung, Fortschrittsmeldung.
+#:
+#: Die dritte Stelle nimmt einen Anteil von 0 bis 1 entgegen. Sie darf
+#: ungenutzt bleiben — nicht jedes Modell kann zaehlen, und dann bleibt der
+#: Fortschritt eben ``None``.
+SeparateFn = Callable[
+    [Job, Callable[[str], None], Callable[[float], None]], list[Stem]
+]
 
 
 class JobStore:
@@ -262,6 +279,36 @@ class JobStore:
             self._persist(job)
             log.info("[%s] %s", job.id, text)
 
+        # Der erste gemeldete Block ist der Nullpunkt, nicht der Start des
+        # Jobs. Alles davor — Modellgewichte laden, CUDA-Kernel uebersetzen,
+        # die Datei einlesen — gehoert nicht in die Rechnung: es faellt
+        # einmal an und wuerde die Hochrechnung fuer den ganzen Rest
+        # verderben. Gemessen wird deshalb die Strecke **zwischen** dem
+        # ersten und dem jeweils letzten Block, und die besteht aus nichts
+        # als gleich grossen Bloecken.
+        nullpunkt: list[tuple[float, float]] = []
+
+        def fortschritt(anteil: float) -> None:
+            jetzt = time.time()
+            anteil = max(0.0, min(1.0, anteil))
+            if not nullpunkt:
+                nullpunkt.append((jetzt, anteil))
+            rest: float | None = None
+            t0, a0 = nullpunkt[0]
+            gelaufen = jetzt - t0
+            # Zwei Bloecke Abstand, bevor etwas behauptet wird. Ein
+            # einzelner Block schwankt zu stark, um daraus eine Minute
+            # hochzurechnen.
+            if anteil - a0 > 0.02 and gelaufen > 0:
+                je_anteil = gelaufen / (anteil - a0)
+                rest = round(je_anteil * (1.0 - anteil), 1)
+            with self._lock:
+                job.progress = anteil
+                job.remaining_seconds = rest
+            # Nicht bei jedem Block auf die Platte: das waeren bei einem
+            # langen Song ueber hundert Schreibvorgaenge fuer eine Zahl,
+            # die ohnehin nur im Arbeitsspeicher gebraucht wird.
+
         with self._lock:
             job.status = "processing"
             job.started_at = time.time()
@@ -269,19 +316,23 @@ class JobStore:
         stage("Wird vorbereitet")
 
         try:
-            stems = self._separate_fn(job, stage)
+            stems = self._separate_fn(job, stage, fortschritt)
             if not stems:
                 raise RuntimeError("Die Trennung hat keine Spuren erzeugt.")
             with self._lock:
                 job.stems = stems
                 job.status = "done"
                 job.stage = "Fertig"
+                job.progress = 1.0 if job.progress is not None else None
+                job.remaining_seconds = None
                 job.error = None
         except Exception as exc:  # noqa: BLE001 - Fehler landet sichtbar im Job
             log.exception("Job %s fehlgeschlagen", job.id)
             with self._lock:
                 job.status = "failed"
                 job.stage = None
+                job.progress = None
+                job.remaining_seconds = None
                 job.error = _friendly_error(exc)
         finally:
             with self._lock:

@@ -49,18 +49,54 @@ deckelt, was gleichzeitig laufen kann — ein offener Endpunkt ohne Deckel ist
 ein offener Geldhahn.
 """
 
-from __future__ import annotations
-
 import pathlib
 
 import modal
 
+# Kein `from __future__ import annotations` in dieser Datei, und das ist
+# Absicht: fastapi wird erst *innerhalb* von `api()` importiert, weil das
+# GPU-Image es nicht enthaelt. Waeren die Annotationen Strings, suchte
+# pydantic `UploadFile` bei den Modul-Globals, faende es dort nicht und
+# brauchte bis zur ersten Anfrage nicht aufzufallen — der Fehler kaeme
+# dann als 500 beim Hochladen, nicht beim Deployen.
+
 # --------------------------------------------------------------- Stellwerk
 
-#: Welche Karte. L4 (Ada, 24 GB) ist hier der Standard: htdemucs braucht
-#: wenig Speicher, und L4 liegt beim Preis nah an T4, rechnet aber deutlich
-#: schneller. `"T4"` ist die Sparvariante, `"A10G"` die schnellere.
-GPU = "L4"
+#: Welche Karte — als Reihenfolge, nicht als einzelner Wunsch.
+#:
+#: L4 (Ada, 24 GB) steht vorn: htdemucs braucht wenig Speicher, und L4 liegt
+#: beim Preis nah an T4, rechnet aber deutlich schneller. Dass eine Liste
+#: dasteht und kein einzelner Name, hat einen gemessenen Grund — der erste
+#: Lauf blieb in der Warteschlange haengen:
+#:
+#:     Function 'Separator.*' is waiting to be scheduled on a GPU_L4 worker.
+#:
+#: Eine serverlose GPU ist eben nicht immer sofort da. Mit einer Liste
+#: nimmt Modal die naechste freie Karte, statt zu warten: A10G ist teurer
+#: und schneller, T4 guenstiger und langsamer — beides besser als ein
+#: Handy, das fuenf Minuten auf einen Balken schaut.
+#:
+#: Was in der Warteschlange steht, kostet nichts. Bezahlt wird erst, wenn
+#: der Container laeuft.
+GPU = ["L4", "A10G", "T4"]
+
+#: Sekunden je Block, bevor etwas gemessen wurde.
+#:
+#: Ein Block sind feste 7,8 Sekunden Ton durch denselben Graphen — die
+#: Arbeit ist also fuer jeden Block dieselbe, und genau deshalb laesst sich
+#: ueberhaupt etwas hochrechnen. Was schwankt, ist die Karte: gemessen
+#: 0,75 s je Block auf einer A10, rund 1,0 s auf einer T4. Der Wert hier
+#: ist nur der Anfang fuer eine unbekannte Karte; danach steht in `tempo`,
+#: was dieselbe Karte zuletzt gebraucht hat.
+JE_BLOCK_VORGABE = 1.0
+
+#: Was das Kodieren im Verhaeltnis zum Trennen kostet.
+#:
+#: Gemessen am zweiten Lauf: 9,1 s kodieren zu 42,6 s trennen. Der Anteil
+#: haengt nicht an der Karte, sondern an den Kernen daneben — und der
+#: Container bekommt davon reichlich (17 gezaehlt). Er steht hier, damit
+#: die Restzeit nicht bei 100 % noch zehn Sekunden weiterlaeuft.
+ANTEIL_KODIEREN = 0.21
 
 #: Obergrenze fuer gleichzeitige Container. Der Deckel gegen die Rechnung.
 MAX_CONTAINERS = 2
@@ -168,6 +204,14 @@ results = modal.Volume.from_name("mixapart-results", create_if_missing=True)
 #: Wie weit ein laufender Auftrag ist. Klein, kurzlebig, nur zum Anzeigen.
 progress = modal.Dict.from_name("mixapart-progress", create_if_missing=True)
 
+#: Was eine Karte zuletzt je Block gebraucht hat — `{"NVIDIA A10": 0.75}`.
+#:
+#: Ueberlebt den Container, und das ist der Zweck: beim naechsten Lauf
+#: steht die Restzeit schon beim ersten Block halbwegs richtig da, statt
+#: erst ab dem dritten. Faellt der Eintrag weg, greift `JE_BLOCK_VORGABE` —
+#: dann ist die Anzeige die ersten zwei Sekunden ungenau, mehr nicht.
+tempo = modal.Dict.from_name("mixapart-tempo", create_if_missing=True)
+
 #: Der eigene Token. `modal secret create mixapart-token MIXAPART_TOKEN=...`
 token = modal.Secret.from_name("mixapart-token")
 
@@ -217,7 +261,19 @@ class Separator:
                 f"{got}. Meist passt die CUDA-Fassung des Basis-Images "
                 "nicht zu onnxruntime-gpu."
             )
-        print(f"Sitzung steht auf {got[0]}, Spuren: {self.meta.sources}")
+        # Welche Karte es geworden ist, steht nicht fest: `GPU` ist eine
+        # Liste, und Modal nimmt die naechste freie. Fuer die Messung macht
+        # das einen Unterschied von Faktor zwei, also wird sie benannt.
+        self.karte = karte_lesen()
+        # Die Zahl der Kerne steht hier, weil das Kodieren darauf laeuft
+        # und beim ersten Lauf zwei Drittel so lange brauchte wie das
+        # Trennen selbst. Sind es zu wenige, hilft `cpu=` an `@app.cls`.
+        import os
+
+        print(
+            f"Sitzung steht auf {got[0]} ({self.karte}), "
+            f"{os.cpu_count()} Kerne, Spuren: {self.meta.sources}"
+        )
 
     @modal.method()
     def trennen(self, job: str, audio: bytes, suffix: str) -> dict:
@@ -226,6 +282,23 @@ class Separator:
 
         import numpy as np
 
+        def setze(**felder) -> None:
+            """Fortschritt fortschreiben — zusammenfuehren, nicht ersetzen.
+
+            In demselben Eintrag stehen die Kennung des Rufs und der
+            Zeitpunkt, und die hat die Web-Seite beim Annehmen
+            hineingelegt.
+            """
+            stand = progress.get(job) or {}
+            stand.update(felder)
+            progress[job] = stand
+
+        # Der Abschnitt sagt, worauf gerade gewartet wird, und das ist keine
+        # Zierde. Bis hierher stand `angenommen` — und das heisst eben nicht
+        # nur „gleich geht es los", sondern kann auch heissen, dass Modal
+        # noch keine freie Karte hat. Ohne diese Unterscheidung sieht das
+        # Geraet einen Balken bei null und kann nicht wissen, ob etwas haengt.
+        setze(phase="dekodieren")
         started = time.monotonic()
         mix = decode(audio, suffix, self.meta.sample_rate)
         seconds = mix.shape[1] / self.meta.sample_rate
@@ -236,32 +309,81 @@ class Separator:
             )
         decoded = time.monotonic()
 
-        def melden(block: int, blocks: int) -> None:
-            # Zusammenfuehren statt ueberschreiben: in demselben Eintrag
-            # stehen die Kennung des Rufs und der Zeitpunkt, und die hat
-            # die Web-Seite beim Annehmen hineingelegt.
-            stand = progress.get(job) or {}
-            stand.update({"block": block, "blocks": blocks})
-            progress[job] = stand
+        # Wie lange ein Block auf *dieser* Karte braucht. Der Wert aus
+        # frueheren Laeufen ist nur der Anfangswert — ab dem dritten Block
+        # steht die Messung an seiner Stelle. Siehe `JE_BLOCK_VORGABE`.
+        je_block = float(tempo.get(self.karte) or JE_BLOCK_VORGABE)
+        bloecke_gesamt = 0
+        setze(phase="trennen", karte=self.karte, prozent=2)
 
-        out = self.ref.separate(self.session, mix, self.meta, on_block=melden)
+        def auf_block(block: int, bloecke: int) -> None:
+            """Nach jedem Block: Prozent und Restzeit neu rechnen.
+
+            Beides laesst sich hier ehrlich sagen, weil jeder Block
+            dieselbe Arbeit ist — feste 7,8 Sekunden Ton durch denselben
+            Graphen. Die Restzeit ist deshalb keine Schaetzung ins Blaue,
+            sondern eine Hochrechnung aus gemessenen Bloecken.
+            """
+            nonlocal je_block, bloecke_gesamt
+            bloecke_gesamt = bloecke
+            gelaufen = time.monotonic() - decoded
+            # Der erste Block ist der langsamste: darin uebersetzt CUDA
+            # noch Kernel. Ihn als Massstab zu nehmen, hiesse die Restzeit
+            # zu hoch anzusetzen und sie dann die ganze Zeit zu
+            # unterbieten — ein Balken, der immer schneller wird, ist
+            # genauso unehrlich wie einer, der haengt.
+            if block >= 3:
+                je_block = gelaufen / block
+            rest_trennen = max(bloecke - block, 0) * je_block
+            rest_kodieren = bloecke * je_block * ANTEIL_KODIEREN
+            ganz = (decoded - started) + bloecke * je_block * (1 + ANTEIL_KODIEREN)
+            fertig_anteil = ((decoded - started) + gelaufen) / max(ganz, 1e-6)
+            setze(
+                block=block,
+                blocks=bloecke,
+                prozent=min(round(fertig_anteil * 100), 99),
+                rest=round(rest_trennen + rest_kodieren),
+            )
+
+        out = self.ref.separate(self.session, mix, self.meta, on_block=auf_block)
         separated = time.monotonic()
+        setze(phase="kodieren", prozent=max(100 - round(ANTEIL_KODIEREN * 100), 85))
+
+        # Was dieser Lauf ueber die Karte gelernt hat, bleibt fuer den
+        # naechsten liegen — gleitend, damit ein einzelner Ausreisser die
+        # Schaetzung nicht verreisst. Davon lebt die Restzeit *vor* dem
+        # dritten Block: ohne diesen Wert stuende dort die Vorgabe, und die
+        # stimmt je nach Karte um Faktor zwei nicht.
+        if bloecke_gesamt:
+            gemessen = (separated - decoded) / bloecke_gesamt
+            vorher = float(tempo.get(self.karte) or gemessen)
+            tempo[self.karte] = 0.7 * vorher + 0.3 * gemessen
 
         ziel = pathlib.Path(RESULT_DIR) / job
         ziel.mkdir(parents=True, exist_ok=True)
-        stems = []
-        for index, slug in enumerate(self.meta.sources):
+
+        # Die vier Spuren nebeneinander kodieren, nicht nacheinander.
+        #
+        # Gemessen am ersten echten Lauf: trennen 47,2 s, kodieren 32,2 s.
+        # Zwei Drittel der Kodierzeit lagen also auf einer Karte, die
+        # dabei nichts tat — und bezahlt wird die Laufzeit des Containers,
+        # nicht die Auslastung der GPU. Vier ffmpeg-Prozesse warten
+        # ausserhalb des Interpreters, der GIL steht dem also nicht im Weg.
+        from concurrent.futures import ThreadPoolExecutor
+
+        def eine(index_und_slug):
+            index, slug = index_und_slug
             data = encode(np.asarray(out[index]), self.meta.sample_rate)
-            datei = ziel / f"{slug}.{STEM_FORMAT}"
-            datei.write_bytes(data)
-            stems.append(
-                {
-                    "slug": slug,
-                    "label": STEM_LABELS.get(slug, slug),
-                    "bytes": len(data),
-                    "url": f"/stem/{job}/{slug}",
-                }
-            )
+            (ziel / f"{slug}.{STEM_FORMAT}").write_bytes(data)
+            return {
+                "slug": slug,
+                "label": STEM_LABELS.get(slug, slug),
+                "bytes": len(data),
+                "url": f"/stem/{job}/{slug}",
+            }
+
+        with ThreadPoolExecutor(max_workers=len(self.meta.sources)) as gleichzeitig:
+            stems = list(gleichzeitig.map(eine, enumerate(self.meta.sources)))
         (ziel / "fertig").write_text("1", encoding="utf-8")
         results.commit()
 
@@ -278,6 +400,29 @@ class Separator:
 
 
 # ------------------------------------------------------------------- Audio
+
+
+def karte_lesen() -> str:
+    """Welche Grafikkarte der Container bekommen hat.
+
+    Ueber `nvidia-smi`, weil onnxruntime den Namen nicht hergibt. Schlaegt
+    es fehl, ist das kein Grund abzubrechen — der Name ist eine Auskunft,
+    kein Rechenweg. Dass ueberhaupt auf einer Karte gerechnet wird, hat
+    `start` da schon anders geprueft.
+    """
+    import subprocess
+
+    try:
+        fertig = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
+        )
+        return fertig.stdout.strip().splitlines()[0].strip() or "unbekannt"
+    except Exception:
+        return "unbekannt"
 
 
 def decode(raw: bytes, suffix: str, rate: int):
@@ -433,7 +578,17 @@ def api():
         # Die Kennung des Rufs steht im selben Eintrag wie der Fortschritt.
         # So kennt das Geraet nur **eine** Kennung — den Auftrag — und
         # fragt alles darueber nach.
-        progress[job] = {"ruf": ruf.object_id, "start": time.time(), "block": 0, "blocks": 0}
+        progress[job] = {
+            "ruf": ruf.object_id,
+            "start": time.time(),
+            # `angenommen` heisst: der Auftrag liegt bei Modal und wartet
+            # auf einen Container — moeglicherweise auf eine freie Karte.
+            # Der GPU-Container schreibt den Abschnitt weiter, sobald er
+            # laeuft.
+            "phase": "angenommen",
+            "block": 0,
+            "blocks": 0,
+        }
         return {"job": job}
 
     @web.get("/status/{job}")
@@ -451,8 +606,18 @@ def api():
             # Laeuft noch. Die Blockzahl schreibt der GPU-Container fort.
             return {
                 "zustand": "laeuft",
+                "phase": stand.get("phase", "angenommen"),
+                "karte": stand.get("karte", ""),
+                "wartet": round(time.time() - stand.get("start", time.time())),
                 "block": stand.get("block", 0),
                 "blocks": stand.get("blocks", 0),
+                # Beide fehlen absichtlich, solange nichts gemessen ist:
+                # `null` heisst „unbekannt" und laesst sich in der
+                # Oberflaeche als unbestimmter Balken zeigen. Eine
+                # erfundene Null waere das Gegenteil davon — sie saehe aus
+                # wie eine Aussage.
+                "prozent": stand.get("prozent"),
+                "rest": stand.get("rest"),
             }
         except OutputExpiredError:
             raise HTTPException(status_code=410, detail="Das Ergebnis ist abgelaufen.")
@@ -479,7 +644,36 @@ def api():
 
     @web.get("/health")
     def health() -> dict:
-        return {"ok": True, "format": STEM_FORMAT, "gpu": GPU}
+        """Lebenszeichen — und das, was die Oberflaeche vorher wissen will.
+
+        `sekunden_je_minute` ist der Grund fuer diese Route. Das Geraet
+        kennt die Laenge des Liedes, bevor es irgendetwas hochlaedt: es hat
+        die Datei ja vorliegen. Damit laesst sich schon beim Auswaehlen
+        sagen „das dauert etwa eine Minute", statt den Menschen erst nach
+        dem Upload vor einen Balken bei null zu setzen.
+
+        Die Zahl ist gemessen, nicht geraten — sie kommt aus `tempo`, also
+        aus den Laeufen, die wirklich stattgefunden haben. Ist dort noch
+        nichts, steht die Vorgabe da; dann ist sie eben grob.
+
+        Was sie **nicht** enthaelt, ist die Wartezeit auf eine freie Karte.
+        Die ist nicht vorhersagbar, und sie in eine Schaetzung zu mischen
+        hiesse, eine Zahl auszugeben, die regelmaessig falsch ist.
+        """
+        gemessen = [float(w) for w in tempo.values() if isinstance(w, (int, float))]
+        je_block = sum(gemessen) / len(gemessen) if gemessen else JE_BLOCK_VORGABE
+        # Ein Block deckt `segment` Abtastwerte ab, die Bloecke ueberlappen
+        # sich um ein Viertel — auf eine Minute Musik kommen also gut zehn.
+        bloecke_je_minute = 60 * 44100 / (0.75 * 343980)
+        return {
+            "ok": True,
+            "format": STEM_FORMAT,
+            "gpu": GPU,
+            "sekunden_je_minute": round(
+                bloecke_je_minute * je_block * (1 + ANTEIL_KODIEREN), 1
+            ),
+            "gemessen": bool(gemessen),
+        }
 
     return web
 

@@ -59,3 +59,6 @@ out-tsc/
 # Der Token fuer den Modal-Endpunkt. Steht als Secret bei Modal und hier
 # nur als Kopie zum Testen — siehe cloud/app.py.
 /cloud/.token
+
+# Was cloud/probe.sh zum Anhoeren herunterlaedt.
+/cloud/out/

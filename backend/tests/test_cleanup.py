@@ -35,7 +35,7 @@ running = threading.Event()
 held = threading.Event()
 
 
-def never_finishes(job, stage):  # noqa: ANN001, ARG001 - Signatur des Workers
+def never_finishes(job, stage, fortschritt):  # noqa: ANN001, ARG001 - Signatur des Workers
     """Haelt den Worker fest, damit ein Job wirklich 'processing' ist."""
     running.set()
     held.wait(timeout=30)

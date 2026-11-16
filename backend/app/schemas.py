@@ -22,9 +22,16 @@ class JobOut(BaseModel):
     model: str
     model_label: str
     status: JobStatus
-    # Keine echte Prozentzahl: der Worker liefert nur Phasen, daher zeigt die
-    # Oberflaeche eine Aktivitaetsanzeige. Bleibt None.
+    # Anteil der fertigen Bloecke, 0 bis 1 — oder None.
+    #
+    # Die Demucs-Modelle melden ihre Bloecke (siehe
+    # separation._demucs_fortschritt), das Roformer-Modell nicht. Dort
+    # bleibt es None, und die Oberflaeche zeigt ein Lauflicht statt einer
+    # erfundenen Zahl.
     progress: float | None = None
+    # Geschaetzte Restzeit in Sekunden. Gemessen an der Strecke zwischen dem
+    # ersten und dem letzten gemeldeten Block, nicht geraten.
+    remaining_seconds: float | None = None
     stage: str | None = Field(default=None, description="Aktuelle Phase im Klartext")
     error: str | None = None
     is_test_path: bool = Field(

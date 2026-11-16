@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import re
 import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -228,7 +229,66 @@ def _release(separator) -> None:
         pass
 
 
-def separate_job(job: Job, stage: Callable[[str], None]) -> list[Stem]:
+@contextmanager
+def _demucs_fortschritt(melde: Callable[[float], None]):
+    """Haengt sich fuer die Dauer eines Laufs in den Fortschrittshaken ein.
+
+    ``apply_model`` kennt den Parameter ``set_progress_bar`` und ruft ihn je
+    fertigem Block mit ``(0.1, anteil)`` auf, wobei ``anteil`` von 0 bis 0,8
+    laeuft. ``audio-separator`` reicht ihn nur nicht durch: in
+    ``architectures/demucs_separator.py`` steht er fest auf ``None``. Der
+    Fortschritt ist also vorhanden und wird eine Ebene darueber weggeworfen.
+
+    Statt das Paket zu aendern, wird hier fuer die Dauer eines Laufs der
+    Name ``apply_model`` **in jenem einen Modul** gegen eine Fassung
+    getauscht, die den Haken setzt. Eng umgrenzt und wieder zurueckgedreht:
+    ausserhalb des ``with`` ist nichts veraendert.
+
+    Das ist eine Annahme ueber fremden Code, und sie ist versioniert —
+    geprueft gegen audio-separator 0.48.0, wie der Rest dieses Moduls.
+    Deshalb faellt sie nicht hart: scheitert das Einhaengen, laeuft die
+    Trennung ohne Fortschritt weiter. Eine fehlende Zahl ist ein Schoen-
+    heitsfehler, ein abgebrochener Job nicht.
+
+    Die drei Zaehler in ``apply.py`` sind Modulglobals **ohne** Startwert;
+    gesetzt werden sie nur im Zweig fuer gebuendelte Modelle. Ein einzelnes
+    Modell liefe sonst in einen ``NameError``, sobald der Haken gesetzt ist
+    — deshalb werden sie hier vorsorglich belegt.
+    """
+    try:
+        from audio_separator.separator.architectures import demucs_separator as ds
+        from audio_separator.separator.uvr_lib_v5.demucs import apply as demucs_apply
+    except Exception as exc:  # noqa: BLE001
+        log.info("Fortschritt nicht verfuegbar: %s", exc)
+        yield
+        return
+
+    for name, wert in (("bag_num", 1), ("fut_length", 0), ("prog_bar", 0)):
+        if not hasattr(demucs_apply, name):
+            setattr(demucs_apply, name, wert)
+
+    original = ds.apply_model
+
+    def mit_haken(*args, **kwargs):
+        # Der Aufrufer uebergibt `set_progress_bar=None` ausdruecklich; hier
+        # wird genau dieser Wert ersetzt.
+        kwargs["set_progress_bar"] = lambda _schritt, anteil: melde(
+            max(0.0, min(1.0, anteil / 0.8))
+        )
+        return original(*args, **kwargs)
+
+    ds.apply_model = mit_haken
+    try:
+        yield
+    finally:
+        ds.apply_model = original
+
+
+def separate_job(
+    job: Job,
+    stage: Callable[[str], None],
+    fortschritt: Callable[[float], None] | None = None,
+) -> list[Stem]:
     """Trennt die Eingabedatei des Jobs und gibt die Spuren zurueck."""
     preset = MODEL_PRESETS.get(job.model)
     if preset is None:
@@ -243,7 +303,7 @@ def separate_job(job: Job, stage: Callable[[str], None]) -> list[Stem]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     with _separator_lock:
-        stems = _run_single(job, preset, stage, device.effective)
+        stems = _run_single(job, preset, stage, device.effective, fortschritt)
 
     stage("Spuren werden bereitgestellt")
     job.duration_seconds = _probe_duration(job.input_path)
@@ -251,13 +311,21 @@ def separate_job(job: Job, stage: Callable[[str], None]) -> list[Stem]:
 
 
 def _run_single(job: Job, preset: ModelPreset, stage: Callable[[str], None],
-                device: str) -> list[Stem]:
+                device: str,
+                fortschritt: Callable[[float], None] | None = None) -> list[Stem]:
     stage(f"Modell {preset.filename} wird geladen ({device.upper()})")
     separator = _get_separator(job.stems_dir, preset.shifts)
     separator.load_model(model_filename=preset.filename)
 
     stage(f"Audio wird in {len(preset.stems)} Spuren getrennt ({device.upper()})")
-    produced = separator.separate(str(job.input_path))
+    # Nur die Demucs-Modelle zaehlen ihre Bloecke. Das Roformer-Modell hat
+    # keinen solchen Haken; dort bleibt der Fortschritt `None`, und die
+    # Oberflaeche zeigt ein Lauflicht statt einer erfundenen Zahl.
+    if fortschritt is not None and preset.filename.endswith(".yaml"):
+        with _demucs_fortschritt(fortschritt):
+            produced = separator.separate(str(job.input_path))
+    else:
+        produced = separator.separate(str(job.input_path))
     _release(separator)
     return _collect_stems(job.stems_dir, produced, preset)
 

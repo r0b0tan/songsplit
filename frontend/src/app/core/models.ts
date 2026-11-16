@@ -41,6 +41,19 @@ export interface Job {
   progress: number | null;
   /** Worauf sich `progress` bezieht. */
   progress_of: 'modell' | 'blöcke' | null;
+  /**
+   * Geschätzte Restzeit in Sekunden, oder `null`.
+   *
+   * Dieselbe Regel wie bei `progress`: die Zahl steht nur da, wo sie aus
+   * Gemessenem kommt. Jeder Block ist dieselbe Rechnung über dieselbe
+   * Menge Ton — aus der Zeit der bisherigen Blöcke lässt sich der Rest
+   * deshalb hochrechnen, und zwar nicht als Gefühl, sondern als Dreisatz.
+   *
+   * `null` heißt „noch nicht abschätzbar" und ist kein Mangel: in den
+   * ersten Sekunden ist es die Wahrheit. Die ersten beiden Blöcke werden
+   * bewusst übersprungen, siehe `device-separator.ts`.
+   */
+  remaining_seconds: number | null;
   stage: string | null;
   error: string | null;
   is_test_path: boolean;

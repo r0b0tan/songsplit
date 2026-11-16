@@ -7,18 +7,24 @@ import { STATUS_LABELS, type Job } from '../core/models';
 /**
  * Das Fenster, das beim Trennen aufgeht.
  *
- * Einen Prozentwert gibt es nur, wo er aus etwas Gezaehltem kommt. Das ist
- * kein Grundsatz um seiner selbst willen, sondern der Unterschied zwischen
- * den beiden Wegen:
+ * Einen Prozentwert gibt es nur, wo er aus etwas Gezaehltem kommt, und eine
+ * Restzeit nur, wo sie gemessen ist. Das ist kein Grundsatz um seiner
+ * selbst willen, sondern der Unterschied zwischen den Wegen:
  *
- * - **Backend.** `audio-separator` meldet keinen Fortschritt. Hier laeuft
- *   ein Lauflicht und die Phase steht im Klartext. Eine Zahl waere
- *   erfunden.
  * - **Auf dem Geraet.** Der Modelldownload kennt seine Bytes, die Trennung
  *   ihre Bloecke. Beides sind echte Zaehler, also steht ein Balken da, und
  *   `progress_of` sagt, woraus er kommt. Dass es zwei getrennte Zustaende
  *   sind, sieht man: beim ersten Lauf wartet man auf den Download, bei
  *   jedem weiteren nicht mehr.
+ * - **Backend.** Dieselben Bloecke, nur eine Ebene tiefer geholt:
+ *   `apply_model` in der mitgelieferten Demucs-Fassung kennt einen
+ *   Fortschrittshaken, den `audio-separator` nicht durchreicht. Er wird in
+ *   `separation._demucs_fortschritt` fuer die Dauer eines Laufs gesetzt.
+ *   Das gilt fuer die Demucs-Modelle; das Roformer-Modell zaehlt nichts,
+ *   und dort laeuft weiterhin ein Lauflicht.
+ *
+ * Die Restzeit faellt in beiden Faellen weg, solange zu wenig gemessen ist
+ * — in den ersten Sekunden ist `null` die Wahrheit, keine Luecke.
  *
  * Ist die Trennung fertig, schliesst der Aufrufer das Fenster und oeffnet
  * das Deck: der Weg von der Datei zum Ueben hat damit keine Station, an
@@ -217,6 +223,9 @@ import { STATUS_LABELS, type Job } from '../core/models';
               {{ percent() }} % ·
             }
             {{ elapsed() }}
+            @if (remaining(); as rest) {
+              · <b data-testid="remaining">{{ rest }}</b>
+            }
           </span>
         </p>
         <p class="what">
@@ -304,6 +313,29 @@ export class RunProgressComponent {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${String(s).padStart(2, '0')}`;
+  });
+
+  /**
+   * „noch etwa 40 s" — oder nichts.
+   *
+   * Nichts ist hier der Normalfall der ersten Sekunden und kein Mangel:
+   * bevor drei Blöcke gerechnet sind, gibt es keine belastbare Zahl, und
+   * eine unbelastbare wäre schlechter als keine. Deshalb steht die
+   * verstrichene Zeit immer da und die Restzeit nur, wenn sie gemessen
+   * ist.
+   *
+   * Gerundet wird großzügig: auf fünf Sekunden unterhalb einer Minute, auf
+   * halbe Minuten darüber. Eine sekundengenaue Restzeit, die bei jedem
+   * Block zappelt, liest sich wie ein Zufallsgenerator — und genauer als
+   * die Schätzung ist sie dadurch nicht.
+   */
+  readonly remaining = computed(() => {
+    const seconds = this.job().remaining_seconds;
+    if (seconds === null || this.job().status !== 'processing') return null;
+    if (seconds < 8) return 'gleich fertig';
+    if (seconds < 60) return `noch etwa ${Math.round(seconds / 5) * 5} s`;
+    const halbe = Math.round(seconds / 30) / 2;
+    return `noch etwa ${halbe.toFixed(1).replace('.0', '').replace('.', ',')} min`;
   });
 
   readonly length = computed(() => {

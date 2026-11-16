@@ -17,7 +17,14 @@ const POLL_IDLE_MS = 5000;
  * ohne Sonderfall behandeln kann.
  */
 function fromServer(job: Job): Job {
-  return { ...job, site: 'server', progress_of: null };
+  return {
+    ...job,
+    site: 'server',
+    progress_of: job.progress === null ? null : 'blöcke',
+    // Das Backend liefert die Restzeit mit, sobald es sie messen kann;
+    // fehlt das Feld (aeltere Fassung), bleibt es bei `null`.
+    remaining_seconds: job.remaining_seconds ?? null,
+  };
 }
 
 function modelFromServer(model: ModelInfo): ModelInfo {
