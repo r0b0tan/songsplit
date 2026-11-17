@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vier Adressen, und mehr gibt es nicht.
+
+  MixApart ist eine einzige Anwendung: alles, was sie kann — Trennen, Deck,
+  Verlauf —, passiert unter "/" und hinterlaesst keine eigene Adresse. Der
+  Messmodus unter "#bench" ist ein Fragmentbezeichner; er erreicht den Server
+  nie und gehoert deshalb nicht hierher, selbst wenn er eine andere Seite
+  zeigt. Daneben stehen die drei statischen Seiten.
+
+  Was hier NICHT steht, und zwar bewusst:
+
+    <changefreq> und <priority>. Beides wertet Google seit Jahren nicht mehr
+    aus, und Bing ebenso wenig. Eine Angabe, die niemand liest, ist keine
+    Information, sondern Zierde, die mitgepflegt werden muss.
+
+  ACHTUNG, <lastmod> ist eine Zusage und keine Dekoration. Suchmaschinen
+  nehmen das Datum nur ernst, solange es stimmt; wer dauerhaft daneben liegt,
+  bekommt es stillschweigend ignoriert. Die Daten unten stammen aus dem
+  jeweils letzten Commit, der die Seite beruehrt hat:
+
+    /                  frontend/src/          (die Oberflaeche)
+    /faq.html          frontend/public/faq.html
+    /datenschutz.html  frontend/public/datenschutz.html
+    /impressum.html    frontend/public/impressum.html
+
+  Wer eine dieser Seiten aendert, setzt das Datum hier mit. Wird das zur
+  Last, gehoert die Datei erzeugt statt gepflegt — ein Werkzeug neben
+  frontend/tools/, das die Daten aus `git log` nimmt.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://mixapart.de/</loc>
+    <lastmod>2026-11-17</lastmod>
+  </url>
+  <url>
+    <loc>https://mixapart.de/faq.html</loc>
+    <lastmod>2026-11-17</lastmod>
+  </url>
+  <url>
+    <loc>https://mixapart.de/datenschutz.html</loc>
+    <lastmod>2026-11-17</lastmod>
+  </url>
+  <url>
+    <loc>https://mixapart.de/impressum.html</loc>
+    <lastmod>2026-11-17</lastmod>
+  </url>
+</urlset>

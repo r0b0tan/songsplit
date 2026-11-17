@@ -5,4 +5,7 @@
 User-agent: *
 Allow: /
 
-# Die Zeile fuer die sitemap.xml kommt dazu, sobald es sie gibt.
+# Absolut und nicht relativ: die Spezifikation verlangt hier eine
+# vollstaendige Adresse, ein "/sitemap.xml" wird von einem Teil der Crawler
+# verworfen.
+Sitemap: https://mixapart.de/sitemap.xml
