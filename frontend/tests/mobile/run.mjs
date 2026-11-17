@@ -172,7 +172,7 @@ const FAELLE = [
       );
       check(
         'Die Kopfzeile nennt den Serverweg',
-        kopf.includes('Verarbeitung auf unserem Server'),
+        kopf.includes('Modus: Fremdserver'),
         `Kopfzeile: „${kopf}“`,
       );
 

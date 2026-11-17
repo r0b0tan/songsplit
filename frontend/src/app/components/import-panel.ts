@@ -1190,7 +1190,7 @@ export class ImportPanelComponent {
    * **Der Geraetepfad nur, wenn das Geraet rechnen kann** — oder wenn es
    * sonst nichts gibt. Ein Telefon ohne Grafikfreigabe rechnet auf dem
    * Prozessor eine knappe Stunde je Lied und bricht vorher wahrscheinlich
-   * ab; als Eintrag neben „Server" ist das kein Angebot, sondern eine
+   * ab; als Eintrag neben „Fremdserver" ist das kein Angebot, sondern eine
    * Falle. Bleibt er der einzige Weg, steht er trotzdem da: dann ist er
    * die Wahrheit ueber dieses Geraet und nicht eine Alternative.
    *
@@ -1247,7 +1247,7 @@ export class ImportPanelComponent {
     },
     {
       key: 'cloud',
-      short: 'Server',
+      short: 'Fremdserver',
       hint:
         'Für Geräte, die ihre Grafikeinheit nicht freigeben. Als einziger ' +
         'der drei Wege verlässt die Datei dabei diesen Rechner: sie wird an ' +
@@ -1317,11 +1317,21 @@ export class ImportPanelComponent {
    * verbliebene Ort der Serverweg ist: „Alles auf diesem Geraet" stuende
    * dann ueber einer Karte, die die Datei hochlaedt. Auf dem Handy ohne
    * Grafikfreigabe ist das der Regelfall, nicht die Ausnahme.
+   *
+   * Beim Serverweg steht hier dieselbe Form wie oben mit Wahl —
+   * „Modus:" und das eine Wort —, nur ohne Rahmen und ohne Knopf, denn
+   * zu bedienen ist hier nichts. Der Satz „Verarbeitung auf unserem
+   * Server" sprengte auf dem Handy die Kopfzeile; das Wort aus der Liste
+   * sagt dasselbe und steht in einer Zeile. Es kommt aus `ALL_SITES`, damit
+   * derselbe Weg nicht zwei Namen traegt.
+   *
+   * Der Geraetepfad behaelt seinen Satz: „Alles auf diesem Geraet" ist die
+   * Zusicherung, um die es dort geht, und die ist keine Modusangabe.
    */
   readonly soleLabel = computed(() => {
     const nur = this.sites()[0]?.key ?? 'device';
-    if (nur === 'cloud') return 'Verarbeitung auf unserem Server';
-    if (nur === 'backend') return 'Verarbeitung auf diesem Rechner';
+    const ort = this.ALL_SITES.find((s) => s.key === nur);
+    if (ort && nur !== 'device') return `Modus: ${ort.short}`;
     return VARIANT.label;
   });
 

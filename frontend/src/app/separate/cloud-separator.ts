@@ -149,12 +149,15 @@ export class CloudSeparator {
       {
         name: CLOUD_MODEL,
         // Der Modus heisst wie ueberall, denn er ist derselbe: htdemucs,
-        // vier Spuren. **Wo** gerechnet wird, steht oben in der Ortswahl —
-        // „Ueber unseren Server" als Modusname sagte dasselbe ein zweites
-        // Mal und liess die Karte aussehen, als gaebe es hier ein anderes
-        // Verfahren.
+        // vier Spuren — Wort fuer Wort derselbe Name wie im Katalog des
+        // Geraetepfads. **Wo** gerechnet wird, steht oben in der Ortswahl
+        // („Modus: Fremdserver") und waehrend der Trennung in der
+        // Geraeteangabe daneben. Der Zusatz „auf unserem Server" im
+        // Modusnamen sagte dasselbe ein drittes Mal — und seit die
+        // Ortswahl „Fremdserver" sagt, sagte er es mit anderen Worten,
+        // was wie zwei verschiedene Wege aussieht.
         mode: 'Schnell',
-        label: 'htdemucs — 4 Spuren, auf unserem Server',
+        label: 'htdemucs — 4 Spuren',
         description:
           'Dasselbe Modell wie auf dem Gerät, nur anderswo gerechnet. ' +
           'Die Datei wird dafür an unseren Server geschickt.',
@@ -196,7 +199,7 @@ export class CloudSeparator {
       id: start.job,
       source_name: file.name,
       model: CLOUD_MODEL,
-      model_label: 'htdemucs — auf unserem Server',
+      model_label: 'htdemucs — 4 Spuren',
       site: 'cloud',
       status: 'processing',
       progress: null,
