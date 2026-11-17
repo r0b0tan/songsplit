@@ -98,7 +98,31 @@ JE_BLOCK_VORGABE = 1.0
 #: die Restzeit nicht bei 100 % noch zehn Sekunden weiterlaeuft.
 ANTEIL_KODIEREN = 0.21
 
-#: Obergrenze fuer gleichzeitige Container. Der Deckel gegen die Rechnung.
+#: Wie viele Minuten Ton der Endpunkt an einem Tag trennt.
+#:
+#: Der eigentliche Deckel gegen die Rechnung — und er musste sein, weil es
+#: keinen anderen gibt: Budgets dokumentiert Modal erst ab dem Team-Plan,
+#: nach dem Aufbrauchen des Freikontingents laeuft die Abrechnung weiter,
+#: und eine eingebaute Ratenbegrenzung fuer Web-Endpunkte gibt es nicht.
+#:
+#: `MAX_CONTAINERS` begrenzt nur die Gleichzeitigkeit, nicht die Summe:
+#: zwei Container durchgehend auf einer A10G sind rund 2,20 $/h, also gut
+#: 50 $ am Tag — das Monatsguthaben waere in vierzehn Stunden fort.
+#:
+#: Gezaehlt werden **Tonminuten und nicht Auftraege**, weil die Kosten
+#: daran haengen und nicht an der Zahl der Dateien. Ein erster Versuch mit
+#: vierzig Auftraegen taeglich sah vernuenftig aus und war es nicht:
+#: vierzig mal zwoelf Minuten sind acht Stunden Ton, rund 3 $ am Tag und
+#: damit fast das Dreifache des Freikontingents.
+#:
+#: 150 Minuten sind bei gemessenen 11 s Rechenzeit je Tonminute rund eine
+#: halbe Stunde GPU, also etwa ein Dollar — und damit ungefaehr die 30 $
+#: im Monat. Wer mehr braucht, hebt die Zahl bewusst und mit Blick auf die
+#: Rechnung.
+MAX_AUDIO_MINUTES_PER_DAY = 150
+
+#: Obergrenze fuer gleichzeitige Container. Begrenzt die Wartezeit, nicht
+#: die Summe — siehe `MAX_AUDIO_MINUTES_PER_DAY`.
 MAX_CONTAINERS = 2
 
 #: Wie lange ein Container nach dem letzten Auftrag noch wartet. Kurz, weil
@@ -204,6 +228,19 @@ results = modal.Volume.from_name("mixapart-results", create_if_missing=True)
 #: Wie weit ein laufender Auftrag ist. Klein, kurzlebig, nur zum Anzeigen.
 progress = modal.Dict.from_name("mixapart-progress", create_if_missing=True)
 
+#: Wie viele Minuten Ton heute getrennt wurden — `{"2026-11-17": 42.5}`.
+#:
+#: Ein Dict und keine Datenbank: gezaehlt wird grob, nicht buchhalterisch.
+#: Zwei Anfragen in derselben Millisekunde koennen sich einen Zaehlstand
+#: teilen, und das ist in Ordnung — es geht um die Groessenordnung.
+#:
+#: Fortgeschrieben wird im GPU-Container, wo die echte Laenge bekannt ist;
+#: geprueft wird beim Annehmen. Die Pruefung hinkt damit um den gerade
+#: laufenden Auftrag hinterher. Bei einem Deckel, der eine Groessenordnung
+#: halten soll, ist das kein Fehler, sondern der Preis dafuer, nicht raten
+#: zu muessen.
+budget = modal.Dict.from_name("mixapart-budget", create_if_missing=True)
+
 #: Was eine Karte zuletzt je Block gebraucht hat — `{"NVIDIA A10": 0.75}`.
 #:
 #: Ueberlebt den Container, und das ist der Zweck: beim naechsten Lauf
@@ -308,6 +345,12 @@ class Separator:
                 f"{MAX_SECONDS // 60}."
             )
         decoded = time.monotonic()
+
+        # Das Tageskontingent fortschreiben, sobald die echte Laenge
+        # feststeht — vor dem Trennen und nicht danach, damit ein Abbruch
+        # mittendrin nicht umsonst gerechnete Minuten verschenkt.
+        tag = time.strftime("%Y-%m-%d")
+        budget[tag] = float(budget.get(tag) or 0.0) + seconds / 60
 
         # Wie lange ein Block auf *dieser* Karte braucht. Der Wert aus
         # frueheren Laeufen ist nur der Anfangswert — ab dem dritten Block
@@ -553,6 +596,20 @@ def api():
     ) -> dict:
         pruefe(x_mixapart_token)
 
+        # Vor dem Lesen der Datei: ein abgewiesener Auftrag soll keine
+        # 25 MB durch die Leitung gezogen haben.
+        heute = time.strftime("%Y-%m-%d")
+        bisher = float(budget.get(heute) or 0.0)
+        if bisher >= MAX_AUDIO_MINUTES_PER_DAY:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "Für heute ist das Kontingent aufgebraucht — der Serverweg "
+                    "ist kostenlos und deshalb gedeckelt. Morgen geht es weiter; "
+                    "auf einem Rechner mit Grafikkarte sofort."
+                ),
+            )
+
         suffix = pathlib.PurePath(datei.filename or "").suffix.lower()
         if suffix not in ERLAUBTE_SUFFIXE:
             raise HTTPException(
@@ -665,6 +722,7 @@ def api():
         # Ein Block deckt `segment` Abtastwerte ab, die Bloecke ueberlappen
         # sich um ein Viertel — auf eine Minute Musik kommen also gut zehn.
         bloecke_je_minute = 60 * 44100 / (0.75 * 343980)
+        heute = time.strftime("%Y-%m-%d")
         return {
             "ok": True,
             "format": STEM_FORMAT,
@@ -673,6 +731,12 @@ def api():
                 bloecke_je_minute * je_block * (1 + ANTEIL_KODIEREN), 1
             ),
             "gemessen": bool(gemessen),
+            # Wie viele Trennungen heute noch gehen. Damit kann die
+            # Oberflaeche absagen, bevor jemand 25 MB hochlaedt und erst
+            # danach erfaehrt, dass nichts mehr frei ist.
+            "frei_minuten_heute": round(
+                max(MAX_AUDIO_MINUTES_PER_DAY - float(budget.get(heute) or 0.0), 0), 1
+            ),
         }
 
     return web
@@ -708,5 +772,14 @@ def aufraeumen() -> None:
     for job, stand in list(progress.items()):
         if not isinstance(stand, dict) or stand.get("start", 0) < grenze:
             progress.pop(job, None)
+    # Tageszaehler aelter als eine Woche: der heutige und der gestrige
+    # reichen, alles davor ist Ballast.
+    behalten = {
+        time.strftime("%Y-%m-%d", time.gmtime(time.time() - tage * 86400))
+        for tage in range(2)
+    }
+    for tag in list(budget.keys()):
+        if tag not in behalten:
+            budget.pop(tag, None)
     results.commit()
     print(f"{weg} Auftraege geloescht")

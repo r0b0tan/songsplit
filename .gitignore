@@ -62,3 +62,6 @@ out-tsc/
 
 # Was cloud/probe.sh zum Anhoeren herunterlaedt.
 /cloud/out/
+
+# Der fertige Prompt fuer die Serversitzung — enthaelt den Token.
+/cloud/prod-prompt.txt

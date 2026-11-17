@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, inject, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { ApiService, describeHttp } from '../core/api.service';
 import { IconComponent } from '../core/icon';
@@ -988,7 +997,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
            Arbeitsspeicher ist die härtere Grenze als die Zeit. Dieselbe Zahl
            dort zu nennen, hieße jemanden in eine Stunde Wartezeit schicken,
            die als zehn Minuten angekündigt war. -->
-      @if (site() === 'device' && deviceProblem()) {
+      @if (deviceProblem() && (site() === 'device' || site() === 'cloud')) {
         <!-- Keine Warnoptik, und kein Absatz.
 
              Das Gelb der Warnbox sagt „pass auf, du machst gleich etwas
@@ -1001,17 +1010,40 @@ const ACCEPTED = /\.(mp3|wav)$/i;
              Start stand. Hier bleibt die Folge und der Code — damit kann
              man sagen, was los ist, ohne einen Treiberstring abzutippen. -->
         <p class="cant" data-testid="no-webgpu">
-          <strong>{{ noticeLabel() }}</strong>
-          @if (isMobile) {
-            Getrennt wird dann auf dem Prozessor — bei einem ganzen Lied
-            realistisch eine Stunde.
+          <!-- Mit Serverweg zuerst der Weg, dann die Einschraenkung. Es ist
+               dieselbe Auskunft, aber in der Reihenfolge, in der sie
+               jemandem nuetzt: dass die Grafikeinheit fehlt, ist dann nur
+               noch die Begruendung dafuer, warum hier „Server" steht. -->
+          @if (site() === 'cloud') {
+            <strong>Dieses Gerät rechnet nicht selbst{{ codeHint() }}.</strong>
+            Deshalb steht oben „Server“ — die Datei wird dann hochgeladen.
+            Umstellen geht dort jederzeit; auf dem Prozessor dieses Geräts
+            dauert dasselbe
+            @if (isMobile) {
+              bei einem ganzen Lied realistisch eine Stunde.
+            } @else {
+              eher zehn Minuten als eine.
+            }
+          } @else if (cloudOffered()) {
+            <strong>Dieses Gerät rechnet nicht selbst{{ codeHint() }}.</strong>
+            Über „Server“ dauert es gut eine Minute. Hier im Browser ginge es
+            auch, dann rechnet der Prozessor —
+            @if (isMobile) {
+              bei einem ganzen Lied realistisch eine Stunde.
+            } @else {
+              eher zehn Minuten als eine.
+            }
           } @else {
-            Getrennt wird dann auf dem Prozessor — eher zehn Minuten als eine.
-          }
-          @if (cloudOffered()) {
-            Über „Server“ dauert es gut eine Minute.
-          } @else if (jobs.serverAvailable) {
-            Über „CUDA“ läuft es in Sekunden.
+            <strong>{{ noticeLabel() }}</strong>
+            @if (isMobile) {
+              Getrennt wird dann auf dem Prozessor — bei einem ganzen Lied
+              realistisch eine Stunde.
+            } @else {
+              Getrennt wird dann auf dem Prozessor — eher zehn Minuten als eine.
+            }
+            @if (jobs.serverAvailable) {
+              Über „CUDA“ läuft es in Sekunden.
+            }
           }
         </p>
       }
@@ -1129,6 +1161,32 @@ export class ImportPanelComponent {
 
   readonly VARIANT = VARIANT;
 
+  /**
+   * Auf einem Geraet, das nicht selbst rechnen kann, steht der Serverweg
+   * vorn — sobald es ihn gibt.
+   *
+   * Sonst zeigte ein Handy als Vorgabe auf den Prozessorweg, und ein Tippen
+   * auf „Spuren trennen" startete eine Stunde Rechnen, die der Browser
+   * wahrscheinlich vorher abbricht. Der Weg, der dort funktioniert, darf
+   * dann nicht der sein, den man erst suchen muss.
+   *
+   * **Hochgeladen wird deshalb nichts von allein.** Ausgewaehlt ist ein
+   * Ort, mehr nicht; was der Serverweg bedeutet, steht darunter zum
+   * Aufklappen, und losgeschickt wird erst mit dem Knopf. Wer lieber auf
+   * dem Prozessor rechnet, stellt oben um — und ab dann bleibt es dabei,
+   * auch wenn dieser Effekt erneut laeuft.
+   */
+  private siteChosen = false;
+
+  constructor() {
+    effect(() => {
+      if (this.siteChosen || this.busy()) return;
+      if (!this.cloudOffered()) return;
+      if (this.site() !== 'device') return;
+      this.setSite('cloud');
+    });
+  }
+
   /** Der angelegte Job — der Aufrufer zeigt ihm beim Laufen zu. */
   readonly started = output<Job>();
 
@@ -1181,8 +1239,23 @@ export class ImportPanelComponent {
     return `etwa ${Math.round(geschaetzt / 30) / 2} Minuten`.replace('.', ',');
   });
 
+  /**
+   * Die Orte, die hier wirklich zur Wahl stehen.
+   *
+   * Beide Einschraenkungen sind noetig, und jede fuer sich:
+   *
+   * **CUDA nur mit Backend.** Die oeffentliche Variante hat keines. Der
+   * Eintrag stand trotzdem in der Liste, liess sich auswaehlen — und
+   * danach war die Modusliste leer, weil `modelsFor('backend')` nichts
+   * liefert. Von aussen sah das aus, als sei die Modusauswahl kaputt;
+   * tatsaechlich stand die Seite an einem Ort, den es dort nicht gibt.
+   *
+   * **Server nur ohne eigene Rechenmoeglichkeit**, siehe `cloudOffered`.
+   */
   readonly sites = computed(() => [
-    ...this.ALL_SITES.filter((s) => s.key !== 'cloud'),
+    ...this.ALL_SITES.filter(
+      (s) => s.key === 'device' || (s.key === 'backend' && this.jobs.serverAvailable),
+    ),
     ...(this.cloudOffered() ? this.ALL_SITES.filter((s) => s.key === 'cloud') : []),
   ]);
 
@@ -1273,6 +1346,12 @@ export class ImportPanelComponent {
    * ohne den Satz zu zerreissen — und damit niemand den langen Grund
    * abtippen muss, um zu sagen, was los ist.
    */
+  /** Der Fehlercode in Klammern — oder nichts, wenn keiner vorliegt. */
+  protected readonly codeHint = computed(() => {
+    const code = this.device.support()?.code;
+    return code ? ` (${code})` : '';
+  });
+
   protected readonly noticeLabel = computed(() => {
     const code = this.device.support()?.code;
     return code
@@ -1413,6 +1492,10 @@ export class ImportPanelComponent {
 
   /** Ort waehlen und zuklappen — der Fokus geht zurueck auf den Knopf. */
   chooseSite(site: Site): void {
+    // Von Hand gewaehlt heisst: ab hier redet die Vorauswahl nicht mehr
+    // mit. Auch dann nicht, wenn wieder „WASM" dasteht — das ist dann eine
+    // Entscheidung und kein Zustand, der sich korrigieren liesse.
+    this.siteChosen = true;
     this.setSite(site);
     this.closePick();
   }

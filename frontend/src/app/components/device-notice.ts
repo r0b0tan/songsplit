@@ -64,7 +64,6 @@ import { isMobileDevice } from '../separate/platform';
              wer hier liest, sucht einen Ausweg, keine Systemvoraussetzungen
              — und eine Angabe wie „ab Chrome 121" waere in einem Jahr
              falsch, ohne dass es jemandem auffiele. -->
-        @if (!jobs.cloudAvailable()) {
         <p class="where">
           Gut läuft MixApart auf einem Rechner mit Windows, macOS oder Linux
           und einem aktuellen Chrome oder Edge. Auf Smartphones und Tablets
@@ -72,7 +71,6 @@ import { isMobileDevice } from '../separate/platform';
           Hersteller erweitern das schrittweise, es lohnt sich also, später
           noch einmal vorbeizuschauen.
         </p>
-        }
 
         <!-- Der Code steht fuer sich, gross genug zum Vorlesen. Er ist der
              Grund, warum niemand einen Treiberstring abtippen muss. -->
@@ -213,10 +211,19 @@ export class DeviceNoticeComponent {
       // `support()` ist null, solange geprueft wird. Erst danach steht fest,
       // ob es etwas zu sagen gibt.
       if (!support || support.available || this.dismissed) return;
-      // Mit Serverpfad ist die Anwendung benutzbar, nur nicht auf diesem
-      // Weg. Dann genuegt die Zeile in der Importkarte; ein Fenster ueber
-      // allem waere eine Meldung ueber ein Problem, das keines ist.
+      // Gibt es einen anderen Rechenweg, ist die Anwendung benutzbar — nur
+      // nicht auf diesem. Dann genuegt die Zeile in der Importkarte; ein
+      // Fenster ueber allem waere eine Meldung ueber ein Problem, das
+      // keines ist. Das galt lange nur fuer das Backend, und der Serverweg
+      // fiel beim Nachziehen durch: auf einem Handy ging das Fenster auf,
+      // obwohl genau fuer dieses Handy der Weg eingerichtet worden war.
       if (this.jobs.serverAvailable) return;
+      // Reihenfolge, nicht Vorsicht: `cloud.json` wird neben der
+      // Geraetepruefung geladen. Wer vorher entscheidet, entscheidet auf
+      // „noch nicht geladen" und reisst das Fenster auf, bevor die Antwort
+      // da ist. Der Effekt laeuft erneut, sobald sie es ist.
+      if (!this.jobs.cloudChecked()) return;
+      if (this.jobs.cloudAvailable()) return;
       if (!dialog.open) {
         dialog.showModal();
         this.sheet().nativeElement.focus();
@@ -233,17 +240,17 @@ export class DeviceNoticeComponent {
    * wissen, ob er bleiben kann, nicht welcher Adapter fehlt.
    */
   /**
-   * Die Ueberschrift haengt daran, ob es einen Ausweg gibt.
+   * Die Ueberschrift.
    *
-   * „Nicht unterstuetzt" waere falsch, sobald der Serverweg bereitsteht:
-   * benutzbar ist die Anwendung dann sehr wohl, nur nicht auf diesem
-   * Rechenweg. Eine Ueberschrift, die mehr behauptet als zutrifft,
-   * vertreibt Leute, die bleiben koennten.
+   * Sie darf so deutlich sein, weil dieses Fenster nur noch dort aufgeht,
+   * wo es wirklich keinen Weg gibt: steht Backend oder Server bereit,
+   * kommt es gar nicht erst (siehe den Effekt oben). Frueher stand hier
+   * eine zweite, weichere Fassung fuer den Fall mit Serverweg — die war
+   * der Versuch, mit Worten zu loesen, was ein Fenster war, das nicht
+   * haette aufgehen duerfen.
    */
   protected title(): string {
-    return this.jobs.cloudAvailable()
-      ? 'Dieses Gerät kann nicht selbst trennen'
-      : 'Leider wird Ihr Gerät momentan nicht unterstützt';
+    return 'Leider wird Ihr Gerät momentan nicht unterstützt';
   }
 
   protected lead(): string {
@@ -266,18 +273,6 @@ export class DeviceNoticeComponent {
    * endet — und niemand haette es vorher gesagt.
    */
   protected foot(): string {
-    // Mit Serverweg ist das die Auskunft, die zaehlt — und sie nennt den
-    // Preis gleich mit. Ein Angebot, dessen Haken erst spaeter auftaucht,
-    // waere schlechter als keines: die Datei ist dann schon unterwegs.
-    if (this.jobs.cloudAvailable()) {
-      return (
-        'Sie können trotzdem trennen: In der Karte darunter steht „Über ' +
-        'unseren Server“ zur Wahl. Dabei wird Ihre Datei hochgeladen und in ' +
-        'den USA verarbeitet — was das genau heißt, steht dort zum ' +
-        'Aufklappen. Auf diesem Gerät bliebe sonst nur der Prozessor, und ' +
-        'der braucht für ein ganzes Lied ein Vielfaches der Zeit.'
-      );
-    }
     return this.mobile
       ? 'Weiterklicken können Sie trotzdem: dann rechnet der Prozessor. Das ' +
           'dauert bei einem ganzen Lied eher eine Stunde als zehn Minuten, und ' +

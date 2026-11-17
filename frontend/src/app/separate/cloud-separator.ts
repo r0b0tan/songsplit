@@ -85,6 +85,20 @@ export class CloudSeparator {
 
   /** Gibt es den Weg überhaupt? Ohne `cloud.json`: nein. */
   readonly available = computed(() => this.config() !== null);
+
+  /**
+   * Ist `cloud.json` schon gelesen?
+   *
+   * `available()` allein kann zwei Dinge heißen — „es gibt ihn nicht" und
+   * „wir wissen es noch nicht" —, und der Unterschied entscheidet. Die
+   * Geräteprüfung und das Lesen der Datei laufen nebeneinander; wer auf
+   * `available()` schaut, bevor die Datei da ist, sieht „kein Serverweg"
+   * und trifft darauf eine Entscheidung, die eine Zehntelsekunde später
+   * falsch ist. Genau so ging das Fenster „Dieses Gerät kann nicht selbst
+   * trennen" auf, obwohl der Weg längst eingerichtet war.
+   */
+  readonly checked = computed(() => this.configChecked());
+  private readonly configChecked = signal(false);
   readonly where = computed(() => this.config()?.region ?? '');
   readonly keepHours = computed(() => this.config()?.keepHours ?? 6);
   readonly providerKeepDays = computed(() => this.config()?.providerKeepDays ?? 7);
@@ -103,6 +117,7 @@ export class CloudSeparator {
   async init(): Promise<void> {
     const config = await loadCloudConfig();
     this.config.set(config);
+    this.configChecked.set(true);
     if (!config) return;
     // Der Endpunkt wird gefragt, aber nicht geweckt-und-gewartet: antwortet
     // er nicht, bleibt der Weg trotzdem begehbar. Die Zahl aus `/health`
@@ -133,12 +148,20 @@ export class CloudSeparator {
     return [
       {
         name: CLOUD_MODEL,
-        mode: 'Über unseren Server',
+        // Der Modus heisst wie ueberall, denn er ist derselbe: htdemucs,
+        // vier Spuren. **Wo** gerechnet wird, steht oben in der Ortswahl —
+        // „Ueber unseren Server" als Modusname sagte dasselbe ein zweites
+        // Mal und liess die Karte aussehen, als gaebe es hier ein anderes
+        // Verfahren.
+        mode: 'Schnell',
         label: 'htdemucs — 4 Spuren, auf unserem Server',
         description:
           'Dasselbe Modell wie auf dem Gerät, nur anderswo gerechnet. ' +
           'Die Datei wird dafür hochgeladen.',
-        stems: ['vocals', 'drums', 'bass', 'other'],
+        // Dieselben Anzeigenamen wie auf dem Geraet. Der Endpunkt liefert
+        // die englischen Kennungen; auf der Karte stuenden sonst zwei
+        // Sprachen nebeneinander, je nachdem wo gerechnet wird.
+        stems: ['Gesang', 'Drums', 'Bass', 'Rest'],
         is_default: false,
         available: true,
         detail: null,

@@ -43,6 +43,15 @@ export class JobsService {
    */
   readonly cloudAvailable = computed(() => this.cloud.available());
 
+  /**
+   * Steht die Antwort auf diese Frage schon fest?
+   *
+   * Solange `cloud.json` noch geladen wird, ist `cloudAvailable()` falsch,
+   * ohne dass das etwas heißt. Wer daraus etwas folgert, folgert es zu
+   * früh — siehe `CloudSeparator.checked`.
+   */
+  readonly cloudChecked = computed(() => this.cloud.checked());
+
   readonly jobs = computed(() =>
     [...this.device.jobs(), ...this.cloud.jobs(), ...this.api.jobs()].sort(
       (a, b) => b.created_at - a.created_at,
