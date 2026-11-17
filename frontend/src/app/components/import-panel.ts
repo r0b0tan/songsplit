@@ -1278,8 +1278,8 @@ export class ImportPanelComponent {
       short: 'Server',
       hint:
         'Für Geräte, die ihre Grafikeinheit nicht freigeben. Als einziger ' +
-        'der drei Wege verlässt die Datei dabei diesen Rechner: sie wird ' +
-        'hochgeladen und in den USA verarbeitet.',
+        'der drei Wege verlässt die Datei dabei diesen Rechner: sie wird an ' +
+        'unseren Server geschickt und in den USA verarbeitet.',
     },
   ];
 
@@ -1523,7 +1523,9 @@ export class ImportPanelComponent {
 
   readonly startLabel = computed(() => {
     if (this.busy()) {
-      return this.site() === 'device' ? 'wird vorbereitet …' : 'wird hochgeladen …';
+      return this.site() === 'device'
+        ? 'wird vorbereitet …'
+        : 'wird an den Server geschickt …';
     }
     const stems = this.selectedModel()?.stems.length;
     return stems ? `${stems} Spuren trennen` : 'Trennen';

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
-      content="Antworten zu MixApart: warum manche Geräte nicht selbst rechnen, was beim Trennen über unseren Server passiert, und was WebGPU, WASM und CUDA bedeuten."
+      content="Antworten zu MixApart: was die KI-Trennung kann, wie sie funktioniert, und wann Ihre Musik Ihr Gerät verlässt."
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://mixapart.de/faq.html" />
@@ -34,145 +34,352 @@
         </div>
 
         <section class="row">
-          <h2>1. Warum rechnet mein Gerät nicht selbst?</h2>
+          <h2>1. Was kann MixApart?</h2>
           <div class="body">
             <p>
-              MixApart trennt im Browser auf der Grafikeinheit — über eine
-              Schnittstelle namens WebGPU. Die ist nicht überall nutzbar, und
-              das liegt fast nie an Ihnen: Chrome gibt WebGPU auf Android
-              bisher nur für einen Teil der verbauten Grafikeinheiten frei,
-              und in virtuellen Maschinen oder mit veralteten Grafiktreibern
-              fehlt sie ebenfalls.
-            </p>
-            <p>
-              Die Seite prüft das vor dem ersten Download und sagt, was sie
-              vorgefunden hat. Der Kurzcode dabei bedeutet:
+              MixApart zerlegt ein Lied per KI in einzelne Spuren. Sie wählen
+              eine MP3 oder WAV aus, warten kurz und haben danach mehrere
+              Regler statt einem. Wie fein es zerlegt wird, entscheiden Sie
+              über den Trennmodus:
             </p>
             <ul>
-              <li><strong>GPU-01</strong> — der Browser kennt WebGPU nicht.</li>
-              <li><strong>GPU-02</strong> — die Abfrage ist mit einem Fehler abgebrochen.</li>
               <li>
-                <strong>GPU-03</strong> — es gibt keinen Grafikadapter, auch
-                nicht im Compatibility-Modus. Der häufigste Fall auf Android.
+                <strong>Minimum</strong> macht zwei Spuren daraus, Gesang und
+                alles andere zusammen.
               </li>
               <li>
-                <strong>GPU-04</strong> — es gibt einen Adapter, aber nur als
-                Software-Umsetzung. Die rechnet auf dem Prozessor und ist dafür
-                zu langsam.
+                <strong>Schnell</strong> macht vier, also Gesang, Schlagzeug,
+                Bass und den Rest.
               </li>
-              <li><strong>GPU-05</strong>, <strong>GPU-06</strong> — die Prüfung selbst ist gescheitert.</li>
+              <li>
+                <strong>Instrumente</strong> macht sechs und zieht zusätzlich
+                Gitarre und Klavier heraus.
+              </li>
             </ul>
             <p>
-              Am Telefon lässt sich daran nichts ändern. Am Rechner hilft oft
-              ein aktueller Grafiktreiber oder ein Wechsel zu Chrome oder Edge
-              in einer aktuellen Fassung.
+              Das ist praktisch, wenn Sie ein Instrument lernen. Schlagzeug
+              weg, selbst dazu spielen. Oder nur den Gesang hören, weil Sie den
+              Text nicht verstehen. Eine schwierige Stelle können Sie auf
+              halbes Tempo ziehen, ohne dass sie tiefer klingt. Jede Spur
+              lässt sich einzeln speichern.
+            </p>
+            <p>
+              Das Ganze läuft in Ihrem Browser. Kein Konto, keine Anmeldung,
+              keine Warteschlange. Und Ihre Musik bleibt dabei auf Ihrem Gerät.
             </p>
           </div>
         </section>
 
         <section class="row">
-          <h2>2. Was passiert mit meiner Datei, wenn ich „Server“ wähle?</h2>
+          <h2>2. Wie funktioniert das?</h2>
           <div class="body">
             <p>
-              Sie wird zu unserem Rechendienstleister
-              <strong>Modal Labs in den USA</strong> hochgeladen und dort
-              getrennt; ein bestimmter Rechenzentrumsstandort ist nicht
-              festgelegt. Gerechnet wird dasselbe Modell wie im Browser, die
-              Spuren kommen als MP3 zurück.
+              Dahinter steckt ein KI-Modell namens htdemucs. Ein neuronales
+              Netz, das an vielen tausend Liedern gelernt hat, wie eine
+              Singstimme klingt, wie ein Schlagzeug und wie ein Bass. Nicht
+              nach festen Regeln, sondern aus Beispielen. Also ungefähr so, wie
+              auch Bild- und Sprach-KI trainiert wird.
             </p>
             <p>
-              Die fertigen Spuren löschen wir nach wenigen Stunden; beim
-              Anbieter können Datei und Ergebnis einige Tage gespeichert
-              bleiben. Die jeweils geltenden Fristen und die Rechtsgrundlage
-              stehen in der
-              <a href="/datenschutz.html">Datenschutzerklärung</a>, Abschnitt 3.
+              Beim Trennen hört das Modell Ihr Lied in kurzen Abschnitten durch
+              und entscheidet für jeden Klang, zu welcher Spur er gehört.
+              Danach setzt es die Abschnitte wieder zusammen.
             </p>
             <p>
-              Dieser Weg ist freiwillig und wird nur angeboten, wenn Ihr Gerät
-              nicht selbst rechnen kann. Hochgeladen wird nichts von allein:
-              erst der Klick auf „Spuren trennen“ schickt die Datei los.
+              htdemucs kommt aus der KI-Forschung von Meta und ist frei
+              verfügbar. Es gehört zum Besten, was es für diese Aufgabe gibt,
+              und steckt auch in Programmen, für die man bezahlt. Sie bekommen
+              hier also keine abgespeckte Fassung.
+            </p>
+            <p>
+              Interessanter ist ohnehin, wo es läuft. Solche Modelle
+              brauchten bisher einen Server mit kräftiger Grafikkarte.
+              MixApart rechnet sie über eine neue Browser-Schnittstelle namens
+              WebGPU direkt auf der Grafikkarte in Ihrem eigenen Gerät.
+              Deshalb muss Ihre Musik für die Trennung nirgendwohin.
             </p>
           </div>
         </section>
 
         <section class="row">
-          <h2>3. Verlässt meine Musik das Gerät?</h2>
+          <h2>3. Wann sind meine Daten wo?</h2>
           <div class="body">
             <p>
-              Auf dem Gerätepfad nicht. Dort wird im Browser gerechnet, und
-              weder die Datei noch die Spuren werden irgendwohin übertragen —
-              auch nicht an uns. Nach dem ersten Lauf funktioniert er sogar
-              ohne Internetverbindung.
+              Im Normalfall bleibt Ihre Musik auf Ihrem Gerät. Das Feld auf der
+              Startseite sieht zwar aus wie ein Upload, ist aber keiner. Ihr
+              Browser öffnet die Datei nur, so wie ein Musikplayer sie auch
+              öffnen würde, und rechnet damit auf Ihrem Gerät. Verschickt wird
+              dabei nichts, weder die Datei noch die fertigen Spuren.
             </p>
             <p>
-              Die eine Ausnahme ist der Serverweg aus Frage 2. Wo er gewählt
-              ist, steht es im Kopf der Importkarte, und vor dem Start ist es
-              der einzige Weg, bei dem die Datei den Rechner verlässt.
+              Es gibt also nichts, was MixApart von Ihrer Musik zu sehen bekäme
+              oder speichern könnte. Nach dem ersten Lied funktioniert das
+              sogar ohne Internetverbindung. Sie können den Flugmodus
+              einschalten und trennen trotzdem weiter.
+            </p>
+            <p>
+              Eine Ausnahme gibt es. Manche Geräte können nicht selbst rechnen,
+              vor allem Handys, mehr dazu in Frage 9. Für die bietet MixApart
+              die Trennung auf einem Server an, und dabei verlässt die Datei
+              Ihr Gerät. Sie geht zu Modal Labs in die USA, einem Anbieter für
+              Rechenzeit auf Grafikkarten. Dort trennt sie dasselbe Modell, und
+              die Spuren kommen zurück. Das ist der Unterschied zum Feld auf
+              der Startseite. Dort wird die Datei nur geöffnet, hier wird sie
+              an den Server geschickt.
+            </p>
+            <p>
+              Von allein passiert das nicht. Es passiert, wenn oben "Server"
+              steht und Sie auf "Spuren trennen" tippen. Die fertigen Spuren
+              werden dort nach wenigen Stunden gelöscht, beim Anbieter können
+              Datei und Ergebnis noch ein paar Tage liegen. Die genauen Fristen
+              und die rechtlichen Einzelheiten stehen in der
+              <a href="/datenschutz.html">Datenschutzerklärung</a> unter
+              Abschnitt 3.
+            </p>
+            <p>
+              Nach dem Schließen bleibt nichts zurück. Die Spuren liegen nur im
+              Arbeitsspeicher des Browsers. Tab zu, weg. Was Sie behalten
+              wollen, speichern Sie vorher über das Pfeilsymbol an der
+              jeweiligen Spur.
+            </p>
+            <p>
+              Dauerhaft liegen bleibt nur das Modell selbst, rund 174 MB im
+              Zwischenspeicher des Browsers. Mit Ihrer Musik hat das nichts zu
+              tun, es sorgt nur dafür, dass das zweite Lied sofort losgeht.
             </p>
           </div>
         </section>
 
         <section class="row">
-          <h2>4. Was bedeuten WebGPU, WASM und CUDA?</h2>
+          <h2>4. Darf ich das mit gekaufter Musik machen?</h2>
           <div class="body">
-            <p>Das sind die Rechenwege, und sie unterscheiden sich vor allem in der Wartezeit:</p>
+            <p>
+              Für den eigenen Gebrauch ja. Das deutsche Urheberrecht erlaubt
+              Privatkopien, und eine Spur, die Sie aus einem gekauften Lied
+              herausziehen, um damit zu üben, fällt darunter. Mitspielen,
+              mitsingen, im Proberaum verwenden, das ist unproblematisch.
+            </p>
+            <p>
+              Veröffentlichen dürfen Sie die Spuren nicht. Bei YouTube
+              einstellen, als Karaoke-Fassung verkaufen oder in eine eigene
+              Aufnahme einbauen geht nur mit Erlaubnis der Rechteinhaber. Die
+              Trennung ändert daran nichts, das Material bleibt fremd.
+            </p>
+            <p>
+              Es gilt also dasselbe wie für jede andere Musik, die Ihnen nicht
+              gehört. MixApart prüft das nicht und kann es auch nicht prüfen.
+              Wenn Sie es genauer wissen müssen, fragen Sie jemanden, der dazu
+              beraten darf.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>5. Wie bekomme ich ein Playback ohne Gesang?</h2>
+          <div class="body">
+            <p>
+              Mit dem Trennmodus Minimum. Der macht genau zwei Spuren, den
+              Gesang und alles andere. Gesang stummschalten, fertig ist das
+              Playback.
+            </p>
+            <p>
+              Umgekehrt geht es genauso. Wenn Sie alles außer dem Gesang
+              stummschalten, haben Sie die Stimme allein, zum Beispiel um einen
+              Text herauszuhören. Minimum rechnet übrigens genauso schnell wie
+              Schnell und lädt auch nichts zusätzlich, es fasst die Spuren
+              hinterher nur zusammen.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>6. Bekomme ich auch Gitarre und Klavier einzeln?</h2>
+          <div class="body">
+            <p>
+              Ja, mit dem Trennmodus Instrumente. Der arbeitet mit einem
+              größeren Modell und liefert sechs Spuren statt vier, nämlich
+              zusätzlich Gitarre und Klavier.
+            </p>
+            <p>
+              Zwei Dinge sind dabei anders. Das Modell ist größer, also dauert
+              die Trennung länger, und es wird beim ersten Mal einmalig
+              geladen. Außerdem gibt es diesen Modus nur, wenn Ihr Gerät selbst
+              rechnet. Über den Server sind es immer vier Spuren.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>7. Was kann der Player?</h2>
+          <div class="body">
+            <p>
+              Mehr, als auf den ersten Blick zu sehen ist. Jede Spur hat ihren
+              eigenen Lautstärkeregler, lässt sich stummschalten oder allein
+              hören.
+            </p>
+            <p>
+              Das Tempo können Sie zwischen 50 und 125 Prozent verstellen, ohne
+              dass die Musik dabei tiefer oder höher klingt. Die Tonhöhe
+              verschieben Sie getrennt davon um bis zu zwölf Halbtöne, falls
+              ein Lied nicht in Ihrer Stimmlage liegt oder Ihre Gitarre einen
+              Halbton tiefer gestimmt ist.
+            </p>
+            <p>
+              Für schwierige Stellen gibt es eine Schleife. Sie markieren
+              Anfang und Ende, und der Ausschnitt läuft in Dauerwiederholung.
+              Und wenn Sie eine Spur allein hören, bekommt genau diese Spur ein
+              eigenes Tempo, während der Rest normal weiterläuft.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>8. Welche Geräte und Browser funktionieren?</h2>
+          <div class="body">
+            <p>
+              Am Computer Chrome und Edge, auf dem Mac auch Safari. Firefox
+              kann es unter Windows und auf neueren Macs ebenfalls, unter Linux
+              bisher nicht.
+            </p>
+            <p>
+              Auf dem iPhone und iPad funktioniert es ab iOS 26, seit Herbst
+              2025. Weil dort alle Browser denselben Unterbau benutzen, gilt
+              das für Safari, Chrome und Firefox gleichermaßen. Auf
+              Android-Telefonen kommt es auf das Modell an, mehr dazu in der
+              nächsten Frage.
+            </p>
+            <p>
+              Ausprobieren ist einfacher als nachschlagen. Die Seite prüft
+              beim Öffnen selbst, was Ihr Gerät kann, und sagt es Ihnen.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>9. Warum sagt die Seite, mein Gerät kann nicht selbst rechnen?</h2>
+          <div class="body">
+            <p>
+              Ein KI-Modell dieser Größe braucht eine Grafikkarte, also eine
+              GPU. Dieselbe, die sonst Spiele und Videos darstellt. Der
+              Hauptprozessor, die CPU, kann dieselbe Rechnung theoretisch auch,
+              nur um ein Vielfaches langsamer.
+            </p>
+            <p>
+              Browser geben die GPU über WebGPU für solche Rechnungen frei,
+              aber noch nicht überall. Auf Android-Telefonen ist bisher nur ein
+              Teil der verbauten Chips freigegeben, und in manchen
+              Firmenumgebungen ist die Freigabe ganz abgeschaltet.
+            </p>
+            <p>
+              Daran lässt sich von außen nichts ändern, das entscheidet der
+              Browserhersteller für Ihr Gerätemodell. Am Computer hilft
+              manchmal ein aktueller Grafiktreiber oder ein Wechsel zu Chrome
+              oder Edge in einer neuen Fassung.
+            </p>
+            <p>
+              Für genau diesen Fall gibt es den Server. Er übernimmt die
+              Trennung und schickt die vier Spuren zurück. Umstellen müssen Sie
+              dafür nichts, die Seite stellt sich von selbst darauf ein, und im
+              Player ist danach alles wie sonst.
+            </p>
+            <p>
+              Falls Sie Kontakt aufnehmen, nennen Sie bitte den kurzen Code
+              aus der Meldung, zum Beispiel GPU-03. Damit lässt sich sofort
+              zuordnen, woran es lag.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>10. Wie lange dauert eine Trennung?</h2>
+          <div class="body">
+            <p>
+              Auf einem Rechner mit Grafikkarte sind Sie in aller Regel
+              schneller fertig, als das Lied dauert, das Sie gerade trennen.
+              Wie viel schneller, hängt von Ihrer Hardware ab. Deshalb steht
+              hier keine Zahl. MixApart zeigt sie Ihnen stattdessen selbst.
+              Während der Trennung läuft eine Restzeit mit, und die stammt aus
+              Ihrem eigenen Durchgang.
+            </p>
+            <p>
+              Über den Server dauert ein ganzes Lied ungefähr eine Minute. Dazu
+              kommt die Wartezeit, bis dort eine Maschine frei ist.
+            </p>
+            <p>
+              Beim allerersten Mal dauert es länger, weil einmalig das Modell
+              geladen wird. Jedes weitere Lied beginnt sofort.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>11. Welche Dateien kann ich verwenden?</h2>
+          <div class="body">
+            <p>
+              MP3 und WAV. Über den Server sind es höchstens 25 MB je Datei,
+              das reicht für gut zehn Minuten Musik. Auf Ihrem eigenen Gerät
+              entscheidet der Arbeitsspeicher, wie lang ein Lied sein darf, und
+              die Seite fragt nach, bevor es knapp wird.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>12. Kann ich die Spuren in meiner Musiksoftware weiterverwenden?</h2>
+          <div class="body">
+            <p>
+              Ja. Das Pfeilsymbol an jeder Spur speichert sie als WAV, 44,1 kHz
+              in Stereo, 16 Bit. Damit kommt jede Aufnahmesoftware zurecht, von
+              Audacity bis Ableton.
+            </p>
+            <p>
+              Alle Spuren sind gleich lang und beginnen an derselben Stelle.
+              Sie können sie also einfach nebeneinander in Ihr Projekt ziehen,
+              ohne etwas auszurichten.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>13. Kostet das etwas? Brauche ich ein Konto?</h2>
+          <div class="body">
+            <p>
+              MixApart ist kostenlos und ohne Anmeldung nutzbar. Kein Konto,
+              keine Bezahlschranke, keine Begrenzung auf eine bestimmte Zahl
+              von Liedern. Werbe- oder Statistik-Cookies setzt die App auch
+              nicht.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>14. Was bedeuten die Wörter in der Auswahl oben?</h2>
+          <div class="body">
+            <p>
+              Dort steht, womit gerade gerechnet wird. Die Namen sind
+              technisch, gemeint ist etwas ziemlich Einfaches:
+            </p>
             <ul>
               <li>
-                <strong>WebGPU</strong> — im Browser auf der Grafikeinheit.
-                Rund 18 Sekunden für viereinhalb Minuten Musik.
+                <strong>WebGPU</strong> bedeutet, dass auf Ihrer Grafikkarte
+                gerechnet wird, im Browser. Der übliche Weg und der schnellste.
+                Ihre Datei bleibt dabei auf Ihrem Gerät.
               </li>
               <li>
-                <strong>WASM</strong> — im Browser auf dem Prozessor. Derselbe
-                Weg ohne Grafikeinheit, und deutlich langsamer: am Rechner eher
-                zehn Minuten als eine, auf einem Telefon realistisch eine Stunde.
+                <strong>WASM</strong> bedeutet, dass Ihr Hauptprozessor
+                rechnet, ebenfalls im Browser. Das geht auf jedem Gerät, dauert
+                aber deutlich länger, weil eine CPU für diese Art Rechnung
+                nicht gebaut ist. Ihre Musik bleibt auch hier bei Ihnen.
               </li>
               <li>
-                <strong>CUDA</strong> — auf einer NVIDIA-Grafikkarte über einen
-                eigenen Dienst. Noch einmal etwa doppelt so schnell wie WebGPU,
-                steht aber nur zur Verfügung, wenn dieser Dienst auf Ihrem
-                Rechner läuft. Auf mixapart.de gibt es ihn nicht.
+                <strong>Server</strong> bedeutet, dass eine Grafikkarte in den
+                USA rechnet. Der Weg für Geräte, die selbst nicht können. Dafür
+                wird die Datei übertragen.
               </li>
             </ul>
           </div>
         </section>
 
-        <section class="row">
-          <h2>5. Welche Dateien kann ich verwenden?</h2>
-          <div class="body">
-            <p>
-              MP3 und WAV. Auf dem Gerätepfad begrenzt der Arbeitsspeicher die
-              Länge — die Seite fragt nach, bevor es eng wird. Über den
-              Serverweg sind es höchstens 25 MB je Datei, das reicht für gut
-              zehn Minuten MP3.
-            </p>
-          </div>
-        </section>
-
-        <section class="row">
-          <h2>6. Bleiben die Spuren erhalten, wenn ich die Seite schließe?</h2>
-          <div class="body">
-            <p>
-              Nein. Die getrennten Spuren liegen im Arbeitsspeicher des
-              Browsers und sind mit dem Schließen des Tabs weg. Was Sie behalten
-              wollen, speichern Sie im Deck über das Download-Zeichen an der
-              Spur — jede Spur einzeln als WAV.
-            </p>
-            <p>
-              Dauerhaft gespeichert wird nur das Modell selbst: rund 174 MB
-              Modellgewichte bleiben im Browser-Cache, damit der zweite Song
-              sofort beginnt.
-            </p>
-          </div>
-        </section>
-
-        <section class="row">
-          <h2>7. Kostet das etwas?</h2>
-          <div class="body">
-            <p>
-              Nein. Es gibt kein Konto, keine Anmeldung und keine Bezahlschranke.
-            </p>
-          </div>
-        </section>
       </div>
     </main>
 

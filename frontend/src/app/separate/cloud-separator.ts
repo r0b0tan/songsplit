@@ -157,7 +157,7 @@ export class CloudSeparator {
         label: 'htdemucs — 4 Spuren, auf unserem Server',
         description:
           'Dasselbe Modell wie auf dem Gerät, nur anderswo gerechnet. ' +
-          'Die Datei wird dafür hochgeladen.',
+          'Die Datei wird dafür an unseren Server geschickt.',
         // Dieselben Anzeigenamen wie auf dem Geraet. Der Endpunkt liefert
         // die englischen Kennungen; auf der Karte stuenden sonst zwei
         // Sprachen nebeneinander, je nachdem wo gerechnet wird.
