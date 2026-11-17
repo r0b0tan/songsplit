@@ -219,6 +219,25 @@ fi
 
 [ -f "$DEPLOY_DIST/index.html" ] || die "$DEPLOY_DIST/index.html fehlt — erst bauen (ohne --no-build)."
 
+# Rechtstexte mit offenen Platzhaltern gehen nicht raus.
+#
+# Der Abschnitt ueber die Verarbeitung in den USA traegt Stellen in doppelten
+# eckigen Klammern, die nur ein Mensch fuellen kann: Firmierung des
+# Rechenanbieters, Auftragsverarbeitungsvertrag, Zertifizierung. Stehen die
+# noch da, ist der Text nicht fertig — und eine Datenschutzerklaerung, in der
+# „[[FIRMIERUNG …]]" steht, ist schlimmer als keine neue.
+#
+# Die Pruefung laeuft gegen den **Bau**, nicht gegen die Quelle: nur was
+# wirklich hochgeht, zaehlt.
+for rechtstext in "$DEPLOY_DIST"/datenschutz.html "$DEPLOY_DIST"/impressum.html; do
+  [ -f "$rechtstext" ] || continue
+  if grep -q '\[\[' "$rechtstext"; then
+    die "$(basename "$rechtstext") enthaelt noch Platzhalter:
+$(grep -o '\[\[[^]]*\]\]' "$rechtstext" | sed 's/^/    /')
+  Erst ausfuellen, dann deployen."
+  fi
+done
+
 # Ohne die Modelle bietet die Seite keinen Trennmodus an; ein halber Upload
 # faellt sonst erst im Browser auf.
 [ -d "$DEPLOY_DIST/models" ] || warn "$DEPLOY_DIST/models fehlt — die Oberflaeche wird keine Trennung anbieten."
