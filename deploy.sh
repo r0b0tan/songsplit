@@ -137,6 +137,43 @@ kopfzeilen_pruefen() {
     return 1
   fi
   info "Sicherheitskopfzeilen stehen (${#KOPFZEILEN[@]} geprueft)."
+  csp_gegen_cloudjson "$kopf"
+}
+
+# Kennt die CSP den Trennweg, den cloud.json nennt?
+#
+# Die Adresse steht an zwei Stellen, und die wissen nichts voneinander:
+# `connect-src` in der CSP sagt dem Browser, wohin er lassen soll, `url` in
+# der cloud.json sagt der Seite, wohin sie fragen soll. Weichen sie ab,
+# bricht genau eine Sache — der Serverweg auf Geraeten ohne eigene GPU — und
+# zwar mit „failed to fetch". Diese Meldung sagt ueber ihre Ursache nichts,
+# und sie trifft nur die Geraete, auf denen man am seltensten nachsieht.
+# Genau so ist es beim Einschalten der Richtlinie passiert.
+#
+# Geprueft wird von aussen, an der ausgelieferten Seite: beides ist
+# oeffentlich, es braucht keinen Zugang zum Server. Damit faellt ein
+# Auseinanderlaufen beim naechsten Deploy auf und nicht am Handy.
+csp_gegen_cloudjson() {
+  local csp ziel
+  csp=$(printf '%s\n' "$1" | grep -i '^content-security-policy:' | head -1)
+  [ -n "$csp" ] || return 0
+  ziel=$(curl -sS --max-time 20 "${DEPLOY_URL%/}/cloud.json" 2>/dev/null \
+         | grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
+         | sed -E 's/.*:[[:space:]]*"(.*)"$/\1/')
+  if [ -z "$ziel" ]; then
+    info "cloud.json nennt keinen Trennweg — connect-src braucht keinen Eintrag."
+    return 0
+  fi
+  if printf '%s' "$csp" | grep -qF -- "$ziel"; then
+    info "connect-src kennt den Trennweg: $ziel"
+    return 0
+  fi
+  warn "cloud.json nennt den Trennweg $ziel,
+       die CSP der Seite erlaubt ihn aber nicht. Im Browser bricht er mit
+       'failed to fetch' ab — auf dem Handy, wo es sonst keinen Weg gibt.
+       Die Adresse gehoert in connect-src in nginx-security-headers.conf,
+       danach: ./deploy.sh install-headers && ./deploy.sh --reload-nginx"
+  return 1
 }
 
 # ------------------------------------------------------------- Sitzung -------
