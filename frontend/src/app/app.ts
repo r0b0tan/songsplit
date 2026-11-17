@@ -550,12 +550,24 @@ export class AppComponent {
    * Oeffnet einen Job im Deck.
    *
    * Zwei Wege, ein Deck: ein Job vom Backend bringt Adressen mit, die der
-   * Player holt und dekodiert; ein Job vom Geraet bringt die Abtastwerte
-   * selbst mit und braucht dafuer kein Netz. Welcher Weg es ist, entscheidet
-   * sich hier — ab der `load`-Schnittstelle ist es dasselbe Deck.
+   * Player holt und dekodiert; alle anderen bringen die Abtastwerte selbst
+   * mit und brauchen dafuer kein Netz. Welcher Weg es ist, entscheidet sich
+   * hier — ab der `load`-Schnittstelle ist es dasselbe Deck.
+   *
+   * **Gefragt wird nach dem Backend, nicht nach dem Geraet**, und das ist
+   * der Unterschied, an dem der Serverweg zuerst gescheitert ist. Hier
+   * stand `job.site === 'device'`; ein Cloudjob fiel damit in den
+   * Backendzweig und wurde ueber `s.url` geladen. Die ist bei ihm aber
+   * absichtlich leer — die Spuren liegen laengst dekodiert im `StemStore`
+   * —, und ein `fetch('')` holt die Seite selbst, an der sich dann
+   * `decodeAudioData` verschluckt. Im Deck kam keine einzige Spur an.
+   *
+   * Dieselbe Frage stellt `JobsService.openable`, und dort stand sie von
+   * Anfang an richtig herum: alles ausser `backend` muss im Store liegen.
+   * Zwei Stellen, die dasselbe entscheiden, muessen es gleich entscheiden.
    */
   openJob(job: Job): void {
-    if (job.site === 'device') {
+    if (job.site !== 'backend') {
       const held = this.store.get(job.id);
       if (!held) {
         // Das Ergebnis ist aus dem Speicher verdraengt worden. Der Verlauf
