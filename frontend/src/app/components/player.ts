@@ -22,6 +22,7 @@ import {
   type TrackView,
 } from '../audio/mix-engine';
 import { IconComponent } from '../core/icon';
+import { RangeScrollGuard } from '../core/range-scroll-guard';
 import type { Job } from '../core/models';
 import { stemColor } from '../core/stem-colors';
 import { shortStemName } from '../core/stem-name';
@@ -51,7 +52,7 @@ type LoopEnd = 'a' | 'b';
 @Component({
   selector: 'app-player',
   standalone: true,
-  imports: [IconComponent, TimeRulerComponent, WaveformComponent],
+  imports: [IconComponent, RangeScrollGuard, TimeRulerComponent, WaveformComponent],
   styles: [
     `
       /* Der Host traegt den Container-Kontext, nicht das Deck selbst: eine
@@ -648,6 +649,107 @@ type LoopEnd = 'a' | 'b';
           display: none;
         }
       }
+      /* ------------------------------------------------------- Quer gehalten */
+      /* Ein Telefon im Querformat hat gut 400 Pixel Hoehe, und davon gingen
+         322 an Kopf, Transport, Tabellenkopf, Fuss und Technik: fuer die
+         Spuren -- das, wofuer das Deck da ist -- blieben 74. Gemessen bei
+         870 auf 412, drei Spuren, Deck insgesamt 702 Pixel hoch.
+
+         Dieser Block raeumt genau dort auf. Er haengt an der Hoehe, nicht
+         an der Breite: schmal ist das Deck hier nicht, es ist flach. Die
+         Container-Abfragen weiter oben greifen quer nie, weil der Container
+         835 Pixel breit ist -- und sie sollen es auch nicht, denn breit ist
+         richtig. Falsch ist nur, was hoch baut. */
+      @media (max-height: 560px) {
+        .deck {
+          /* Niedrigere Bahnen als die 66 Pixel der Vorgabe. Zum Ziehen auf
+             der Wellenform reicht das noch; fuenf Spuren, die man nur
+             nacheinander sieht, reichen nicht. */
+          --lane-h: clamp(
+            54px,
+            calc((var(--deck-space) - var(--chrome, 330px)) / var(--lanes, 6)),
+            110px
+          );
+          /* Spurkopf und Regler geben ab, die Wellenform nimmt. Weiter
+             herunter geht es nicht: unter rund 158 Pixeln passen Name,
+             Mute und Solo nicht mehr in eine Zeile, und sie untereinander
+             zu stellen machte die Bahnen wieder hoeher -- genau das, was
+             dieser Block gerade abgeschafft hat. */
+          --label: 186px;
+          --knobs: 138px;
+        }
+        /* Enger an den Rand: die gewonnenen Pixel gehen an den Namen, der
+           sonst nach drei Buchstaben abbricht. */
+        .track-head,
+        .track-knobs {
+          padding-inline: 8px;
+        }
+        /* Der gemessene Pegel tritt zurueck. Er ist die schoenste Anzeige
+           im Deck, aber die einzige, die es doppelt gibt: dass eine Spur
+           klingt, sagen quer auch die Wellenform unter dem Zeiger und der
+           Punkt vor dem Namen. Seine 24 Pixel gehen an die Schiene
+           daneben, die sonst auf ein Drittel ihrer Laenge faellt und sich
+           mit dem Finger nicht mehr fein stellen laesst. */
+        .meter {
+          display: none;
+        }
+
+        /* Der Songkopf sagt dasselbe in halber Hoehe. */
+        .song {
+          padding: 9px clamp(13px, 2.2vw, 19px) 10px;
+        }
+        .title {
+          font-size: clamp(17px, 2.4cqw, 20px);
+          margin: 3px 0 4px;
+        }
+        .messages {
+          padding-bottom: 10px;
+        }
+        .transport {
+          padding-block: 6px;
+        }
+        .status {
+          padding-block: 6px;
+        }
+
+        /* Die Spaltenbeschriftungen stehen schmal gedraengt ueber zwei
+           Zeilen und erklaeren, was die Zeichen darunter ohnehin zeigen.
+           Die Zeitachse behaelt ihre Zeile. */
+        .table-head .heading {
+          display: none;
+        }
+        /* Und die Achse ausdruecklich in die mittlere Spalte: ohne die
+           Beschriftung davor sucht sie sich sonst die erste und liegt
+           damit neben den Wellenformen statt ueber ihnen. */
+        .table-head app-time-ruler {
+          grid-column: 2;
+        }
+
+        /* Vier Saetze ueber AudioContext und Vorlauf -- auf einem Telefon
+           beim Ueben nicht die 33 Pixel wert, die die zugeklappte Zeile
+           kostet. Am Rechner steht sie weiter da. */
+        .tech {
+          display: none;
+        }
+
+        /* Das hier war der eigentliche Hoehenfresser: nicht die Wellenform,
+           sondern die Zeile "12 MB" darunter. Mit dem Finger ist das
+           Download-Zeichen ein 36 Pixel hohes Ziel, macht mit Abstand 44
+           Pixel -- so wurde aus einer 66-Pixel-Bahn eine von 102.
+
+           Weg ist sie nicht: ein Tipp auf den Spurnamen klappt sie auf,
+           zusammen mit der Tonhoehe. Was gemeldet werden muss, bleibt
+           stehen -- eine Spur, die nicht geladen hat, sagt das weiter von
+           selbst. */
+        .track .track-note {
+          display: none;
+        }
+        .track.detailed .track-note,
+        .track .track-note.bad {
+          display: block;
+        }
+      }
+
       @container (max-width: 520px) {
         .deck {
           --label: 132px;
@@ -878,6 +980,7 @@ type LoopEnd = 'a' | 'b';
             class="track"
             [class.soloed]="track.solo"
             [class.hushed]="!audible(track)"
+            [class.detailed]="showPitch(track)"
             [style.--sig]="color(track, i)"
             data-testid="track"
             [attr.data-slug]="track.slug"

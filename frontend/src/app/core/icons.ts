@@ -141,6 +141,16 @@ export const ICONS = {
     ['path', {"d":"M18 5v13"}],
     ['path', {"d":"M22 10v3"}],
   ],
+  // Hochformat: das Gerät, das gedreht werden soll
+  'smartphone': [
+    ['rect', {"width":"14","height":"20","x":"5","y":"2","rx":"2","ry":"2"}],
+    ['path', {"d":"M12 18h.01"}],
+  ],
+  // Hochformat: die Drehung selbst
+  'rotate-cw': [
+    ['path', {"d":"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"}],
+    ['path', {"d":"M21 3v5h-5"}],
+  ],
 } as const satisfies Record<string, readonly IconShape[]>;
 
 export type IconName = keyof typeof ICONS;

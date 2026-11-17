@@ -44,6 +44,8 @@ const WANTED = {
   ellipsis: 'Verlauf: weitere Aktionen zu einem Job',
   clock: 'Verlauf: Job wartet oder laeuft',
   'audio-lines': 'Job im Deck öffnen',
+  smartphone: 'Hochformat: das Gerät, das gedreht werden soll',
+  'rotate-cw': 'Hochformat: die Drehung selbst',
 };
 
 /** Formen, die die Icon-Komponente zeichnen kann. */

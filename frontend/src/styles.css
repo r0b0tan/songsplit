@@ -288,6 +288,12 @@ input[type='range'] {
   height: 18px;
   cursor: pointer;
   accent-color: var(--sig, var(--accent));
+  /* Senkrechte Zuege gehoeren der Seite, waagerechte dem Regler.
+     Ohne diese Zeile setzt ein Finger, der ueber eine Pegelschiene
+     hinwegscrollt, den Wert auf die Stelle, an der er aufsetzt -- und das
+     faellt erst auf, wenn eine Spur zu laut ist. Im Deck liegen sechs
+     solche Schienen uebereinander, genau dort, wo gescrollt wird. */
+  touch-action: pan-y;
 }
 
 /* --------------------------------------------------------------- Abzeichen */

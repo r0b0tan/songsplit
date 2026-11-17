@@ -16,6 +16,7 @@ import { JobListComponent } from './components/job-list';
 import { PlayerComponent } from './components/player';
 import { RunProgressComponent } from './components/run-progress';
 import { ApiService } from './core/api.service';
+import { IconComponent } from './core/icon';
 import { JobsService } from './core/jobs.service';
 import type { Job } from './core/models';
 import { DeviceSeparator } from './separate/device-separator';
@@ -50,6 +51,7 @@ import { StemStore } from './separate/stem-store';
   standalone: true,
   imports: [
     DeviceNoticeComponent,
+    IconComponent,
     ImportPanelComponent,
     JobListComponent,
     PlayerComponent,
@@ -306,6 +308,116 @@ import { StemStore } from './separate/stem-store';
           opacity: 0;
         }
       }
+
+      /* ------------------------------------------------- Bitte drehen */
+      /* Das Deck ist eine Zeitachse ueber die ganze Breite: Spurkopf,
+         Wellenform, Regler nebeneinander, und darunter so viele Bahnen wie
+         Spuren. Hochkant bleibt davon auf einem Telefon nichts uebrig --
+         die Wellenform, das eigentliche Werkzeug, waere schmaler als der
+         Pegelregler daneben, und der Rest des Decks laege unterhalb des
+         Schirms.
+
+         Deshalb hochkant kein verkleinertes Deck, sondern ein Satz: dreh
+         das Geraet. Das ist keine Notloesung, sondern dieselbe Auskunft,
+         die ein Mischpult gaebe -- quer ist die Form, in der das Werkzeug
+         funktioniert.
+
+         Die Bedingung steht ganz im CSS, nicht in Javascript: matchMedia
+         und ein Signal daneben waeren zwei Quellen fuer dieselbe Frage, und
+         die laufen beim Drehen auseinander. Nur der Ausweg ("trotzdem")
+         ist ein Signal -- den kann CSS nicht wissen.
+
+         Ueber der Karte liegt der Hinweis fest am Fenster, und das
+         geht hier auf, weil der Dialog in der obersten Ebene liegt und
+         selbst keine Verschiebung traegt: gemessen wird am Fenster, nicht
+         an der gescrollten Karte darunter. Haette das Deck den Hinweis
+         getragen, waere er an dessen Hoehe geklebt -- sein Wirt traegt
+         einen Container-Kontext, und der macht ihn zum Bezug fuer alles
+         Festgestellte darin. */
+      .turn {
+        display: none;
+      }
+      @media (orientation: portrait) and (pointer: coarse) and (max-width: 860px) {
+        .turn {
+          position: fixed;
+          inset: 0;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 13px;
+          /* Deckend, nicht durchscheinend: das halbe Deck dahinter waere
+             genau das Bild, das der Hinweis gerade abloest. */
+          background: var(--bg);
+          padding: 30px max(22px, env(safe-area-inset-left, 0px))
+            max(30px, env(safe-area-inset-bottom, 0px))
+            max(22px, env(safe-area-inset-right, 0px));
+          text-align: center;
+        }
+      }
+      /* Das Zeichen: ein Telefon, das sich in den Bogen eines Pfeils legt.
+         Der Bogen allein hiesse nur "drehen", das Telefon allein nur
+         "Telefon" -- zusammen sagen sie, was zu tun ist. Die Bewegung
+         macht aus der Aufforderung eine Vorfuehrung. */
+      .turn-sign {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 96px;
+        height: 96px;
+        margin-bottom: 2px;
+      }
+      .turn-ring {
+        --icon-size: 96px;
+        color: var(--accent);
+        opacity: 0.32;
+      }
+      .turn-phone {
+        position: absolute;
+        --icon-size: 42px;
+        color: var(--accent);
+        animation: kippen 3.2s cubic-bezier(0.5, 0, 0.3, 1) infinite;
+      }
+      /* Aufrecht stehen, kippen, quer liegen bleiben, zurueck: die Pausen
+         an beiden Enden sind laenger als die Drehung dazwischen, sonst
+         wirbelt das Zeichen, statt etwas zu zeigen. */
+      @keyframes kippen {
+        0%,
+        26% {
+          transform: rotate(0deg);
+        }
+        46%,
+        82% {
+          transform: rotate(-90deg);
+        }
+      }
+      /* Wer keine Bewegung will, bekommt das Ergebnis statt des Wegs: das
+         Telefon liegt quer. Die allgemeine Regel in styles.css kuerzt jede
+         Dauer auf nichts -- stehen bliebe damit der letzte Schritt, also
+         wieder aufrecht, und das Zeichen sagte das Gegenteil. */
+      @media (prefers-reduced-motion: reduce) {
+        .turn-phone {
+          animation: none !important;
+          transform: rotate(-90deg);
+        }
+      }
+      .turn h2 {
+        font-size: 17px;
+      }
+      /* Ein Satz, der den Grund nennt -- leiser als die Aufforderung
+         darueber, denn gehandelt wird nach der ersten Zeile. */
+      .turn p {
+        max-width: 34ch;
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: var(--dim);
+      }
+      /* Die Flaeche ist bedienbar, sieht aber nicht danach aus: kein Ring
+         beim Tippen, nur beim Weg ueber die Tastatur. */
+      .turn:focus {
+        outline: none;
+      }
     `,
   ],
   template: `
@@ -455,6 +567,40 @@ import { StemStore } from './separate/stem-store';
           <app-player [job]="job" (close)="closeJob()" />
         }
       }
+
+      <!-- Hochkant auf einem Telefon: statt eines Decks, von dem man ein
+           Viertel sieht, ein Satz und ein Zeichen. Sichtbar wird das
+           allein ueber die Abfrage im CSS — hier steht nur, was gesagt
+           wird, und dass es sich wegtippen laesst. -->
+      @if (selected() && !hochkantEgal()) {
+        <!-- Ein Zeichen, ein Satz, sonst nichts: wer das Telefon in der
+             Hand hat, braucht keine Begruendung, sondern eine Richtung.
+
+             Die ganze Flaeche ist der Ausweg — ein Tipp irgendwohin zeigt
+             das Deck doch hochkant. Sichtbar steht das nirgends, weil es
+             nur den einen Fall betrifft: Drehsperre an, Geraet liegt fest.
+             Ein Knopf dafuer stuende sonst in jedem anderen Fall im Bild
+             und laedt ein, die bessere Ansicht zu uebergehen. -->
+        <div
+          class="turn"
+          role="button"
+          tabindex="0"
+          aria-label="Bitte das Gerät drehen — antippen, um das Deck trotzdem hochkant zu zeigen"
+          (click)="hochkantEgal.set(true)"
+          (keydown.enter)="hochkantEgal.set(true)"
+          (keydown.space)="hochkantEgal.set(true)"
+        >
+          <span class="turn-sign" aria-hidden="true">
+            <app-icon class="turn-ring" name="rotate-cw" />
+            <app-icon class="turn-phone" name="smartphone" />
+          </span>
+          <h2>Bitte Gerät drehen</h2>
+          <p>
+            Um alle Spuren an einer gemeinsamen Zeitachse zu zeigen,
+            braucht der Player die Breite des Querformats.
+          </p>
+        </div>
+      }
     </dialog>
 
     <!-- ------------------------------------------- Geraet kann es nicht -->
@@ -472,6 +618,15 @@ export class AppComponent {
   private readonly device = inject(DeviceSeparator);
 
   readonly selected = signal<Job | null>(null);
+
+  /**
+   * Hochkant trotzdem: der Ausweg aus dem Drehhinweis.
+   *
+   * Pro geoeffnetem Deck, nicht pro Sitzung — wer ihn einmal gebraucht
+   * hat, hatte dafuer einen Grund in diesem Moment (Drehsperre, Geraet
+   * liegt fest), und beim naechsten Deck gilt wieder, was besser ist.
+   */
+  protected readonly hochkantEgal = signal(false);
 
   /**
    * Das laufende Jahr fuer das Fussband. Einmal beim Aufbau gelesen -- eine
@@ -660,6 +815,7 @@ export class AppComponent {
   closeJob(): void {
     if (!this.selected()) return;
     this.selected.set(null);
+    this.hochkantEgal.set(false);
     this.engine.teardown();
   }
 
