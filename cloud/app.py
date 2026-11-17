@@ -562,7 +562,7 @@ def api():
 
     from fastapi import FastAPI, File, Header, HTTPException, UploadFile
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, JSONResponse
     from modal.exception import OutputExpiredError
 
     ERLAUBTE_SUFFIXE = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".opus"}
@@ -570,6 +570,102 @@ def api():
     SLUG_MUSTER = re.compile(r"^[a-z]{3,10}$")
 
     web = FastAPI(title="mixapart", docs_url=None, redoc_url=None)
+
+    class Torwaechter:
+        """Ausweis und Groesse pruefen, bevor der Body gelesen wird.
+
+        Dass `pruefe()` als erste Zeile im Handler steht, reicht nicht.
+        FastAPI liest den Body in `get_request_handler`, **bevor** es die
+        Abhaengigkeiten aufloest — also bevor eine Zeile des Handlers
+        laeuft. Gemessen an genau diesem Endpunkt: 2 MB ohne Token gingen
+        vollstaendig durch, erst danach kam die 401.
+
+        Dasselbe gilt fuer `MAX_UPLOAD_BYTES`. Die Leseschleife in
+        `separate` begrenzt, was in `teile` landet, nicht, was ankommt:
+        python-multipart hat die Datei da schon entgegengenommen und ab
+        einem Megabyte auf die Platte gespoolt.
+
+        Ohne diese Schicht ist der Endpunkt fuer jeden ohne Token ein
+        offener Eimer — Bandbreite, Spool-Platz und Multipart-CPU im
+        Web-Container, ohne Grenze und ohne Ausweis. Der Token schuetzt
+        die GPU-Minuten, aber nicht den Container davor.
+
+        Reines ASGI und keine `BaseHTTPMiddleware`: die fasst den Body an,
+        und genau das soll hier unterbleiben. `receive` wird nie
+        aufgerufen, der Upload bricht ab. Dasselbe Muster steht als
+        `LocalGuard` in `backend/app/main.py`.
+        """
+
+        #: Was ohne Ausweis beantwortet wird. `/health` sagt der
+        #: Oberflaeche, ob es den Weg gibt und wie lange er dauert — das
+        #: muss sie wissen koennen, bevor jemand eine Datei auswaehlt.
+        OHNE_TOKEN = frozenset({"/health"})
+
+        #: Der Umschlag um die Datei: Grenzzeilen, Feldname, Dateiname,
+        #: Content-Type. Ein paar hundert Byte, grosszuegig gerechnet.
+        UMSCHLAG = 64 * 1024
+
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+
+            pfad = scope.get("path", "").rstrip("/") or "/"
+            kopf = dict(scope.get("headers") or ())
+
+            if pfad not in self.OHNE_TOKEN:
+                gegeben = kopf.get(b"x-mixapart-token", b"").decode("latin-1")
+                erwartet = os.environ["MIXAPART_TOKEN"]
+                if not gegeben or not pysecrets.compare_digest(gegeben, erwartet):
+                    await self._absage(
+                        401, "Token fehlt oder stimmt nicht.", scope, receive, send
+                    )
+                    return
+
+            if scope.get("method") in {"POST", "PUT", "PATCH"}:
+                roh = kopf.get(b"content-length")
+                if roh is None:
+                    # Ohne angekuendigte Laenge laesst sich vorher nichts
+                    # pruefen, und hinterher ist die Datei schon da. Jeder
+                    # Browser und jedes curl setzen die Kopfzeile bei einem
+                    # Datei-Upload; wer sie weglaesst, bekommt eine Ansage
+                    # statt einer offenen Leitung.
+                    await self._absage(
+                        411, "Content-Length fehlt.", scope, receive, send
+                    )
+                    return
+                try:
+                    laenge = int(roh)
+                except ValueError:
+                    await self._absage(
+                        400, "Content-Length ist keine Zahl.", scope, receive, send
+                    )
+                    return
+                if laenge > MAX_UPLOAD_BYTES + self.UMSCHLAG:
+                    await self._absage(
+                        413,
+                        f"Hoechstens {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.",
+                        scope, receive, send,
+                    )
+                    return
+
+            await self.app(scope, receive, send)
+
+        @staticmethod
+        async def _absage(status, detail, scope, receive, send):
+            await JSONResponse({"detail": detail}, status_code=status)(
+                scope, receive, send
+            )
+
+    # Zuletzt eingetragen heisst aeusserste Schicht. CORS steht deshalb
+    # **nach** dem Torwaechter und laeuft damit vor ihm: so legt es seine
+    # Kopfzeilen noch um eine Absage, und die Oberflaeche liest den Grund,
+    # statt einen undurchsichtigen Netzwerkfehler zu sehen. Preflights
+    # beantwortet CORS selbst; sie erreichen den Torwaechter nie.
+    web.add_middleware(Torwaechter)
     web.add_middleware(
         CORSMiddleware,
         allow_origins=ORIGINS,
@@ -584,6 +680,11 @@ def api():
         das ist bekannt und in Kauf genommen. Was er leistet: niemand
         findet diesen Endpunkt zufaellig und laesst Guthaben darauf
         verschwinden. Was ihn traegt, ist `MAX_CONTAINERS`.
+
+        Der `Torwaechter` prueft dasselbe schon vor dem Body, hier kommt
+        also im Regelfall nichts mehr an. Stehen bleibt es trotzdem: eine
+        Route, die ihren Ausweis selbst verlangt, bleibt richtig, auch
+        wenn jemand die Schicht darueber einmal umbaut.
         """
         erwartet = os.environ["MIXAPART_TOKEN"]
         if not gegeben or not pysecrets.compare_digest(gegeben, erwartet):
@@ -617,8 +718,12 @@ def api():
                 detail=f"{suffix or 'Ohne Endung'} wird nicht angenommen.",
             )
 
-        # Stueckweise, damit eine zu grosse Datei abbricht statt erst
-        # vollstaendig im Speicher zu landen.
+        # Stueckweise, aber ohne Illusion darueber, was das noch leistet:
+        # die Datei ist an dieser Stelle laengst vollstaendig angenommen
+        # (FastAPI liest den Body vor dem Handler). Begrenzt wird hier
+        # also nur noch, was in `teile` und damit in den Aufruf wandert —
+        # die Leitung schuetzt der `Torwaechter` ueber Content-Length,
+        # bevor das erste Byte gelesen wird.
         teile: list[bytes] = []
         gelesen = 0
         while stueck := await datei.read(1 << 20):

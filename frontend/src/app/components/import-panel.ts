@@ -1030,17 +1030,6 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         }
       }
 
-      <!-- Was mit der Datei passiert, steht in der FAQ und in der
-           Datenschutzerklaerung. Hier bleibt die Zahl, die vor dem Klick
-           niemand sonst liefert: wie lange es dauert. Sie stammt aus
-           gemessenen Laeufen am Endpunkt, nicht aus einer Schaetzung. -->
-      @if (site() === 'cloud' && cloudEstimate(); as dauer) {
-        <p class="est" data-testid="cloud-estimate">
-          Geschätzte Dauer: {{ dauer }}. Dazu kommt die Wartezeit auf eine
-          freie Grafikkarte — die lässt sich nicht vorhersagen.
-        </p>
-      }
-
       @if (error(); as e) {
         <div class="notice bad" style="margin-top: 12px"><span>{{ e }}</span></div>
       }
@@ -1187,23 +1176,6 @@ export class ImportPanelComponent {
   });
 
   /**
-   * „etwa 40 Sekunden" — oder `null`.
-   *
-   * Beides muss vorliegen: die Länge der Datei und ein gemessener Wert vom
-   * Endpunkt. Fehlt eines, steht keine Zahl da. Geraten wird nicht; der
-   * Satz über die Wartezeit auf eine Karte steht ohnehin daneben, und zwei
-   * Unsicherheiten in einer Zahl zusammenzufassen hieße, keine zu nennen.
-   */
-  readonly cloudEstimate = computed(() => {
-    const seconds = this.fileSeconds();
-    if (seconds === null) return null;
-    const geschaetzt = this.cloud.estimateSeconds(seconds);
-    if (geschaetzt === null) return null;
-    if (geschaetzt < 90) return `etwa ${Math.round(geschaetzt / 5) * 5} Sekunden`;
-    return `etwa ${Math.round(geschaetzt / 30) / 2} Minuten`.replace('.', ',');
-  });
-
-  /**
    * Die Orte, die hier wirklich zur Wahl stehen.
    *
    * Drei Regeln, und jede haelt einen Eintrag heraus, der nichts kann:
@@ -1284,8 +1256,6 @@ export class ImportPanelComponent {
   ];
 
   readonly file = signal<File | null>(null);
-  /** Länge der gewählten Datei in Sekunden, sobald gelesen. */
-  private readonly fileSeconds = signal<number | null>(null);
   /** Vorgabe: auf dem Gerät. */
   readonly site = signal<Site>('device');
   readonly model = signal('htdemucs');
@@ -1575,13 +1545,6 @@ export class ImportPanelComponent {
     this.file.set(chosen);
     // Die Zusage galt der vorigen Datei und ihrer Länge, nicht dieser.
     this.memoryAgreed = null;
-    // Die Länge wird ohnehin gebraucht (Speicherwächter); hier wird sie
-    // einmal gelesen und gemerkt, damit die Dauerschätzung des
-    // Serverwegs ohne zweites Dekodieren auskommt.
-    this.fileSeconds.set(null);
-    if (chosen) {
-      void probeDuration(chosen).then((s) => this.fileSeconds.set(s));
-    }
   }
 
   /**

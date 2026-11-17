@@ -85,12 +85,12 @@ export class DeviceFacts {
     // was an diesem Weg zaehlt.
     return {
       method: 'Server',
-      device: this.ort(),
+      device: this.anbieter(),
     };
   }
 
   /**
-   * Der Ort in einer Zeile.
+   * Wer rechnet, in einer Zeile.
    *
    * `cloud.json` traegt die lange Fassung („Modal Labs, USA — Standort
    * nicht festgelegt"), und die ist dort richtig aufgehoben: sie steht in
@@ -99,11 +99,11 @@ export class DeviceFacts {
    * bricht sie ueber drei Zeilen und draengt die Angaben auseinander, auf
    * die es waehrend des Wartens ankommt.
    *
-   * Genannt wird deshalb, wer verantwortlich ist, und das steht vor dem
-   * Gedankenstrich. Der Rest geht nicht verloren, er steht im
-   * Datenschutz — nur eben dort, wo er hingehoert.
+   * Genannt wird deshalb der Anbieter, und der steht vor dem
+   * Gedankenstrich. „Ort" stand frueher an der Zeile und versprach mehr,
+   * als dasteht: einen Standort gibt es nicht, der Anbieter schon.
    */
-  private ort(): string {
+  private anbieter(): string {
     const voll = this.cloud.where();
     const kurz = voll.split('—')[0].trim();
     return kurz || 'Modal Labs, USA';
@@ -126,7 +126,7 @@ export class DeviceFacts {
     // ihm dieselben Saetze ein drittes Mal hinzustellen, macht die
     // Angaben nicht ehrlicher, nur unleserlicher.
     return [
-      { label: 'Ort', value: this.ort() },
+      { label: 'Anbieter', value: this.anbieter() },
       { label: 'Grafikkarte', value: run?.karte || 'wird zugeteilt' },
       { label: 'Modell', value: 'htdemucs' },
       { label: 'Spuren', value: 'MP3, 192 kbit/s' },

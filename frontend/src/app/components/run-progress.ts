@@ -230,18 +230,6 @@ import { STATUS_LABELS, type Job } from '../core/models';
             }
           </span>
         </p>
-        <p class="what">
-          @if (job().progress_of === 'modell') {
-            Die Modellgewichte werden einmal geladen und bleiben danach im
-            Browser-Cache. Jeder weitere Song beginnt sofort — auch ohne Netz.
-          } @else if (dismissible()) {
-            Das Deck öffnet sich von selbst, sobald alle Spuren da sind. Solange
-            kann dieses Fenster zu bleiben — die Trennung läuft weiter und steht
-            danach im Verlauf.
-          } @else {
-            Das Deck öffnet sich von selbst, sobald alle Spuren da sind.
-          }
-        </p>
       }
 
       <!-- Worauf gerechnet wird, in ganzer Laenge. In der Importkarte
