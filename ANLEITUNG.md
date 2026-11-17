@@ -22,13 +22,13 @@ hinter den Entscheidungen, die Messwerte und die Fallstricke stehen in
 - **Verlauf** aller Trennungen, mit erneutem Öffnen im Deck.
 
 Was es **nicht** kann, und zwar bewusst: Hören, bevor die Trennung fertig
-ist. Und es gibt keine Cloud-Anbindung mit eigenem Schlüssel.
+ist. Und es bindet keinen fremden Trenndienst mit eigenem Schlüssel ein.
 
 ### Zwei Varianten
 
 |  | **lokal** | **öffentlich** |
 |---|---|---|
-| Rechnet | Python + CUDA, oder Browser | nur im Browser (WebGPU) |
+| Rechnet | Python + CUDA, oder Browser | im Browser (WebGPU) — wo das Gerät das nicht kann, wahlweise auf unserem Server |
 | Braucht | Python, FFmpeg, NVIDIA-Treiber | einen Browser mit WebGPU |
 | Trennmodi | 4 Modelle, dazu die Browser-Modi | „Minimum", „Schnell", „Instrumente" |
 | Verlauf | übersteht den Neustart | gilt für die Sitzung |
@@ -43,6 +43,14 @@ Jobordner, Jobs des Browsers im Arbeitsspeicher des Tabs.
 In der öffentlichen Variante verlässt **nichts** das Gerät: keine Datei,
 kein Dateiname, kein Messwert. Gecacht werden nur die Modellgewichte und
 die Laufzeit.
+
+Eine Ausnahme gibt es, und sie ist freiwillig: Geräte, die selbst nicht
+rechnen können — Android vor allem —, bekommen „Server" zur Wahl. Dann wird
+die Datei zu einem GPU-Dienst in den USA hochgeladen, dort getrennt und
+nach sechs Stunden gelöscht. Angeboten wird das nur dort, wo es sonst
+keinen gangbaren Weg gibt; abschaltbar ist es ohne Neubau (siehe
+*Ausliefern*). Die Einzelheiten stehen in der README unter *Der Serverweg*
+und in der Datenschutzerklärung.
 
 ---
 
@@ -173,6 +181,21 @@ sie beim Laden wieder zusammen und prüft die Prüfsumme des Ganzen.
 
 Die lokale Variante baut `npm run build`; sie braucht das laufende Backend.
 
+### Den Serverweg an- und abschalten
+
+Ob die ausgelieferte Seite einen Serverweg anbietet, steht **nicht** im
+Bau, sondern in `cloud.json` daneben:
+
+```json
+{ "url": "", "token": "", "region": "…", "keep_hours": 6, "provider_keep_days": 7 }
+```
+
+Leere `url` oder `token` heißen: es gibt ihn nicht. Die Fassung auf dem
+Server trägt Adresse und Token und ist die maßgebliche — `deploy.sh` nimmt
+genau diese Datei vom Abgleich aus. Abschalten heißt deshalb: beide Werte
+dort leeren, fertig. Kein Deploy, keine Codeänderung. Der Token gehört
+**nicht** in die Fassung im Repo.
+
 ---
 
 ## Prüfen
@@ -219,6 +242,8 @@ models/           Demucs-Gewichte für Torch (nicht im Repo)
 data/             Jobs des Backends (nicht im Repo)
 install.sh        einmalig nach dem Klonen
 start.sh          startet beides
+cloud/app.py      der GPU-Endpunkt bei Modal (siehe README, Der Serverweg)
+cloud/probe.sh    prüft ihn Ende zu Ende, mit Fortschritt
 ```
 
 ---

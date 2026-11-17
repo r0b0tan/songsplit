@@ -5,7 +5,9 @@ ab, mit Lautstärke, Mute, Solo und Pitch pro Spur, mit Mix-Tempo, A/B-Loop
 und einem eigenen Tempo für die Spur, die man gerade übt.
 
 Die Musik verlässt den Rechner nicht — in beiden Varianten, aus
-verschiedenen Gründen.
+verschiedenen Gründen. Eine Ausnahme gibt es, sie ist freiwillig und wird
+nur dort angeboten, wo das Gerät selbst nicht rechnen kann:
+[Der Serverweg](#der-serverweg).
 
 ```
 backend/    FastAPI + audio-separator (Trennung auf CUDA, Jobs, Dateiausgabe)
@@ -27,7 +29,7 @@ models/     heruntergeladene Modellgewichte (ca. 84 MB je Demucs-Modell)
 | | **lokal** | **öffentlich** |
 |---|---|---|
 | Trennung | Python, `audio-separator`, CUDA | Browser, `onnxruntime-web`, WebGPU |
-| Trennorte in der Oberfläche | Auswahlfeld mit „WebGPU“ **und** „CUDA“ | nur „Alles auf diesem Gerät“, ohne Wahl |
+| Trennorte in der Oberfläche | Auswahlfeld mit „WebGPU“ **und** „CUDA“ | „Alles auf diesem Gerät“ — auf Geräten ohne nutzbares WebGPU dazu „Server“, siehe [Der Serverweg](#der-serverweg) |
 | Braucht | Python, FFmpeg, NVIDIA-Treiber | einen Browser mit WebGPU |
 | Verlauf | überlebt den Neustart (`data/*/job.json`) | gilt für die Sitzung |
 | Bauen | `npm run build` | `npm run build:public` |
@@ -49,9 +51,16 @@ Es gibt **keine Datenbank**, in keiner Variante. Jobs des Backends stehen
 als `job.json` im jeweiligen Jobordner; Jobs des Browsers stehen im
 Arbeitsspeicher des Tabs. PostgreSQL kommt im Projekt nicht vor.
 
-Nicht gebaut und bewusst offen: Cloud mit eigenem API-Key und
-fortschreitende Wiedergabe, also Hören, bevor die Trennung fertig ist.
-Siehe [Offene Punkte](#offene-punkte).
+Seit der Serverweg dazugekommen ist, gilt „nichts verlässt das Gerät" für
+die öffentliche Variante nicht mehr ausnahmslos: auf Geräten, die selbst
+nicht rechnen können, steht ein GPU-Endpunkt zur Wahl. Er ist der einzige
+Weg, auf dem eine Datei den Rechner verlässt, er wird nur dort angeboten, wo
+es sonst keinen gangbaren gibt, und er ist abschaltbar, ohne etwas neu zu
+bauen — siehe [Der Serverweg](#der-serverweg).
+
+Nicht gebaut und bewusst offen: ein fremder Trenndienst mit eigenem
+API-Schlüssel und fortschreitende Wiedergabe, also Hören, bevor die Trennung
+fertig ist. Siehe [Offene Punkte](#offene-punkte).
 
 ---
 
@@ -1072,6 +1081,131 @@ der nächste Lauf ist dann ein kalter.
 
 ---
 
+## Der Serverweg
+
+Auf Android gibt Chrome die Grafikeinheit fast nie frei. Der Browserweg
+steht dort zwar bereit, rechnet aber auf dem Prozessor — bei einem ganzen
+Lied eher eine Stunde als zehn Minuten, und oft beendet der Browser den Tab
+vorher wegen Speichermangels. Für diese Geräte, und **nur** für sie, gibt
+es einen dritten Trennort: einen GPU-Endpunkt bei [Modal
+Labs](https://modal.com), der dasselbe Modell rechnet.
+
+```
+https://wutzewatz--mixapart-api.modal.run
+```
+
+Der ganze Endpunkt steht in einer Datei: [`cloud/app.py`](cloud/app.py).
+
+### Dasselbe Modell, nicht ein zweites
+
+Der Container baut seinen ONNX-Graphen aus **demselben Export**, der auch im
+Browser läuft, prüft beim Bauen dessen sha256 und fährt die
+Signalverarbeitung um den Graphen über
+[`demucs_reference.py`](backend/tools/demucs_reference.py) — dieselbe
+numpy-Kette, gegen die auch der Browserweg geprüft wird. Ein Ergebnis vom
+Server ist deshalb kein „ungefähr dasselbe": es ist derselbe Lauf auf
+anderer Hardware.
+
+Zurück kommen MP3s mit 192 kBit/s. Der Grund ist die Leitung: vier
+WAV-Spuren eines Vierminuten-Stücks sind rund 160 MB, über Mobilfunk eine
+Zumutung. Im Deck landen sie dekodiert, wie jede andere Spur auch.
+
+### Was er kostet, und was ihn deckelt
+
+| | |
+|---|---|
+| Karten | `L4`, `A10G` oder `T4` — was frei ist (nur auf `L4` zu warten hieß: warten) |
+| Tempo | gemessen rund **11 s je Minute Musik**, der Wert steht in `/health` |
+| Gleichzeitig | höchstens 2 Container, Abschalten nach 60 s ohne Arbeit |
+| Je Datei | 25 MB und 12 Minuten |
+| **Je Tag** | **150 Tonminuten**, danach HTTP 429 mit Klartext |
+
+Der Tagesdeckel ist kein Feinschliff, sondern das, was zwischen dem
+öffentlichen Token und einer Rechnung steht: zwei Container durchgehend auf
+einer A10G sind gut 50 $ am Tag. Gezählt werden **Tonminuten, nicht
+Aufträge** — die Kosten hängen an der Länge, also zählt die Länge. 150
+Minuten sind etwa 33 Lieder zu 4:30 und rund 15 $ im Monat auf einer A10G,
+8 $ auf einer T4. Der Zähler läuft im GPU-Container, wo die echte Länge
+bekannt ist; geprüft wird, **bevor** die Datei durch die Leitung geht.
+
+Modal selbst hilft dabei nicht: Budgets sind erst im Team-Plan dokumentiert,
+die Abrechnung läuft nach dem Startguthaben weiter, und ein Ratenlimit für
+Web-Endpunkte gibt es nicht.
+
+### Die vier Adressen
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| `POST` | `/separate` | Datei hochladen, Auftrag anlegen — antwortet sofort mit der Kennung |
+| `GET` | `/status/{job}` | Phase, Prozent, Restzeit, zugeteilte Karte |
+| `GET` | `/stem/{job}/{slug}` | eine fertige Spur |
+| `GET` | `/health` | Format, Tempo, ob es gemessen ist, freie Minuten heute |
+
+Jede Anfrage trägt den Token als `X-Mixapart-Token`. Ergebnisse löscht ein
+Lauf alle sechs Stunden; was älter als sechs Stunden ist, ist weg.
+
+### Wie die Oberfläche davon erfährt
+
+Nicht aus dem Quelltext, sondern aus
+[`frontend/public/cloud.json`](frontend/public/cloud.json) **neben** der
+ausgelieferten Seite:
+
+```json
+{ "url": "", "token": "", "region": "…", "keep_hours": 6, "provider_keep_days": 7 }
+```
+
+Leere `url` oder `token` heißen: es gibt den Weg nicht, die Seite verhält
+sich, als wäre nichts. Die Datei im Repo ist genau deshalb leer — der Token
+gehört nicht in die Historie. Ausgeliefert wird sie trotzdem, denn ein
+fehlendes `cloud.json` wäre ein 404 bei jedem Seitenaufbau, und ein
+Fehlschlag, den man als normal abtut, ist einer, den man beim nächsten Mal
+übersieht.
+
+**Auf dem Server ist die Fassung die maßgebliche.** `deploy.sh` nimmt diese
+eine Datei vom Abgleich aus und legt sie nur an, wenn sie fehlt. Daraus
+folgt der Notaus: `url` und `token` dort leeren schaltet den Serverweg
+sofort ab — kein Deploy, keine Codeänderung.
+
+```bash
+# auf dem Server — abschalten
+python3 - <<'EOF'
+import json, pathlib
+p = pathlib.Path('/var/www/mixapart.de/public/cloud.json')
+d = json.loads(p.read_text()); d['url'] = d['token'] = ''
+p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+EOF
+```
+
+**Angeboten wird er nur, wo das Gerät nicht selbst rechnen kann** — das
+Kriterium ist die Fähigkeit, nicht die Bauform. Ein Handy mit nutzbarem
+WebGPU rechnet lokal, ein PC ohne (VM, Software-Renderer, abgeriegelter
+Browser) bekommt den Weg angeboten. Wo er angeboten wird, steht er auch
+vorausgewählt; hochgeladen wird deshalb nichts von allein, erst der Knopf
+schickt los. Was dabei passiert, steht vor dem Klick zum Aufklappen in der
+Importkarte und ausführlich in
+[`datenschutz.html`](frontend/public/datenschutz.html), Abschnitt 3.
+
+### Ausliefern, wechseln, prüfen
+
+```bash
+.venv/bin/modal deploy cloud/app.py          # Endpunkt
+cloud/probe.sh https://…  [song.mp3]         # Ende zu Ende, mit Fortschritt
+curl -s https://wutzewatz--mixapart-api.modal.run/health
+```
+
+Den Token zu wechseln sind zwei Schritte und **kein** Neubau:
+
+```bash
+.venv/bin/modal secret create mixapart-token MIXAPART_TOKEN=…   # Endpunkt
+# denselben Wert in die cloud.json auf dem Server
+```
+
+Er steht im ausgelieferten JavaScript und ist damit öffentlich — das ist
+bekannt und in Kauf genommen. Was die Rechnung schützt, ist der Tagesdeckel,
+nicht die Geheimhaltung.
+
+---
+
 ## API
 
 Alles unter `http://127.0.0.1:8000`. Nur die lokale Variante; die
@@ -1214,6 +1348,46 @@ eine wirklich leere Liste sagt, woran es liegt. Und drei zur Oberfläche:
 dass die Sprechblase der Moduskarte erst beim Zeigen erscheint, dass vor
 dem ersten Download gefragt wird und „Nein" nichts startet, und dass beim
 zweiten Lauf nicht noch einmal gefragt wird.
+
+**Was auf einem Handy dasteht** (emuliert, ohne Handy):
+
+```bash
+cd frontend
+npm run build:public
+npm run test:mobile
+```
+
+Geprüft wird die Auskunft, nicht das Rechnen. Fünf Fälle, jeder in einem
+eigenen Browserkontext mit einem Android-Geräteprofil: der Hauptfall mit
+eingerichtetem Serverweg (das Gerätefenster bleibt zu, „Server" steht
+vorgewählt, die Begründung nennt die Handy-Dauer), derselbe ohne
+Serverweg (das Fenster geht auf und trägt die Handy-Fassung von Nachricht
+und Vorbehalt), ein Browser ohne `userAgentData` für den Rückfallweg über
+den UA-Text, ein Gerät ganz ohne WebGPU für GPU-01, und ein Desktop zur
+Gegenprobe, der die Handy-Sätze gerade nicht zeigen darf. Der
+Gerätebericht hinter „Bericht kopieren" wird mitgelesen, denn der entsteht
+im Worker und trägt den Grund im Klartext.
+
+Der Grafikzustand wird dabei gestellt: der Testserver legt dem
+ausgelieferten Worker eine Attrappe vor, die entweder fehlendes WebGPU
+(GPU-01) oder vorhandenes ohne Adapter (GPU-03) herstellt. Von sich aus
+liefert der Testbrowser unter WSL2 zwar schon GPU-03, aber darauf ist kein
+Verlass — auf einem Rechner mit freigegebener Grafikkarte käme ein Adapter
+zurück, und der Lauf prüfte nichts mehr, ohne es zu sagen. Dass die
+Prüfungen beißen, ist an einem absichtlich verdorbenen Bau nachgewiesen
+(`MIXAPART_DIST` zeigt auf einen anderen Ordner): der alte Fehler, auf dem
+Handy die Desktop-Dauer zu nennen, fällt auf, und eine abgeschaltete
+Handy-Erkennung reißt fünf Prüfungen um.
+
+**Nicht** nachgewiesen ist damit, ob die Trennung auf einer
+Handy-Grafikeinheit durchläuft, ob der Compatibility-Modus greift, ob der
+Speicher reicht und ob der Download der Spuren in Chrome für Android
+ankommt. Dafür braucht es ein echtes Gerät auf der ausgelieferten Seite —
+über die LAN-Adresse des Entwicklungsservers nicht, denn `http://` ist
+kein sicherer Kontext und `navigator.gpu` fehlt dort, was einen GPU-01
+vortäuscht, den das Gerät nicht hat. Der Weg dafür ist
+`adb reverse tcp:4200 tcp:4200`: dann ruft das Handy `http://localhost:4200`
+auf, und das zählt als sicherer Kontext.
 
 **Messung auf der Grafikkarte** (das Chrome von Windows, aus WSL heraus):
 
@@ -1862,7 +2036,9 @@ der nächste Gewinn — nicht am Modell, und auch nicht an der Runtime.
   die Gesamtzeit. Hörbar wäre früher möglich — die Blöcke entstehen von
   vorn nach hinten —, aber die Überlappung heißt, dass ein Abschnitt erst
   mit dem Folgeblock endgültig ist, und das Deck erwartet fertige Spuren.
-- **Keine Cloud mit eigenem API-Key.** Nicht angefangen.
+- **Kein fremder Trenndienst mit eigenem API-Schlüssel.** Nicht angefangen.
+  Der eigene GPU-Endpunkt ist etwas anderes und gebaut, siehe
+  [Der Serverweg](#der-serverweg).
 - **Kein Service Worker.** Folge: eine Trennung läuft bei abgeschaltetem
   Netz weiter, solange die Seite offen ist (geprüft, 0 Anfragen erreichten
   den Server) — aber ein **Neuladen** ohne Netz schlägt fehl. Die
@@ -1896,3 +2072,31 @@ der nächste Gewinn — nicht am Modell, und auch nicht an der Runtime.
   Harmlos: die Demucs-Modelle laufen über PyTorch, nicht über ONNX Runtime.
   Die Meldung kommt daher, dass das Paket CUDA 12 erwartet und hier CUDA 13
   installiert ist.
+
+### Offene Baustellen auf dem Server
+
+Nichts davon hängt am Quelltext; alles davon braucht jemanden mit `sudo` auf
+dem Webserver.
+
+- **Keine Sicherheits-Kopfzeilen live.** Von außen geprüft
+  (`curl -sI https://mixapart.de/`) sendet die Seite **keine** der fünf
+  üblichen: weder `Content-Security-Policy` noch `X-Frame-Options`,
+  `X-Content-Type-Options`, `Referrer-Policy` oder `Permissions-Policy`. Und
+  es gibt sie auch im Repo nicht: [die
+  Vorlage](deploy/nginx-mixapart.de.conf) **bindet** an vier Stellen
+  `/etc/nginx/snippets/mixapart-security-headers.conf` ein, geschrieben hat
+  diesen Schnipsel aber nie jemand — weder hier noch dort.
+- **Die nginx-Konfiguration auf dem Server entspricht nicht der Vorlage.**
+  `/etc/nginx/sites-enabled/mixapart.de` bindet nichts ein, und der in der
+  Vorlage eingebundene Pfad `/etc/nginx/snippets/mixapart-security-headers.conf`
+  existiert dort gar nicht — ein `include` darauf ließe `nginx -t`
+  scheitern. Wer das anfasst, vergleicht zuerst, statt zu überschreiben.
+- **`/cloud.json` kommt ohne `Cache-Control`.** Gemessen: Cloudflare meldet
+  `cf-cache-status: DYNAMIC`, cacht die Datei also nicht, und das Ab- und
+  Anschalten wirkt sofort. Der passende `location`-Block steht in
+  [`deploy/nginx-mixapart.de.conf`](deploy/nginx-mixapart.de.conf), ist aber
+  nicht installiert — Vorsorge, keine Behebung.
+- **Der Serverweg ist nie auf einem echten Android-Gerät gelaufen.**
+  Geprüft wurde er Ende zu Ende über `cloud/probe.sh` und in simulierten
+  Handy-Ansichten im Testbrowser. Das Gerät, um dessentwillen er gebaut
+  wurde, hat ihn noch nicht benutzt.

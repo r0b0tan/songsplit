@@ -17,7 +17,8 @@
     "test:public": "node tests/public/run.mjs",
     "test:webgpu:windows": "node tests/webgpu/run-windows.mjs",
     "test:memory": "node tests/memory/run.mjs",
-    "check:literals": "node tools/check-literals.mjs"
+    "check:literals": "node tools/check-literals.mjs",
+    "test:mobile": "node tests/mobile/run.mjs"
   },
   "dependencies": {
     "@angular/common": "^22.2.5",
