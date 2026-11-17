@@ -1242,20 +1242,19 @@ export class ImportPanelComponent {
   /**
    * Die Orte, die hier wirklich zur Wahl stehen.
    *
-   * Beide Einschraenkungen sind noetig, und jede fuer sich:
-   *
-   * **CUDA nur mit Backend.** Die oeffentliche Variante hat keines. Der
-   * Eintrag stand trotzdem in der Liste, liess sich auswaehlen — und
-   * danach war die Modusliste leer, weil `modelsFor('backend')` nichts
-   * liefert. Von aussen sah das aus, als sei die Modusauswahl kaputt;
-   * tatsaechlich stand die Seite an einem Ort, den es dort nicht gibt.
+   * **WebGPU und CUDA stehen immer beide da**, auch in der oeffentlichen
+   * Variante ohne Backend. Das ist eine ausdrueckliche Entscheidung und
+   * keine Nachlaessigkeit: die beiden Rechenwege sind das, woran sich die
+   * Anwendung erklaert, und sie sollen ueberall gleich heissen. Der Preis
+   * steht daneben und wird in Kauf genommen — ohne Backend liefert
+   * `modelsFor('backend')` nichts, die Modusliste bleibt also leer, wenn
+   * jemand dort hinwechselt. Wer das aendert, aendert damit auch diese
+   * Entscheidung und nicht nur eine Zeile.
    *
    * **Server nur ohne eigene Rechenmoeglichkeit**, siehe `cloudOffered`.
    */
   readonly sites = computed(() => [
-    ...this.ALL_SITES.filter(
-      (s) => s.key === 'device' || (s.key === 'backend' && this.jobs.serverAvailable),
-    ),
+    ...this.ALL_SITES.filter((s) => s.key !== 'cloud'),
     ...(this.cloudOffered() ? this.ALL_SITES.filter((s) => s.key === 'cloud') : []),
   ]);
 
