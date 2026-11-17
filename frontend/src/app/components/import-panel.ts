@@ -1046,10 +1046,11 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         <details class="transfer" data-testid="cloud-transfer">
           <summary>Was passiert mit meiner Datei?</summary>
           <p>
-            Sie wird auf unseren Server hochgeladen und dort getrennt — der
-            steht in den <strong>USA</strong> ({{ cloud.where() }}). Die
-            fertigen Spuren löschen wir nach {{ cloud.keepHours() }} Stunden;
-            beim Rechenanbieter können Datei und Ergebnis bis zu
+            Sie wird zu unserem Rechendienstleister <strong>Modal Labs in den
+            USA</strong> hochgeladen und dort getrennt; ein bestimmter
+            Rechenzentrumsstandort ist nicht festgelegt. Die fertigen Spuren
+            löschen wir nach {{ cloud.keepHours() }} Stunden; beim Anbieter
+            können Datei und Ergebnis bis zu
             {{ cloud.providerKeepDays() }} Tage gespeichert bleiben.
             Einzelheiten stehen in der
             <a href="datenschutz.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.
