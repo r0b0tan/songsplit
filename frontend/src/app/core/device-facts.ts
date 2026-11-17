@@ -85,8 +85,28 @@ export class DeviceFacts {
     // was an diesem Weg zaehlt.
     return {
       method: 'Server',
-      device: this.cloud.where() || 'unser Server',
+      device: this.ort(),
     };
+  }
+
+  /**
+   * Der Ort in einer Zeile.
+   *
+   * `cloud.json` traegt die lange Fassung („Modal Labs, USA — Standort
+   * nicht festgelegt"), und die ist dort richtig aufgehoben: sie steht in
+   * der Datenschutzerklaerung und begruendet, warum kein Rechenzentrum
+   * genannt wird. In der Anzeige richtet sie Schaden an — auf einem Handy
+   * bricht sie ueber drei Zeilen und draengt die Angaben auseinander, auf
+   * die es waehrend des Wartens ankommt.
+   *
+   * Genannt wird deshalb, wer verantwortlich ist, und das steht vor dem
+   * Gedankenstrich. Der Rest geht nicht verloren, er steht im
+   * Datenschutz — nur eben dort, wo er hingehoert.
+   */
+  private ort(): string {
+    const voll = this.cloud.where();
+    const kurz = voll.split('—')[0].trim();
+    return kurz || 'Modal Labs, USA';
   }
 
   /**
@@ -99,23 +119,18 @@ export class DeviceFacts {
    */
   private cloudRows(): Fact[] {
     const run = this.cloud.run();
-    const rows: Fact[] = [
-      { label: 'Ort', value: this.cloud.where() || 'unbekannt' },
-      {
-        label: 'Grafikkarte',
-        value: run?.karte || 'wird zugeteilt',
-      },
-      { label: 'Modell', value: 'htdemucs — dasselbe wie auf dem Gerät' },
+    // Vier Zeilen, jede kurz genug fuer eine Handybreite. Aufbewahrung
+    // und Datenabfluss standen hier auch — beides steht in der
+    // Datenschutzerklaerung und, was den Abfluss angeht, vor dem Klick in
+    // der Importkarte. Wer hier liest, hat laengst zugestimmt und wartet;
+    // ihm dieselben Saetze ein drittes Mal hinzustellen, macht die
+    // Angaben nicht ehrlicher, nur unleserlicher.
+    return [
+      { label: 'Ort', value: this.ort() },
+      { label: 'Grafikkarte', value: run?.karte || 'wird zugeteilt' },
+      { label: 'Modell', value: 'htdemucs' },
       { label: 'Spuren', value: 'MP3, 192 kbit/s' },
-      {
-        label: 'Aufbewahrung',
-        value:
-          `Spuren ${this.cloud.keepHours()} Stunden · beim Anbieter bis zu ` +
-          `${this.cloud.providerKeepDays()} Tage`,
-      },
-      { label: 'Daten', value: 'die Datei hat dieses Gerät verlassen' },
     ];
-    return rows;
   }
 
   private browserRows(): Fact[] {

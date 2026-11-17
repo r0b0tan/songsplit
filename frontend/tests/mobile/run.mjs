@@ -147,7 +147,7 @@ const FAELLE = [
     cloud: true,
     gpu: 'kein-adapter',
     async pruefen(page) {
-      await page.waitForSelector('[data-testid="site-select"]', { timeout: 20_000 });
+      await page.waitForSelector('.local', { timeout: 20_000 });
       // Das Fenster darf nicht aufgehen. Es gibt keinen Zeitpunkt, an dem
       // das endgueltig feststeht, also wird kurz gewartet: der Effekt
       // laeuft, sobald Geraetepruefung und cloud.json beide da sind.
@@ -159,13 +159,31 @@ const FAELLE = [
         offen === 0 ? 'Fenster blieb zu' : 'Fenster ging auf, obwohl es einen Weg gibt',
       );
 
-      const ort = flach(await page.locator('[data-testid="site-select"]').textContent());
-      check('Serverweg ist vorgewaehlt', ort.includes('Server'), `auf dem Knopf steht: „${ort}“`);
+      // Ohne Grafikfreigabe bleibt hier genau ein Weg uebrig, und eine
+      // Liste mit einem Eintrag ist keine Wahl. Der Geraetepfad waere auf
+      // diesem Telefon eine knappe Stunde Rechnen und faellt deshalb
+      // heraus, CUDA gibt es ohne Backend nicht.
+      const auswahl = await page.locator('[data-testid="site-select"]').count();
+      const kopf = flach(await page.locator('.local').first().innerText());
+      check(
+        'Kein Auswahlfeld, wenn nur der Serverweg bleibt',
+        auswahl === 0,
+        auswahl === 0 ? `Kopfzeile: „${kopf}“` : 'Ein Auswahlfeld mit einem Eintrag',
+      );
+      check(
+        'Die Kopfzeile nennt den Serverweg',
+        kopf.includes('Verarbeitung auf unserem Server'),
+        `Kopfzeile: „${kopf}“`,
+      );
 
-      const zeile = await page.locator('[data-testid="no-webgpu"]').textContent();
-      enthaelt('Begruendung verweist auf die Wahl oben', zeile, 'Deshalb steht oben');
-      enthaelt('Handy-Dauer statt Desktop-Dauer', zeile, 'realistisch eine Stunde');
-      fehlt('Keine Desktop-Dauer', zeile, 'eher zehn Minuten als eine');
+      // Der Geraetehinweis ist in die FAQ gewandert; in der Karte hat er
+      // nichts mehr zu suchen.
+      const hinweis = await page.locator('[data-testid="no-webgpu"]').count();
+      check(
+        'Kein Geraetehinweis mehr in der Karte',
+        hinweis === 0,
+        hinweis === 0 ? 'nicht vorhanden' : 'steht immer noch da',
+      );
     },
   },
   {

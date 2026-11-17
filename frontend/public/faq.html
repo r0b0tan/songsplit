@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Häufige Fragen — MixApart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Antworten zu MixApart: warum manche Geräte nicht selbst rechnen, was beim Trennen über unseren Server passiert, und was WebGPU, WASM und CUDA bedeuten."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://mixapart.de/faq.html" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#121216" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <div class="sheet">
+        <header class="bar">
+          <div class="brand">
+            <img src="/app-icon.svg" alt="" aria-hidden="true" width="26" height="26" />
+            <span>MixApart</span>
+          </div>
+          <a class="back" href="/">Zurück <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        </header>
+
+        <div class="head">
+          <h1>Häufige Fragen</h1>
+          <p class="stand">Stand: November 2026</p>
+        </div>
+
+        <section class="row">
+          <h2>1. Warum rechnet mein Gerät nicht selbst?</h2>
+          <div class="body">
+            <p>
+              MixApart trennt im Browser auf der Grafikeinheit — über eine
+              Schnittstelle namens WebGPU. Die ist nicht überall nutzbar, und
+              das liegt fast nie an Ihnen: Chrome gibt WebGPU auf Android
+              bisher nur für einen Teil der verbauten Grafikeinheiten frei,
+              und in virtuellen Maschinen oder mit veralteten Grafiktreibern
+              fehlt sie ebenfalls.
+            </p>
+            <p>
+              Die Seite prüft das vor dem ersten Download und sagt, was sie
+              vorgefunden hat. Der Kurzcode dabei bedeutet:
+            </p>
+            <ul>
+              <li><strong>GPU-01</strong> — der Browser kennt WebGPU nicht.</li>
+              <li><strong>GPU-02</strong> — die Abfrage ist mit einem Fehler abgebrochen.</li>
+              <li>
+                <strong>GPU-03</strong> — es gibt keinen Grafikadapter, auch
+                nicht im Compatibility-Modus. Der häufigste Fall auf Android.
+              </li>
+              <li>
+                <strong>GPU-04</strong> — es gibt einen Adapter, aber nur als
+                Software-Umsetzung. Die rechnet auf dem Prozessor und ist dafür
+                zu langsam.
+              </li>
+              <li><strong>GPU-05</strong>, <strong>GPU-06</strong> — die Prüfung selbst ist gescheitert.</li>
+            </ul>
+            <p>
+              Am Telefon lässt sich daran nichts ändern. Am Rechner hilft oft
+              ein aktueller Grafiktreiber oder ein Wechsel zu Chrome oder Edge
+              in einer aktuellen Fassung.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>2. Was passiert mit meiner Datei, wenn ich „Server“ wähle?</h2>
+          <div class="body">
+            <p>
+              Sie wird zu unserem Rechendienstleister
+              <strong>Modal Labs in den USA</strong> hochgeladen und dort
+              getrennt; ein bestimmter Rechenzentrumsstandort ist nicht
+              festgelegt. Gerechnet wird dasselbe Modell wie im Browser, die
+              Spuren kommen als MP3 zurück.
+            </p>
+            <p>
+              Die fertigen Spuren löschen wir nach wenigen Stunden; beim
+              Anbieter können Datei und Ergebnis einige Tage gespeichert
+              bleiben. Die jeweils geltenden Fristen und die Rechtsgrundlage
+              stehen in der
+              <a href="/datenschutz.html">Datenschutzerklärung</a>, Abschnitt 3.
+            </p>
+            <p>
+              Dieser Weg ist freiwillig und wird nur angeboten, wenn Ihr Gerät
+              nicht selbst rechnen kann. Hochgeladen wird nichts von allein:
+              erst der Klick auf „Spuren trennen“ schickt die Datei los.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>3. Verlässt meine Musik das Gerät?</h2>
+          <div class="body">
+            <p>
+              Auf dem Gerätepfad nicht. Dort wird im Browser gerechnet, und
+              weder die Datei noch die Spuren werden irgendwohin übertragen —
+              auch nicht an uns. Nach dem ersten Lauf funktioniert er sogar
+              ohne Internetverbindung.
+            </p>
+            <p>
+              Die eine Ausnahme ist der Serverweg aus Frage 2. Wo er gewählt
+              ist, steht es im Kopf der Importkarte, und vor dem Start ist es
+              der einzige Weg, bei dem die Datei den Rechner verlässt.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>4. Was bedeuten WebGPU, WASM und CUDA?</h2>
+          <div class="body">
+            <p>Das sind die Rechenwege, und sie unterscheiden sich vor allem in der Wartezeit:</p>
+            <ul>
+              <li>
+                <strong>WebGPU</strong> — im Browser auf der Grafikeinheit.
+                Rund 18 Sekunden für viereinhalb Minuten Musik.
+              </li>
+              <li>
+                <strong>WASM</strong> — im Browser auf dem Prozessor. Derselbe
+                Weg ohne Grafikeinheit, und deutlich langsamer: am Rechner eher
+                zehn Minuten als eine, auf einem Telefon realistisch eine Stunde.
+              </li>
+              <li>
+                <strong>CUDA</strong> — auf einer NVIDIA-Grafikkarte über einen
+                eigenen Dienst. Noch einmal etwa doppelt so schnell wie WebGPU,
+                steht aber nur zur Verfügung, wenn dieser Dienst auf Ihrem
+                Rechner läuft. Auf mixapart.de gibt es ihn nicht.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>5. Welche Dateien kann ich verwenden?</h2>
+          <div class="body">
+            <p>
+              MP3 und WAV. Auf dem Gerätepfad begrenzt der Arbeitsspeicher die
+              Länge — die Seite fragt nach, bevor es eng wird. Über den
+              Serverweg sind es höchstens 25 MB je Datei, das reicht für gut
+              zehn Minuten MP3.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>6. Bleiben die Spuren erhalten, wenn ich die Seite schließe?</h2>
+          <div class="body">
+            <p>
+              Nein. Die getrennten Spuren liegen im Arbeitsspeicher des
+              Browsers und sind mit dem Schließen des Tabs weg. Was Sie behalten
+              wollen, speichern Sie im Deck über das Download-Zeichen an der
+              Spur — jede Spur einzeln als WAV.
+            </p>
+            <p>
+              Dauerhaft gespeichert wird nur das Modell selbst: rund 174 MB
+              Modellgewichte bleiben im Browser-Cache, damit der zweite Song
+              sofort beginnt.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>7. Kostet das etwas?</h2>
+          <div class="body">
+            <p>
+              Nein. Es gibt kein Konto, keine Anmeldung und keine Bezahlschranke.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="legal">
+      <div class="legal-inner">
+        <span class="legal-mark">
+          <img
+            class="legal-logo"
+            src="/icon_no_bg.svg"
+            alt=""
+            aria-hidden="true"
+            width="27"
+            height="18"
+          />
+          <span>MixApart <span id="jahr">2026</span></span>
+        </span>
+        <span class="legal-links">
+          <a href="/faq.html" aria-current="page">FAQ</a>
+          <!-- Der Punkt trennt fuers Auge, nicht fuer die Vorlesestimme. -->
+          <span class="legal-dot" aria-hidden="true">&middot;</span>
+          <a href="/impressum.html">Impressum</a>
+          <span class="legal-dot" aria-hidden="true">&middot;</span>
+          <a href="/datenschutz.html">Datenschutz</a>
+        </span>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById('jahr').textContent = String(new Date().getFullYear());
+    </script>
+  </body>
+</html>

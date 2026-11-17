@@ -383,15 +383,16 @@ address {
   .back { min-height: 44px; }
 }
 
-/* Auf schmalen Schirmen bricht die Fusszeile; dann sollen Marke und
-   Verweise links buendig untereinander stehen, nicht auseinander
-   gezogen. */
-@media (max-width: 420px) {
+/* Auf schmalen Schirmen zwei Zeilen, mittig: Marke oben, Verweise
+   darunter. Dieselbe Regel wie in der Anwendung -- der Fuss ist auf allen
+   Seiten derselbe und soll auch auf allen gleich brechen. */
+@media (max-width: 560px) {
   .legal-inner {
-    justify-content: flex-start;
-  }
-  .legal-links {
-    margin-inline-start: -7px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
   }
 }
 

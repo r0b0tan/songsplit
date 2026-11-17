@@ -807,7 +807,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                Die Eintraege sind echte Optionsfelder in einer
                Radiogruppe: Pfeiltasten, Auswahl und Vorlesesoftware
                kommen damit ohne eigenen Code zurecht. -->
-          @if (jobs.serverAvailable || cloudOffered()) {
+          @if (sites().length > 1) {
             <span class="mode-group">
             <span class="mode-label" id="site-label">Modus:</span>
             <div class="pick" (focusout)="onPickBlur($event)">
@@ -874,7 +874,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
             <!-- Ohne Wahl bleibt es beim Satz und beim ⓘ daneben: eine
                  Liste mit einem Eintrag waere keine Wahl, die Angaben
                  muessen aber trotzdem irgendwo stehen. -->
-            {{ VARIANT.label }}
+            {{ soleLabel() }}
             <span class="what-wrap">
               <button
                 type="button"
@@ -920,11 +920,29 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         (dragleave)="over.set(false)"
         (drop)="over.set(false)"
       >
+        <!-- Auf dem Handy ohne accept, und das ist kein Versehen.
+             Chromes Android-Dateidialog (SelectFileDialog.java) sieht
+             Audiotypen im accept, will daraufhin den Sprachrecorder als
+             Quelle mit anbieten und verlangt dafuer vorher die
+             Aufnahmeberechtigung — gefragt wird also nach dem Mikrofon,
+             bevor ueberhaupt ein Dateidialog zu sehen ist. Wer hochladen
+             will, versteht die Frage nicht, und wer sie versteht, versteht
+             sie falsch: eine Seite, die Musik zerlegt, hat nach dem
+             Mikrofon nicht zu fragen.
+
+             Die Endungen allein helfen nicht, Chromium rechnet sie in
+             MIME-Typen um — aus .mp3 wird audio/mpeg. Es bleibt nur, auf
+             dem Handy gar nichts zu nennen.
+
+             Verloren geht dabei die Vorauswahl im Dateidialog, nicht die
+             Pruefung: welche Datei angenommen wird, entscheidet ACCEPTED
+             in pick(), und das galt ohnehin schon fuer alles, was
+             hereingezogen wird. -->
         <input
           #fileInput
           id="audio-file"
           type="file"
-          accept=".mp3,.wav,audio/mpeg,audio/wav"
+          [attr.accept]="isMobile ? null : '.mp3,.wav,audio/mpeg,audio/wav'"
           [disabled]="busy()"
           aria-label="MP3- oder WAV-Datei auswählen"
           (change)="pick($event)"
@@ -985,68 +1003,11 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         }
       </div>
 
-      <!-- Kein WebGPU, oder nur eine Software-Umsetzung. Das ist eine
-           Warnung und keine Sperre: gerechnet wird dann auf dem Prozessor,
-           und das dauert. Wer die Wartezeit in Kauf nimmt, soll trennen
-           können — aber vorher wissen, worauf er sich einlässt, und nicht
-           erst nach zehn Minuten.
-
-           Die Zeitangabe hängt am Gerät, und das ist kein Feinschliff: „eher
-           zehn Minuten als eine" galt für eine Desktop-CPU. Auf einem Handy
-           rechnet derselbe Weg einfädig auf langsameren Kernen, und der
-           Arbeitsspeicher ist die härtere Grenze als die Zeit. Dieselbe Zahl
-           dort zu nennen, hieße jemanden in eine Stunde Wartezeit schicken,
-           die als zehn Minuten angekündigt war. -->
-      @if (deviceProblem() && (site() === 'device' || site() === 'cloud')) {
-        <!-- Keine Warnoptik, und kein Absatz.
-
-             Das Gelb der Warnbox sagt „pass auf, du machst gleich etwas
-             falsch" — hier macht niemand etwas falsch, das Geraet kann es
-             schlicht nicht. Dieselbe Begruendung steht seit laengerem in
-             device-notice.ts; sie galt nur fuer das Fenster und nicht
-             fuer diese Stelle, und das war ein Widerspruch.
-
-             Kurz ist es auch, weil der ganze Grund schon im Fenster beim
-             Start stand. Hier bleibt die Folge und der Code — damit kann
-             man sagen, was los ist, ohne einen Treiberstring abzutippen. -->
-        <p class="cant" data-testid="no-webgpu">
-          <!-- Mit Serverweg zuerst der Weg, dann die Einschraenkung. Es ist
-               dieselbe Auskunft, aber in der Reihenfolge, in der sie
-               jemandem nuetzt: dass die Grafikeinheit fehlt, ist dann nur
-               noch die Begruendung dafuer, warum hier „Server" steht. -->
-          @if (site() === 'cloud') {
-            <strong>Dieses Gerät rechnet nicht selbst{{ codeHint() }}.</strong>
-            Deshalb steht oben „Server“ — die Datei wird dann hochgeladen.
-            Umstellen geht dort jederzeit; auf dem Prozessor dieses Geräts
-            dauert dasselbe
-            @if (isMobile) {
-              bei einem ganzen Lied realistisch eine Stunde.
-            } @else {
-              eher zehn Minuten als eine.
-            }
-          } @else if (cloudOffered()) {
-            <strong>Dieses Gerät rechnet nicht selbst{{ codeHint() }}.</strong>
-            Über „Server“ dauert es gut eine Minute. Hier im Browser ginge es
-            auch, dann rechnet der Prozessor —
-            @if (isMobile) {
-              bei einem ganzen Lied realistisch eine Stunde.
-            } @else {
-              eher zehn Minuten als eine.
-            }
-          } @else {
-            <strong>{{ noticeLabel() }}</strong>
-            @if (isMobile) {
-              Getrennt wird dann auf dem Prozessor — bei einem ganzen Lied
-              realistisch eine Stunde.
-            } @else {
-              Getrennt wird dann auf dem Prozessor — eher zehn Minuten als eine.
-            }
-            @if (jobs.serverAvailable) {
-              Über „CUDA“ läuft es in Sekunden.
-            }
-          }
-        </p>
-      }
+      <!-- Hier stand der Hinweis, dass dieses Geraet nicht selbst rechnet.
+           Er ist in die FAQ gewandert: in der Karte stand er an der Stelle,
+           an der jemand gerade etwas tun will, und erklaerte ihm statt
+           dessen die Lage. Was fuer die Entscheidung noetig ist, steht am
+           Ortsnamen; alles weitere steht jetzt unter faq.html. -->
 
       @if (selectedModel(); as m) {
         <!-- Der Browserpfad sagt seinen Download nicht mehr hier: 174 MB
@@ -1069,30 +1030,15 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         }
       }
 
-      <!-- Was der Serverweg bedeutet — vor dem Klick, nicht danach.
-           Zugeklappt eine Zeile, damit die Karte kompakt bleibt; aufgeklappt
-           steht alles da, worauf sich die Einwilligung stuetzt. Die
-           Reihenfolge ist der Punkt: nach dem Hochladen waere der Hinweis
-           eine Mitteilung, keine Entscheidungsgrundlage. -->
-      @if (site() === 'cloud') {
-        <details class="transfer" data-testid="cloud-transfer">
-          <summary>Was passiert mit meiner Datei?</summary>
-          <p>
-            Sie wird zu unserem Rechendienstleister <strong>Modal Labs in den
-            USA</strong> hochgeladen und dort getrennt; ein bestimmter
-            Rechenzentrumsstandort ist nicht festgelegt. Die fertigen Spuren
-            löschen wir nach {{ cloud.keepHours() }} Stunden; beim Anbieter
-            können Datei und Ergebnis bis zu
-            {{ cloud.providerKeepDays() }} Tage gespeichert bleiben.
-            Einzelheiten stehen in der
-            <a href="datenschutz.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.
-          </p>
-          @if (cloudEstimate(); as dauer) {
-            <p class="est">Geschätzte Dauer: {{ dauer }}. Dazu kommt die
-              Wartezeit auf eine freie Grafikkarte — die lässt sich nicht
-              vorhersagen.</p>
-          }
-        </details>
+      <!-- Was mit der Datei passiert, steht in der FAQ und in der
+           Datenschutzerklaerung. Hier bleibt die Zahl, die vor dem Klick
+           niemand sonst liefert: wie lange es dauert. Sie stammt aus
+           gemessenen Laeufen am Endpunkt, nicht aus einer Schaetzung. -->
+      @if (site() === 'cloud' && cloudEstimate(); as dauer) {
+        <p class="est" data-testid="cloud-estimate">
+          Geschätzte Dauer: {{ dauer }}. Dazu kommt die Wartezeit auf eine
+          freie Grafikkarte — die lässt sich nicht vorhersagen.
+        </p>
       }
 
       @if (error(); as e) {
@@ -1185,6 +1131,24 @@ export class ImportPanelComponent {
       if (this.site() !== 'device') return;
       this.setSite('cloud');
     });
+
+    /**
+     * Haelt die Auswahl auf einem Ort, den es hier gibt.
+     *
+     * Die Liste haengt an der Geraetepruefung und steht deshalb erst eine
+     * Sekunde spaeter fest. Faellt der vorausgewaehlte Ort dabei weg — der
+     * Geraetepfad auf einem Telefon ohne Grafikfreigabe —, zeigte die
+     * Karte sonst auf etwas, das nicht mehr dasteht: kein Eintrag
+     * markiert, und der Knopf startete einen Weg, den die Liste nicht
+     * mehr anbietet. Auch eine ausdrueckliche Wahl zaehlt hier nicht
+     * dagegen, denn gewaehlt werden konnte nur, was es noch gab.
+     */
+    effect(() => {
+      const orte = this.sites();
+      if (!orte.length) return;
+      if (orte.some((o) => o.key === this.site())) return;
+      this.setSite(orte[0].key);
+    });
   }
 
   /** Der angelegte Job — der Aufrufer zeigt ihm beim Laufen zu. */
@@ -1242,21 +1206,41 @@ export class ImportPanelComponent {
   /**
    * Die Orte, die hier wirklich zur Wahl stehen.
    *
-   * **WebGPU und CUDA stehen immer beide da**, auch in der oeffentlichen
-   * Variante ohne Backend. Das ist eine ausdrueckliche Entscheidung und
-   * keine Nachlaessigkeit: die beiden Rechenwege sind das, woran sich die
-   * Anwendung erklaert, und sie sollen ueberall gleich heissen. Der Preis
-   * steht daneben und wird in Kauf genommen — ohne Backend liefert
-   * `modelsFor('backend')` nichts, die Modusliste bleibt also leer, wenn
-   * jemand dort hinwechselt. Wer das aendert, aendert damit auch diese
-   * Entscheidung und nicht nur eine Zeile.
+   * Drei Regeln, und jede haelt einen Eintrag heraus, der nichts kann:
+   *
+   * **CUDA nur mit Backend.** Die oeffentliche Variante hat keines. Der
+   * Eintrag stand trotzdem in der Liste, liess sich auswaehlen — und
+   * danach war die Modusliste leer, weil `modelsFor('backend')` nichts
+   * liefert. Auf dem Handy war er noch deutlicher daneben: darunter stand
+   * dauerhaft „wird geprueft", denn gefragt wird ein Dienst, den es dort
+   * nicht gibt.
+   *
+   * **Der Geraetepfad nur, wenn das Geraet rechnen kann** — oder wenn es
+   * sonst nichts gibt. Ein Telefon ohne Grafikfreigabe rechnet auf dem
+   * Prozessor eine knappe Stunde je Lied und bricht vorher wahrscheinlich
+   * ab; als Eintrag neben „Server" ist das kein Angebot, sondern eine
+   * Falle. Bleibt er der einzige Weg, steht er trotzdem da: dann ist er
+   * die Wahrheit ueber dieses Geraet und nicht eine Alternative.
    *
    * **Server nur ohne eigene Rechenmoeglichkeit**, siehe `cloudOffered`.
    */
-  readonly sites = computed(() => [
-    ...this.ALL_SITES.filter((s) => s.key !== 'cloud'),
-    ...(this.cloudOffered() ? this.ALL_SITES.filter((s) => s.key === 'cloud') : []),
-  ]);
+  readonly sites = computed(() => {
+    const support = this.device.support();
+    // Solange geprueft wird, gilt das Geraet als tauglich: eine Zeile, die
+    // fuer eine Sekunde erscheint und dann verschwindet, ist schlimmer als
+    // eine, die steht.
+    const geraetKann = support === null || support.available;
+    const cloud = this.cloudOffered();
+    const sonstWas = this.jobs.serverAvailable || cloud;
+    return [
+      ...this.ALL_SITES.filter(
+        (s) =>
+          (s.key === 'device' && (geraetKann || !sonstWas)) ||
+          (s.key === 'backend' && this.jobs.serverAvailable),
+      ),
+      ...(cloud ? this.ALL_SITES.filter((s) => s.key === 'cloud') : []),
+    ];
+  });
 
   readonly ALL_SITES: readonly {
     key: Site;
@@ -1320,43 +1304,11 @@ export class ImportPanelComponent {
   );
 
   /**
-   * Warum „Auf diesem Gerät" nicht geht — oder `null`.
-   *
-   * Fehlendes WebGPU und eine Software-Umsetzung sind verschiedene Dinge mit
-   * derselben Folge, und beide stehen im Klartext in `probeWebGpu`.
-   */
-  readonly deviceProblem = computed(() => {
-    const support = this.device.support();
-    if (!support) return null; // wird noch geprüft
-    return support.available ? null : support.reason;
-  });
-
-  /**
-   * Handy oder nicht — entscheidet, welche Wartezeit die Warnung nennt.
+   * Handy oder nicht — entscheidet hier nur noch ueber den Dateidialog.
    *
    * Ein Feld, kein Signal: das Geraet wechselt waehrend einer Sitzung nicht.
    */
   protected readonly isMobile = isMobileDevice();
-
-  /**
-   * Die Beschriftung der Warnung, mit Fehlercode, falls einer vorliegt.
-   *
-   * Der Code steht in Klammern dahinter, damit er genannt werden kann,
-   * ohne den Satz zu zerreissen — und damit niemand den langen Grund
-   * abtippen muss, um zu sagen, was los ist.
-   */
-  /** Der Fehlercode in Klammern — oder nichts, wenn keiner vorliegt. */
-  protected readonly codeHint = computed(() => {
-    const code = this.device.support()?.code;
-    return code ? ` (${code})` : '';
-  });
-
-  protected readonly noticeLabel = computed(() => {
-    const code = this.device.support()?.code;
-    return code
-      ? `Keine Grafikbeschleunigung (${code}):`
-      : 'Keine Grafikbeschleunigung:';
-  });
 
   /**
    * Wechselt den Ort und zieht den Trennmodus mit.
@@ -1387,6 +1339,21 @@ export class ImportPanelComponent {
 
   private readonly pickButton =
     viewChild<ElementRef<HTMLButtonElement>>('pickButton');
+
+  /**
+   * Der Satz, wenn nur ein Ort uebrig ist.
+   *
+   * `VARIANT.label` waere hier eine falsche Auskunft, sobald der letzte
+   * verbliebene Ort der Serverweg ist: „Alles auf diesem Geraet" stuende
+   * dann ueber einer Karte, die die Datei hochlaedt. Auf dem Handy ohne
+   * Grafikfreigabe ist das der Regelfall, nicht die Ausnahme.
+   */
+  readonly soleLabel = computed(() => {
+    const nur = this.sites()[0]?.key ?? 'device';
+    if (nur === 'cloud') return 'Verarbeitung auf unserem Server';
+    if (nur === 'backend') return 'Verarbeitung auf diesem Rechner';
+    return VARIANT.label;
+  });
 
   readonly currentSite = computed(
     () => this.ALL_SITES.find((s) => s.key === this.site()) ?? this.ALL_SITES[0],

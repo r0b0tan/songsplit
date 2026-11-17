@@ -183,14 +183,16 @@ import { STATUS_LABELS, type Job } from '../core/models';
             }
           </div>
         </div>
-        <button
-          class="icon close"
-          aria-label="Fenster schließen, Trennung läuft weiter"
-          title="Fenster schließen, Trennung läuft weiter"
-          (click)="close.emit()"
-        >
-          <app-icon name="x" />
-        </button>
+        @if (dismissible()) {
+          <button
+            class="icon close"
+            aria-label="Fenster schließen, Trennung läuft weiter"
+            title="Fenster schließen, Trennung läuft weiter"
+            (click)="close.emit()"
+          >
+            <app-icon name="x" />
+          </button>
+        }
       </div>
 
       @if (job().status === 'failed') {
@@ -232,10 +234,12 @@ import { STATUS_LABELS, type Job } from '../core/models';
           @if (job().progress_of === 'modell') {
             Die Modellgewichte werden einmal geladen und bleiben danach im
             Browser-Cache. Jeder weitere Song beginnt sofort — auch ohne Netz.
-          } @else {
+          } @else if (dismissible()) {
             Das Deck öffnet sich von selbst, sobald alle Spuren da sind. Solange
             kann dieses Fenster zu bleiben — die Trennung läuft weiter und steht
             danach im Verlauf.
+          } @else {
+            Das Deck öffnet sich von selbst, sobald alle Spuren da sind.
           }
         </p>
       }
@@ -259,9 +263,19 @@ import { STATUS_LABELS, type Job } from '../core/models';
             Abbrechen
           </button>
         }
-        <button class="link" (click)="close.emit()">
-          {{ job().status === 'failed' ? 'Schließen' : 'Im Hintergrund weiterlaufen lassen' }}
-        </button>
+        @if (dismissible()) {
+          <button class="link" (click)="close.emit()">
+            {{ job().status === 'failed' ? 'Schließen' : 'Im Hintergrund weiterlaufen lassen' }}
+          </button>
+        } @else if (job().status === 'failed') {
+          <!-- Eingebettet gibt es nichts wegzuklicken — aber ein
+               gescheiterter Lauf darf den Platz nicht behalten. Ohne
+               diesen Knopf stuende auf dem Handy eine Fehlermeldung, hinter
+               der die Importkarte liegt und nicht mehr hervorkommt. -->
+          <button class="link" data-testid="run-dismiss" (click)="close.emit()">
+            Zurück
+          </button>
+        }
       </div>
     </section>
   `,
@@ -270,6 +284,24 @@ export class RunProgressComponent {
   readonly facts = inject(DeviceFacts);
 
   readonly job = input.required<Job>();
+
+  /**
+   * Steht das hier in einem Fenster — oder **ist** es die Seite?
+   *
+   * Auf dem Handy ist es die Seite: das Fortschrittsfenster hat dort
+   * seinen Zweck verfehlt. Ein Modal laesst sich wegtippen, und auf einem
+   * Telefon passiert genau das — daneben getippt, Fenster weg, und zurueck
+   * fuehrte kein Weg, weil der Verlauf nur „In Verarbeitung" zeigte. Wer
+   * dann wissen wollte, wie weit sein Lied ist, konnte nur warten und
+   * raten.
+   *
+   * Eingebettet gibt es nichts, was verschwinden koennte: die Anzeige
+   * nimmt den Platz der Importkarte ein und raeumt ihn erst, wenn das
+   * Deck aufgeht. Was wegfaellt, ist der Weg hinaus — und der wird hier
+   * nicht gebraucht, denn die Trennung laeuft ohnehin bis zum Ende.
+   */
+  readonly dismissible = input(true);
+
   readonly close = output<void>();
   readonly cancel = output<void>();
 

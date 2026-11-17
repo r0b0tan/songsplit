@@ -19,6 +19,7 @@ import { ApiService } from './core/api.service';
 import { JobsService } from './core/jobs.service';
 import type { Job } from './core/models';
 import { DeviceSeparator } from './separate/device-separator';
+import { isMobileDevice } from './separate/platform';
 import { StemStore } from './separate/stem-store';
 
 /**
@@ -222,15 +223,19 @@ import { StemStore } from './separate/stem-store';
           padding-inline: 9px;
         }
       }
-      /* Auf schmalen Schirmen bricht die Zeile; dann sollen Marke und
-         Verweise links buendig untereinander stehen, nicht auseinander
-         gezogen. */
-      @media (max-width: 420px) {
+      /* Auf schmalen Schirmen zwei Zeilen, mittig: Marke oben, Verweise
+         darunter. Nebeneinander passen sie dort nicht mehr — mit drei
+         Verweisen brach die Zeile ohnehin, und was dabei herauskam, war
+         eine linksbuendige Marke neben einem Rest, der umbrach. Zwei
+         Zeilen, die beide gemeint sind, lesen sich besser als eine, die
+         zerfaellt. */
+      @media (max-width: 560px) {
         .legal-inner {
-          justify-content: flex-start;
-        }
-        .legal-links {
-          margin-inline-start: -7px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          text-align: center;
         }
       }
 
@@ -305,7 +310,28 @@ import { StemStore } from './separate/stem-store';
   ],
   template: `
     <main class="shell">
-      <app-import-panel (started)="watch($event)" />
+      <!-- Auf dem Handy tritt der Fortschritt an die Stelle der
+           Importkarte, statt als Fenster darueber zu liegen. Ein Modal
+           laesst sich wegtippen — und auf einem Telefon passiert das
+           versehentlich, waehrend das Lied noch laeuft. Danach stand im
+           Verlauf „In Verarbeitung" und sonst nichts: kein Prozentsatz,
+           keine Restzeit, kein Weg zurueck in die Anzeige.
+
+           Zwei Karten nebeneinander waeren die schlechtere Loesung: auf
+           einer Handybreite ist Platz fuer eine, und solange getrennt
+           wird, gibt es ohnehin nichts zu importieren. Am Rechner bleibt
+           es beim Fenster — dort stoert es nicht, und der Verlauf liegt
+           sichtbar daneben. -->
+      @if (inlineRun(); as laufend) {
+        <app-run-progress
+          [job]="laufend"
+          [dismissible]="false"
+          (close)="stopWatching()"
+          (cancel)="cancelJob(laufend)"
+        />
+      } @else {
+        <app-import-panel (started)="watch($event)" />
+      }
 
       @if (api.connectionError() || notes().length || separatorProblem()) {
         <div class="notes">
@@ -367,10 +393,15 @@ import { StemStore } from './separate/stem-store';
             height="18"
           />
           <!-- Keine Jahreszahl von Hand: eine, die jemand nachziehen muss,
-               steht irgendwann falsch da. -->
-          <span>MixApart &copy; {{ jahr }}</span>
+               steht irgendwann falsch da. Das Copyright-Zeichen steht
+               nicht dabei — es behauptet eine Rechtslage, die diese Seite
+               nicht geltend macht, und der Fuss ist der falsche Ort fuer
+               eine Behauptung. -->
+          <span>MixApart {{ jahr }}</span>
         </span>
         <span class="legal-links">
+          <a href="/faq.html">FAQ</a>
+          <span class="legal-dot" aria-hidden="true">&middot;</span>
           <a href="/impressum.html">Impressum</a>
           <!-- Der Punkt trennt fuers Auge, nicht fuer die Vorlesestimme:
                sie liest zwei Verweise, kein Satzzeichen dazwischen. -->
@@ -389,7 +420,7 @@ import { StemStore } from './separate/stem-store';
       (pointerdown)="markBackdrop($event, runDialog)"
       (click)="closeOnBackdrop($event, runDialog)"
     >
-      @if (watched(); as job) {
+      @if (modalRun(); as job) {
         <app-run-progress
           [job]="job"
           (close)="stopWatching()"
@@ -449,6 +480,29 @@ export class AppComponent {
    */
   readonly jahr = new Date().getFullYear();
 
+  /** Ein Feld, kein Signal: die Bauform wechselt waehrend einer Sitzung nicht. */
+  protected readonly isMobile = isMobileDevice();
+
+  /**
+   * Der laufende Job, wenn er in die Seite gehoert statt in ein Fenster.
+   *
+   * `null` am Rechner — dort bleibt es beim Modal, und die Importkarte
+   * steht weiter da.
+   */
+  readonly inlineRun = computed(() => (this.isMobile ? this.watched() : null));
+
+  /**
+   * Derselbe Job fuer das Fenster — und `null`, wo es eingebettet steht.
+   *
+   * Ohne diese zweite Frage stand die Anzeige zweimal in der Seite: der
+   * Dialog ist auf dem Handy zwar zu, sein Inhalt wird aber trotzdem
+   * gebaut. Sichtbar war davon nichts, zu holen auch nichts — aber es
+   * liefen zwei Bauteile auf demselben Job, und eine Vorlesesoftware
+   * findet in einem geschlossenen Dialog Text, den es fuer sie nicht
+   * geben sollte.
+   */
+  readonly modalRun = computed(() => (this.isMobile ? null : this.watched()));
+
   private readonly deckDialog =
     viewChild.required<ElementRef<HTMLDialogElement>>('deckDialog');
   private readonly runDialog =
@@ -481,7 +535,9 @@ export class AppComponent {
     // gleichen Runde erst geschlossen und dann geoeffnet, und nicht
     // umgekehrt.
     effect(() => {
-      const open = !!this.watched();
+      // Eingebettet gibt es kein Fenster, das aufgehen koennte — sonst
+      // laege der Fortschritt zweimal auf der Seite.
+      const open = !!this.watched() && !this.isMobile;
       const dialog = this.runDialog().nativeElement;
       if (open && !dialog.open) dialog.showModal();
       if (!open && dialog.open) dialog.close();
@@ -510,7 +566,10 @@ export class AppComponent {
     // Sonst scrollt die Liste hinter dem offenen Fenster mit, sobald man
     // darin am Ende angekommen ist.
     effect(() => {
-      const open = !!this.selected() || !!this.watched();
+      // Die eingebettete Anzeige ist kein Modal: dahinter liegt nichts,
+      // was nicht scrollen duerfte — der Verlauf steht darunter und soll
+      // erreichbar bleiben.
+      const open = !!this.selected() || (!!this.watched() && !this.isMobile);
       document.documentElement.classList.toggle('modal-open', open);
     });
   }
