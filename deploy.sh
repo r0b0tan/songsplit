@@ -25,6 +25,11 @@ deploy.sh — baut die oeffentliche Variante und spielt sie nach mixapart.de.
   ./deploy.sh --no-delete      Fremddateien im Ziel stehen lassen
   ./deploy.sh --reload-nginx   danach nginx -t && systemctl reload nginx (sudo-Passwort)
 
+Sicherheitskopfzeilen (CSP, nosniff, HSTS — siehe nginx-security-headers.conf):
+
+  ./deploy.sh install-headers  Snippet auf den Server legen und einbinden
+  ./deploy.sh check-headers    nachsehen, was die Seite wirklich ausliefert
+
 Sitzung (du meldest dich einmal selbst an, danach braucht das Script
 keine Zugangsdaten mehr — es benutzt denselben offenen Kanal):
 
@@ -42,6 +47,8 @@ warn() { printf '\033[33mHinweis:\033[0m %s\n' "$*" >&2; }
 while [ $# -gt 0 ]; do
   case "$1" in
     setup-key)      MODE=setup-key ;;
+    install-headers) MODE=install-headers ;;
+    check-headers)  MODE=check-headers ;;
     session|session-start) MODE=session ;;
     session-status) MODE=session-status ;;
     session-stop)   MODE=session-stop ;;
@@ -101,6 +108,37 @@ case "${DEPLOY_SSH_PASS}${DEPLOY_SUDO_PASS}" in
   *HIER_EINTRAGEN*) die "In $ENV_FILE stehen noch Platzhalter statt der Passwoerter." ;;
 esac
 
+# ------------------------------------------- Sicherheitskopfzeilen pruefen ---
+#
+# Eine Konfiguration, die nur gemeint ist, ist keine. nginx-security-headers.conf
+# stand monatelang fertig im Repo und war auf dem Server nirgends eingebunden —
+# `curl -I https://mixapart.de/` lieferte keine einzige dieser Zeilen. Auffallen
+# konnte das niemandem: die Seite funktioniert ohne sie genauso.
+#
+# Deshalb wird nach jedem Deploy nachgesehen, und zwar an der Seite selbst und
+# nicht an der Datei. Nur was wirklich beim Browser ankommt, zaehlt.
+
+KOPFZEILEN=(content-security-policy x-content-type-options referrer-policy
+            permissions-policy cross-origin-opener-policy strict-transport-security)
+
+kopfzeilen_pruefen() {
+  local kopf fehlt='' h
+  if ! kopf=$(curl -sS -I --max-time 20 "$DEPLOY_URL" 2>/dev/null | tr -d '\r'); then
+    warn "$DEPLOY_URL fuer die Kopfzeilenprobe nicht erreichbar."
+    return 1
+  fi
+  for h in "${KOPFZEILEN[@]}"; do
+    printf '%s\n' "$kopf" | grep -qi "^$h:" || fehlt="$fehlt $h"
+  done
+  if [ -n "$fehlt" ]; then
+    warn "Die Seite liefert ohne Sicherheitskopfzeilen aus. Es fehlen:$fehlt
+       Einrichten mit:  ./deploy.sh install-headers
+       Steht Cloudflare davor, kann auch dort eine Regel dazwischenstehen."
+    return 1
+  fi
+  info "Sicherheitskopfzeilen stehen (${#KOPFZEILEN[@]} geprueft)."
+}
+
 # ------------------------------------------------------------- Sitzung -------
 #
 # ssh kann mehrere Verbindungen durch einen einzigen, schon offenen Kanal
@@ -141,6 +179,11 @@ case "$MODE" in
   session-status)
     if session_alive; then info "Sitzung zu $REMOTE ist offen."; exit 0
     else info "Keine offene Sitzung zu $REMOTE."; exit 1; fi
+    ;;
+  check-headers)
+    # Braucht keinen Zugang: gefragt wird die Seite, nicht der Server.
+    info "Pruefe die Kopfzeilen von $DEPLOY_URL"
+    kopfzeilen_pruefen && exit 0 || exit 1
     ;;
   session-stop)
     if session_alive; then
@@ -187,6 +230,79 @@ else
     SSH=(ssh "${SSH_OPTS[@]}")
     AUTH="ssh-Agent bzw. ~/.ssh/config"
   fi
+fi
+
+# ----------------------------------------------------------------- sudo ------
+#
+# Das Passwort wird abgefragt, nicht gespeichert, und es geht spaeter ueber
+# stdin an sudo statt als Argument — ein Argument stuende in der Prozessliste
+# des Servers und damit fuer jeden anderen Benutzer dort lesbar da.
+
+sudo_passwort_holen() {
+  [ -n "$DEPLOY_SUDO_PASS" ] && return 0
+  if [ -t 0 ]; then
+    printf 'sudo-Passwort fuer %s auf %s (%s): ' "$DEPLOY_USER" "$DEPLOY_HOST" "$1" >&2
+    IFS= read -rs DEPLOY_SUDO_PASS || true
+    printf '\n' >&2
+    [ -n "$DEPLOY_SUDO_PASS" ] || die "Kein Passwort eingegeben."
+  else
+    die "$1 braucht ein sudo-Passwort: im Terminal starten oder DEPLOY_SUDO_PASS in $ENV_FILE setzen."
+  fi
+}
+
+# Ein Befehl als root auf dem Server. stdin ist hier das Passwort, also kann
+# nichts anderes durch diese Leitung — wer eine Datei schicken will, schickt
+# sie vorher mit einem eigenen Aufruf.
+sudo_fern() {
+  printf '%s\n' "$DEPLOY_SUDO_PASS" | "${SSH[@]}" -T "$REMOTE" "sudo -S -p '' sh -c $(printf '%q' "$1")"
+}
+
+# -------------------------------------------------------- install-headers ----
+#
+# Legt nginx-security-headers.conf als Snippet auf dem Server ab und sagt,
+# was im server-Block noch fehlt.
+#
+# Was dieses Script **nicht** tut: den server-Block selbst umschreiben. Eine
+# nginx-Konfiguration automatisch zu veraendern heisst, im Fehlerfall eine
+# Seite abzuschalten, die vorher lief. Die eine Zeile setzt ein Mensch ein;
+# das Script sagt genau welche, wohin, und prueft danach nach.
+
+if [ "$MODE" = install-headers ]; then
+  snippet="$SCRIPT_DIR/nginx-security-headers.conf"
+  ziel=/etc/nginx/snippets/mixapart-security-headers.conf
+  [ -f "$snippet" ] || die "$snippet fehlt."
+  sudo_passwort_holen "Sicherheitskopfzeilen einrichten"
+
+  info "Uebertrage nginx-security-headers.conf nach $REMOTE"
+  "${SSH[@]}" -T "$REMOTE" 'cat > /tmp/mixapart-security-headers.conf' < "$snippet" \
+    || die "Uebertragung fehlgeschlagen."
+
+  info "Lege $ziel an"
+  sudo_fern "mkdir -p $(dirname "$ziel") && install -m 644 -o root -g root /tmp/mixapart-security-headers.conf $ziel && rm -f /tmp/mixapart-security-headers.conf" \
+    || die "Konnte $ziel nicht anlegen."
+
+  # Steht das include schon irgendwo? Ohne es liegt die Datei da und wirkt nicht.
+  eingebunden=$(sudo_fern "grep -rl mixapart-security-headers /etc/nginx/sites-enabled/ 2>/dev/null || true") || true
+  if [ -z "$eingebunden" ]; then
+    # Der Name der Site-Datei folgt gewoehnlich der Domain, nicht der IP:
+    # DEPLOY_HOST ist hier die falsche Auskunft, DEPLOY_URL die richtige.
+    site=${DEPLOY_URL#*://}; site=${site%%/*}
+    warn "Das Snippet liegt jetzt dort, ist aber noch nirgends eingebunden."
+    printf '\nDiese Zeile in den server-Block von /etc/nginx/sites-enabled/%s:\n\n' "$site"
+    printf '    include %s;\n\n' "$ziel"
+    printf 'Und in jede location, die eigene add_header-Zeilen setzt, noch einmal:\n'
+    printf 'add_header in einer location ersetzt *alle* geerbten add_header des\n'
+    printf 'server-Blocks. Welche das sind, steht in deploy/nginx-mixapart.de.conf.\n\n'
+    printf 'Danach:  ./deploy.sh --reload-nginx  und  ./deploy.sh check-headers\n\n'
+    exit 1
+  fi
+
+  info "Eingebunden in:"
+  printf '%s\n' "$eingebunden" | sed 's/^/    /'
+  info "nginx -t && systemctl reload nginx"
+  sudo_fern 'nginx -t && systemctl reload nginx' || die "nginx hat die Konfiguration nicht angenommen — nichts neu geladen."
+  kopfzeilen_pruefen
+  exit $?
 fi
 
 # ------------------------------------------------------------- setup-key -----
@@ -270,17 +386,9 @@ case "$probe" in
     ;;
 esac
 
-# Das sudo-Passwort wird abgefragt, nicht gespeichert — gefragt wird vor dem
-# Upload, damit danach nichts mehr auf eine Eingabe wartet.
-if [ "$RELOAD_NGINX" -eq 1 ] && [ -z "$DEPLOY_SUDO_PASS" ]; then
-  if [ -t 0 ]; then
-    printf 'sudo-Passwort fuer %s auf %s: ' "$DEPLOY_USER" "$DEPLOY_HOST" >&2
-    IFS= read -rs DEPLOY_SUDO_PASS || true
-    printf '\n' >&2
-    [ -n "$DEPLOY_SUDO_PASS" ] || die "Kein Passwort eingegeben."
-  else
-    die "--reload-nginx braucht ein sudo-Passwort: im Terminal starten oder DEPLOY_SUDO_PASS in $ENV_FILE setzen."
-  fi
+# Gefragt wird vor dem Upload, damit danach nichts mehr auf eine Eingabe wartet.
+if [ "$RELOAD_NGINX" -eq 1 ]; then
+  sudo_passwort_holen "--reload-nginx"
 fi
 
 # ---------------------------------------------------------------- Upload -----
@@ -334,9 +442,7 @@ fi
 
 if [ "$RELOAD_NGINX" -eq 1 ]; then
   info "nginx -t && systemctl reload nginx"
-  # Ein einziger sudo-Aufruf, das Passwort kommt ueber stdin statt als Argument.
-  printf '%s\n' "$DEPLOY_SUDO_PASS" \
-    | "${SSH[@]}" -T "$REMOTE" 'sudo -S -p "" sh -c "nginx -t && systemctl reload nginx"'
+  sudo_fern 'nginx -t && systemctl reload nginx'
 fi
 
 # Cloudflare steht davor: ohne Purge sehen Besucher den alten Bau noch eine
@@ -384,3 +490,8 @@ if code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$DEPLOY_URL"); t
 else
   warn "$DEPLOY_URL nicht erreichbar — DNS, Zertifikat oder nginx pruefen."
 fi
+
+# Zum Schluss: liefert die Seite ihre Sicherheitskopfzeilen? Ein Deploy, der
+# daran scheitert, ist trotzdem ein gelungener Deploy — die Dateien liegen
+# oben. Deshalb nur eine Warnung und kein Abbruch.
+kopfzeilen_pruefen || true
