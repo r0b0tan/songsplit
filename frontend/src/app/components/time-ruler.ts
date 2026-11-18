@@ -185,12 +185,17 @@ type Endpoint = 'a' | 'b';
       }
 
       @media (pointer: coarse) {
+        /* Mit dem Finger groesser als mit der Maus, aber nicht so gross,
+           dass die Marke die Wellenform darunter verdeckt: 24 auf 26 ist
+           knapp unter dem ueblichen Mindestziel und trotzdem sicher zu
+           fassen, weil sie frei auf der Schiene liegt und nichts daneben
+           steht, das man stattdessen traefe. */
         .marker {
-          min-height: 30px;
-          width: 28px;
+          min-height: 26px;
+          width: 24px;
         }
         .rail.crowded .marker.b {
-          bottom: 36px;
+          bottom: 32px;
         }
         .ruler {
           min-height: 62px;

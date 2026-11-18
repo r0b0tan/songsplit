@@ -66,6 +66,11 @@ type LoopEnd = 'a' | 'b';
         overflow: hidden;
         --label: 196px;
         --knobs: 190px;
+        /* Breite und Rand der Speichern-Spalte. Sie stehen hier, weil die
+           Kopfzeile dasselbe Mass braucht: nur wenn ihr leeres Feld genau
+           so breit ist, liegt die Trennlinie oben ueber der unten. */
+        --save-w: 26px;
+        --save-pad: 9px;
         /* Die Spurhoehe teilt sich auf, was vom Fenster uebrig bleibt,
            wenn Kopf, Transport und Fuss ihren Platz haben. Geraten wird
            dabei nichts: --chrome ist gemessen (siehe Klasse), --lanes ist
@@ -297,7 +302,15 @@ type LoopEnd = 'a' | 'b';
         min-height: 0;
         border-radius: 3px;
         display: flex;
-        align-items: baseline;
+        /* Mittig, nicht auf der Grundlinie, und mittig in der Zeile.
+           Der Name ist ein Schalter und damit hoeher als seine Schrift —
+           mit dem Finger 30 Pixel, die Zeile daneben 36. Ohne diese beiden
+           Zeilen klebt die Schrift oben in ihrem Kasten: der Name stuende
+           dann ueber dem Punkt davor und ueber Mute und Solo daneben, die
+           beide mittig sitzen. Am Rechner faellt das nicht auf, weil die
+           Zeile dort nur so hoch ist wie ihr Inhalt. */
+        align-items: center;
+        align-self: center;
         gap: 4px;
       }
       /* Das Zeichen sagt, was hinter dem Namen steckt: die Tonhoehe. Ohne
@@ -355,12 +368,52 @@ type LoopEnd = 'a' | 'b';
       }
 
       /* ---------------------------------------------------------- Regler */
+      /* Die Reglerspalte zerfaellt in zwei Teile: links, was an der Spur
+         eingestellt wird, rechts das Speichern. Dazwischen dieselbe Linie,
+         die auch die Wellenform von der Spalte trennt — sie sagt, dass
+         rechts davon kein Regler mehr steht, sondern eine Handlung. */
       .track-knobs {
+        display: flex;
+        align-items: stretch;
+        min-width: 0;
+      }
+      .knob-stack {
+        flex: 1 1 auto;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         justify-content: center;
         gap: 5px;
         padding: 7px 11px;
+      }
+      /* Das Speichern steht in der Reglerspalte ganz rechts, hinter der
+         Trennlinie, und reicht ueber die ganze Bahnhoehe. Frueher hing es
+         als 12-Pixel-Zeichen an der Zeile "10 MB" — am Rechner kaum zu
+         sehen, quer gehalten gar nicht, weil diese Zeile dort wegfaellt. */
+      .save,
+      .head-save {
+        flex: none;
+        box-sizing: content-box;
+        width: var(--save-w);
+        border-left: 1px solid var(--edge-soft);
+        padding-inline: var(--save-pad);
+      }
+      .save {
+        display: grid;
+        place-items: center;
+      }
+      /* Die Kopfzeile teilt sich wie die Spalte darunter. Die Beschriftung
+         sitzt mittig ueber den Reglern — ueber dem Speichern steht nichts,
+         denn es ist keine Einstellung, sondern eine eigene Spalte. */
+      .head-knobs {
+        display: flex;
+        align-items: stretch;
+        min-width: 0;
+      }
+      .head-knobs .heading {
+        flex: 1 1 auto;
+        min-width: 0;
+        text-align: center;
       }
       .level {
         display: flex;
@@ -378,19 +431,13 @@ type LoopEnd = 'a' | 'b';
         min-width: 3ch;
         text-align: right;
       }
-      /* Das Speichern steht am rechten Ende der Pegelzeile, bei den
-         Reglern dieser einen Spur. Frueher hing es als 12-Pixel-Zeichen an
-         der Zeile "10 MB" — am Rechner kaum zu sehen, quer gehalten gar
-         nicht, weil diese Zeile dort wegfaellt.
-
-         Im Serverweg ist es ein Link auf eine liegende Datei, im
+      /* Im Serverweg ist das Speichern ein Link auf eine liegende Datei, im
          Browserpfad ein Knopf, der die WAV erst schreibt. Beide sehen
          gleich aus: dieselbe Handlung, dieselbe Stelle, dieselbe Groesse. */
-      .level .wav {
+      .save .wav {
         box-sizing: border-box;
-        flex: none;
-        min-height: 24px;
-        width: 24px;
+        min-height: var(--save-w);
+        width: var(--save-w);
         padding: 0;
         display: grid;
         place-items: center;
@@ -400,33 +447,16 @@ type LoopEnd = 'a' | 'b';
         color: var(--dim);
         text-decoration: none;
         cursor: pointer;
-        --icon-size: 13px;
+        --icon-size: 14px;
         transition: border-color 0.12s, background 0.12s, color 0.12s;
       }
-      .level .wav:hover:not(:disabled) {
+      .save .wav:hover:not(:disabled) {
         border-color: var(--accent);
         color: var(--accent);
       }
-      .level button.wav:disabled {
+      .save button.wav:disabled {
         opacity: 0.42;
         cursor: not-allowed;
-      }
-      /* Der Pegel ist gemessen, nicht gerechnet: er zeigt, was von dieser
-         Spur wirklich im Mix ankommt — bei Stummschaltung also nichts. */
-      .meter {
-        flex: 0 0 18px;
-        width: 18px;
-        height: 4px;
-        border-radius: 3px;
-        background: var(--edge);
-        overflow: hidden;
-      }
-      .meter i {
-        display: block;
-        width: 100%;
-        height: 100%;
-        background: var(--sig);
-        transform-origin: left;
       }
 
       .pitch {
@@ -630,14 +660,15 @@ type LoopEnd = 'a' | 'b';
         .track-name {
           min-height: 30px;
         }
-        /* Und das Speichern ebenso: 24 Pixel sind mit der Maus genug, mit
+        /* Und das Speichern ebenso: 26 Pixel sind mit der Maus genug, mit
            dem Finger nicht. Der Platz dafuer kommt vom Pegelregler, der
            hier ein Stueck kuerzer wird — eine Schiene, die man mit dem
            Finger ohnehin grob stellt, vertraegt das eher als ein Ziel,
            das man trifft oder verfehlt. */
-        .level .wav {
-          min-height: 34px;
-          width: 34px;
+        .deck {
+          --save-w: 34px;
+        }
+        .save .wav {
           --icon-size: 15px;
         }
       }
@@ -654,7 +685,7 @@ type LoopEnd = 'a' | 'b';
           --knobs: 150px;
         }
         .track-head,
-        .track-knobs {
+        .knob-stack {
           padding-inline: 8px;
         }
         /* Enger Platz: der Name bekommt die Zeile fuer sich, Mute und Solo
@@ -704,17 +735,11 @@ type LoopEnd = 'a' | 'b';
         /* Enger an den Rand: die gewonnenen Pixel gehen an den Namen, der
            sonst nach drei Buchstaben abbricht. */
         .track-head,
-        .track-knobs {
+        .knob-stack {
           padding-inline: 8px;
         }
-        /* Der gemessene Pegel tritt zurueck. Er ist die schoenste Anzeige
-           im Deck, aber die einzige, die es doppelt gibt: dass eine Spur
-           klingt, sagen quer auch die Wellenform unter dem Zeiger und der
-           Punkt vor dem Namen. Seine 24 Pixel gehen an die Schiene
-           daneben, die sonst auf ein Drittel ihrer Laenge faellt und sich
-           mit dem Finger nicht mehr fein stellen laesst. */
-        .meter {
-          display: none;
+        .deck {
+          --save-pad: 7px;
         }
 
         /* Der Songkopf sagt dasselbe in halber Hoehe. */
@@ -738,7 +763,8 @@ type LoopEnd = 'a' | 'b';
         /* Die Spaltenbeschriftungen stehen schmal gedraengt ueber zwei
            Zeilen und erklaeren, was die Zeichen darunter ohnehin zeigen.
            Die Zeitachse behaelt ihre Zeile. */
-        .table-head .heading {
+        .table-head .heading,
+        .table-head .head-knobs {
           display: none;
         }
         /* Und die Achse ausdruecklich in die mittlere Spalte: ohne die
@@ -788,7 +814,7 @@ type LoopEnd = 'a' | 'b';
           --label: 132px;
           --knobs: 0px;
         }
-        .table-head .heading:last-child {
+        .table-head .head-knobs {
           display: none;
         }
         /* Schmal stehen Name, Schalter und Angabe untereinander. Nebeneinander
@@ -806,6 +832,8 @@ type LoopEnd = 'a' | 'b';
         }
         .track-knobs {
           grid-column: 2;
+        }
+        .knob-stack {
           padding: 2px 9px 9px;
         }
         .level .val {
@@ -1004,7 +1032,15 @@ type LoopEnd = 'a' | 'b';
             [hover]="hoverAt()"
             (loopChange)="setLoop($event)"
           />
-          <div class="heading eyebrow" style="text-align: right">Pegel · Tonhöhe</div>
+          <!-- Die Kopfzeile teilt sich wie die Spalte darunter: die
+               Beschriftung gilt den Reglern, nicht dem Speichern. Dessen
+               Feld bleibt leer und fuehrt nur die Trennlinie nach oben
+               durch — eine eigene Spalte, keine Unterabteilung der
+               Tonhoehe. -->
+          <div class="head-knobs">
+            <div class="heading eyebrow">Tonhöhe</div>
+            <div class="head-save" aria-hidden="true"></div>
+          </div>
         </div>
 
         <div class="lanes" #lanes>
@@ -1083,10 +1119,8 @@ type LoopEnd = 'a' | 'b';
             />
 
             <div class="track-knobs">
+              <div class="knob-stack">
               <div class="level">
-                <span class="meter" aria-hidden="true" title="gemessener Pegel">
-                  <i [style.transform]="'scaleX(' + level(track) + ')'"></i>
-                </span>
                 <input
                   [id]="'vol-' + track.slug"
                   data-testid="volume"
@@ -1100,35 +1134,6 @@ type LoopEnd = 'a' | 'b';
                   (input)="setVolume(track.slug, $event)"
                 />
                 <b class="val">{{ percent(track.volume) }}</b>
-                @if (job().site === 'backend' && track.state === 'ready') {
-                  <!-- Serverweg: die Datei liegt schon, ein Link genuegt. -->
-                  <a
-                    class="wav"
-                    data-testid="track-download"
-                    [href]="track.downloadUrl"
-                    [download]="track.name + '.wav'"
-                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
-                    [title]="short(track.name) + ' als WAV speichern'"
-                  >
-                    <app-icon name="download" />
-                  </a>
-                } @else {
-                  <!-- Browserpfad: es gibt keine Datei, auf die ein Link
-                       zeigen koennte. Die WAV entsteht beim Klick. Und
-                       solange eine Spur laedt, steht der Knopf gesperrt da
-                       statt zu fehlen — sonst springt die Zeile. -->
-                  <button
-                    type="button"
-                    class="wav"
-                    data-testid="track-download"
-                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
-                    [title]="short(track.name) + ' als WAV speichern'"
-                    [disabled]="track.state !== 'ready'"
-                    (click)="save(track)"
-                  >
-                    <app-icon name="download" />
-                  </button>
-                }
               </div>
 
               @if (showPitch(track)) {
@@ -1177,6 +1182,39 @@ type LoopEnd = 'a' | 'b';
                   />
                 </div>
               }
+              </div>
+
+              <div class="save">
+                @if (job().site === 'backend' && track.state === 'ready') {
+                  <!-- Serverweg: die Datei liegt schon, ein Link genuegt. -->
+                  <a
+                    class="wav"
+                    data-testid="track-download"
+                    [href]="track.downloadUrl"
+                    [download]="track.name + '.wav'"
+                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
+                    [title]="short(track.name) + ' als WAV speichern'"
+                  >
+                    <app-icon name="download" />
+                  </a>
+                } @else {
+                  <!-- Browserpfad: es gibt keine Datei, auf die ein Link
+                       zeigen koennte. Die WAV entsteht beim Klick. Und
+                       solange eine Spur laedt, steht der Knopf gesperrt da
+                       statt zu fehlen — sonst springt die Zeile. -->
+                  <button
+                    type="button"
+                    class="wav"
+                    data-testid="track-download"
+                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
+                    [title]="short(track.name) + ' als WAV speichern'"
+                    [disabled]="track.state !== 'ready'"
+                    (click)="save(track)"
+                  >
+                    <app-icon name="download" />
+                  </button>
+                }
+              </div>
             </div>
           </div>
         }
@@ -1409,11 +1447,6 @@ export class PlayerComponent {
   audible(track: TrackView): boolean {
     if (track.muted) return false;
     return this.anySolo() ? track.solo : true;
-  }
-
-  /** Gemessener Pegel der Spur, 0 bis 1. */
-  level(track: TrackView): number {
-    return this.engine.levels()[track.slug] ?? 0;
   }
 
   /** Ist diese Spur die einzige im Solo? Nur dann gilt ihr eigenes Tempo. */

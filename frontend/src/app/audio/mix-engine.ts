@@ -95,10 +95,6 @@ interface Track {
   channels: Float32Array[] | null;
   node: StretchNode | null;
   gain: GainNode | null;
-  /** Abgriff hinter dem Gain, nur zum Messen des Pegels. */
-  analyser: AnalyserNode | null;
-  /** Wiederverwendeter Puffer fuer die Pegelmessung. */
-  scratch: Float32Array<ArrayBuffer> | null;
   duration: number;
   volume: number;
   muted: boolean;
@@ -134,13 +130,6 @@ export const SEMITONE_RANGE = 12;
  */
 export const LOOP_MIN_SECONDS = 0.25;
 
-/** Fenster der Pegelmessung. 256 Abtastwerte sind rund 5 ms. */
-const METER_FFT = 256;
-/** Abfall des Pegels je Bildaufbau, damit die Anzeige nicht flackert. */
-const METER_FALL = 0.86;
-/** Darunter gilt der Pegel als Null. Rund minus 46 dB. */
-const METER_FLOOR = 0.005;
-
 /** Untergrenze fuer die Vorlaufzeit beim Umplanen, in Sekunden. */
 const LEAD_MIN = 0.08;
 const LEAD_MAX = 0.3;
@@ -172,13 +161,6 @@ export class MixEngine {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly sampleRate = signal(0);
-  /**
-   * Pegel je Spur, 0 bis 1, aus dem laufenden Ton gemessen — nicht aus dem
-   * Reglerwert gerechnet. Stumme und nicht hoerbare Spuren stehen auf 0,
-   * weil hinter dem Gain gemessen wird.
-   */
-  readonly levels = signal<Record<string, number>>({});
-
   /** Insgesamt von den Spuren belegter Audiospeicher, in Byte. */
   readonly memoryBytes = computed(() =>
     this.tracks().reduce((sum, t) => sum + t.bytes, 0),
@@ -235,13 +217,6 @@ export class MixEngine {
   private frame = 0;
   /** Solo-Tempo pro Spur, ueberlebt den Wechsel zu einer anderen Spur. */
   private readonly soloRateMemory = new Map<string, number>();
-  /**
-   * Letzter ungerundeter Pegel je Spur. Der Nachlauf rechnet mit diesem
-   * Wert, nicht mit dem angezeigten: aus dem gerundeten heraus faende das
-   * Abklingen keinen Weg mehr nach Null (0,03 mal 0,86 rundet wieder auf
-   * 0,03), und jeder Pegel bliebe fuer immer ein Haar ueber Null stehen.
-   */
-  private readonly meterMemory = new Map<string, number>();
   private loadToken = 0;
   /** Bricht die laufenden Downloads ab, wenn das Deck zugeht. */
   private loadAbort: AbortController | null = null;
@@ -277,8 +252,6 @@ export class MixEngine {
         channels: s.channels ?? null,
         node: null,
         gain: null,
-        analyser: null,
-        scratch: null,
         duration: 0,
         volume: 1,
         muted: false,
@@ -389,18 +362,11 @@ export class MixEngine {
 
       const gain = ctx.createGain();
       gain.gain.value = track.volume;
-      // Der Analyser liegt im Signalweg, gibt aber unveraendert weiter: er
-      // misst damit genau das, was von dieser Spur im Mix landet.
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = METER_FFT;
       node.connect(gain);
-      gain.connect(analyser);
-      analyser.connect(master);
+      gain.connect(master);
 
       track.node = node;
       track.gain = gain;
-      track.analyser = analyser;
-      track.scratch = new Float32Array(analyser.fftSize);
       track.duration = duration;
       track.peaks = peaks;
       track.bytes = audioBytes;
@@ -437,7 +403,6 @@ export class MixEngine {
     this.playing.set(false);
     this.reschedule(pos);
     this.stopFrameLoop();
-    this.clearLevels();
   }
 
   async toggle(): Promise<void> {
@@ -577,7 +542,6 @@ export class MixEngine {
       try {
         t.node?.disconnect();
         t.gain?.disconnect();
-        t.analyser?.disconnect();
       } catch {
         /* beim Abbau nicht weiter wichtig */
       }
@@ -597,7 +561,6 @@ export class MixEngine {
     this.nodeLatencyMs.set(null);
     this.leadMs.set(null);
     this.tracks.set([]);
-    this.clearLevels();
   }
 
   /** Aktuelle Sekunde im Originalsong. */
@@ -727,42 +690,6 @@ export class MixEngine {
     );
   }
 
-  /**
-   * Liest den Pegel jeder Spur aus ihrem Analyser.
-   *
-   * Gemessen wird der quadratische Mittelwert eines kurzen Fensters,
-   * angehoben, damit auch leise Stellen sichtbar sind. Nach oben wird
-   * sofort gefolgt, nach unten gebremst: ein Meter, der mit jedem
-   * Bildaufbau auf Null fiele, flackert nur.
-   */
-  private measureLevels(): void {
-    const next: Record<string, number> = {};
-    const previous = this.levels();
-    let changed = false;
-    for (const track of this.trackList) {
-      if (!track.analyser || !track.scratch) continue;
-      track.analyser.getFloatTimeDomainData(track.scratch);
-      let sum = 0;
-      for (let i = 0; i < track.scratch.length; i++) {
-        sum += track.scratch[i] * track.scratch[i];
-      }
-      const rms = Math.sqrt(sum / track.scratch.length);
-      const raw = Math.min(1, rms * 2.6);
-      const fell = (this.meterMemory.get(track.slug) ?? 0) * METER_FALL;
-      const exact = Math.max(raw, fell);
-      this.meterMemory.set(track.slug, exact < METER_FLOOR ? 0 : exact);
-      const level = Math.round(exact * 100) / 100;
-      next[track.slug] = level;
-      if (level !== previous[track.slug]) changed = true;
-    }
-    if (changed) this.levels.set(next);
-  }
-
-  private clearLevels(): void {
-    this.meterMemory.clear();
-    if (Object.keys(this.levels()).length) this.levels.set({});
-  }
-
   // ----------------------------------------------------------- anzeigeschleife
   private startFrameLoop(): void {
     if (this.frame) return;
@@ -773,7 +700,6 @@ export class MixEngine {
       }
       const pos = this.posAt(this.ctx.currentTime);
       this.position.set(pos);
-      this.measureLevels();
 
       // Ohne Loop am Ende anhalten.
       if (!this.activeLoop() && pos >= this.duration() - 0.01) {
