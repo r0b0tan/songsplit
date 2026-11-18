@@ -139,6 +139,45 @@ TIMEOUT = 900
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_SECONDS = 12 * 60
 
+#: Megabyte je Tonminute, zum **Vorbuchen** beim Annehmen.
+#:
+#: Der Deckel hat bis hierher erst gezaehlt, wenn der GPU-Container die
+#: echte Laenge kannte — also nach dem Dekodieren. Bis dahin sah jede
+#: gleichzeitig eintreffende Anfrage denselben Zaehlstand, und bei
+#: `@modal.concurrent(max_inputs=20)` heisst das: zwanzig Zwoelfminueter
+#: kommen an einem 150-Minuten-Deckel vorbei, bevor er das erste Mal
+#: steigt. Nachgerechnet sind das 240 Minuten statt 150.
+#:
+#: Also wird beim Annehmen eine Schaetzung gebucht und im Container durch
+#: den echten Wert ersetzt. Geschaetzt wird aus der Dateigroesse, und
+#: zwar bewusst **nach oben**: wer zu wenig bucht, hat den Deckel wieder
+#: nicht. Die Zahlen sind die uebliche Untergrenze je Format — 128 kbit/s
+#: fuer verlustbehaftetes, 16 bit/44,1 kHz Stereo fuer WAV.
+#:
+#: Die Schaetzung kann grob danebenliegen; gedeckelt ist sie durch
+#: `MAX_SECONDS`, denn laenger nimmt der Container ohnehin nichts an. Mehr
+#: als die Hoechstdauer eines Auftrags kann also nie vorgebucht werden.
+MB_JE_MINUTE = {
+    ".wav": 10.1,
+    ".flac": 5.0,
+    ".mp3": 0.96,
+    ".m4a": 0.96,
+    ".ogg": 0.96,
+    ".opus": 0.96,
+}
+MB_JE_MINUTE_VORGABE = 0.96
+
+#: Wie viele Auftraege eine Herkunft je Stunde aufgeben darf.
+#:
+#: Das ist eine Bremse und keine Zusage, und der Unterschied gehoert
+#: hierhin: die Herkunft kommt aus `X-Forwarded-For`, und diese Kopfzeile
+#: kann ein Aufrufer selbst setzen. Wer das weiss, umgeht die Bremse mit
+#: einer Zeile. Was sie wirklich leistet, ist das Haeufigere: eine
+#: Oberflaeche, die sich in einer Schleife verrennt, und einen Neugierigen
+#: mit dem Token aus dem Quelltext. Was den Deckel **traegt**, ist das
+#: Vorbuchen oben.
+MAX_AUFTRAEGE_JE_IP_STUNDE = 6
+
 #: Von wo aus gefragt werden darf.
 ORIGINS = [
     "https://mixapart.de",
@@ -249,8 +288,41 @@ budget = modal.Dict.from_name("mixapart-budget", create_if_missing=True)
 #: dann ist die Anzeige die ersten zwei Sekunden ungenau, mehr nicht.
 tempo = modal.Dict.from_name("mixapart-tempo", create_if_missing=True)
 
+#: Wie viele Auftraege eine Herkunft in dieser Stunde aufgegeben hat —
+#: `{"203.0.113.9:2026-11-18T14": 3}`. Der Aufraeumlauf wirft die alten weg.
+ip_zaehler = modal.Dict.from_name("mixapart-ip", create_if_missing=True)
+
 #: Der eigene Token. `modal secret create mixapart-token MIXAPART_TOKEN=...`
 token = modal.Secret.from_name("mixapart-token")
+
+#: Welche Fassung dieser Datei laeuft — die ersten zwoelf Stellen ihrer
+#: Pruefsumme, von `/health` genannt.
+#:
+#: Der Grund steht im Audit vom 17.11.2026: der Endpunkt lief wochenlang
+#: mit einer aelteren Fassung als dem Repo, und gemerkt hat es niemand,
+#: weil nichts danach fragte. Die nginx-Kopfzeilen und die CSP gegen
+#: `cloud.json` prueft `deploy.sh` seither von aussen; hier fehlte das
+#: Gegenstueck.
+#:
+#: Gehasht wird die Quelldatei selbst, und zwar beim Import — also lokal
+#: beim `modal deploy` **und** im Container beim Start. Beide lesen
+#: dieselbe hochgeladene Datei, die Werte muessen also uebereinstimmen.
+#: `./deploy.sh check-cloud` vergleicht den lokalen mit dem gemeldeten.
+#:
+#: Faellt das Lesen aus, steht `unbekannt` da und sonst nichts: eine
+#: Auskunft ueber die Fassung darf den Dienst nicht am Starten hindern.
+def _fassung() -> str:
+    import hashlib
+
+    try:
+        return hashlib.sha256(
+            pathlib.Path(__file__).resolve().read_bytes()
+        ).hexdigest()[:12]
+    except Exception:
+        return "unbekannt"
+
+
+FASSUNG = _fassung()
 
 
 # ------------------------------------------------------------------ Trennen
@@ -313,7 +385,14 @@ class Separator:
         )
 
     @modal.method()
-    def trennen(self, job: str, audio: bytes, suffix: str) -> dict:
+    def trennen(
+        self,
+        job: str,
+        audio: bytes,
+        suffix: str,
+        geschaetzt: float = 0.0,
+        gebucht_am: str = "",
+    ) -> dict:
         """Ein Song. Schreibt die Spuren ins Volume, gibt die Liste zurueck."""
         import time
 
@@ -346,11 +425,25 @@ class Separator:
             )
         decoded = time.monotonic()
 
-        # Das Tageskontingent fortschreiben, sobald die echte Laenge
+        # Das Tageskontingent berichtigen, sobald die echte Laenge
         # feststeht — vor dem Trennen und nicht danach, damit ein Abbruch
         # mittendrin nicht umsonst gerechnete Minuten verschenkt.
-        tag = time.strftime("%Y-%m-%d")
-        budget[tag] = float(budget.get(tag) or 0.0) + seconds / 60
+        #
+        # Berichtigen und nicht addieren: die Web-Seite hat beim Annehmen
+        # bereits `geschaetzt` gebucht (siehe `separate`). Hier wird die
+        # Differenz nachgetragen — meist nach unten, denn geschaetzt wird
+        # absichtlich zu hoch. Faellt `geschaetzt` weg, etwa bei einem
+        # Auftrag, der noch von der vorigen Fassung in der Schlange lag,
+        # ist die Differenz die volle Laenge und es stimmt trotzdem.
+        #
+        # Berichtigt wird der Tag, auf den **gebucht** wurde, nicht der
+        # heutige. Ein Auftrag kurz vor Mitternacht laeuft sonst auf dem
+        # einen Tag auf und wird vom anderen abgezogen; stehen bliebe
+        # eine Schaetzung, die niemand mehr einholt.
+        tag = gebucht_am or time.strftime("%Y-%m-%d")
+        budget[tag] = max(
+            float(budget.get(tag) or 0.0) + seconds / 60 - geschaetzt, 0.0
+        )
 
         # Wie lange ein Block auf *dieser* Karte braucht. Der Wert aus
         # frueheren Laeufen ist nur der Anfangswert — ab dem dritten Block
@@ -468,6 +561,24 @@ def karte_lesen() -> str:
         return "unbekannt"
 
 
+def ohne_pfade(text: str) -> str:
+    """Absolute Pfade aus einer Meldung nehmen, die nach draussen geht.
+
+    ffmpeg nennt die Datei, an der es gescheitert ist, und das ist hier
+    `/tmp/tmpab12cd34.mp3` — der Pfad im Container. Nach aussen gehoert er
+    nicht: er sagt dem Aufrufer nichts ueber seine Datei und dem
+    Neugierigen etwas ueber den Aufbau dahinter. Was bleibt, ist der Grund,
+    und der ist das Einzige, was jemand brauchen kann.
+
+    Im Protokoll des Containers steht die vollstaendige Meldung weiter —
+    siehe die Aufrufer. Weggenommen wird sie nur dem, der sie nicht
+    gebraucht haette.
+    """
+    import re
+
+    return re.sub(r"/(?:[\w.+-]+/)*[\w.+-]+", "<datei>", text)
+
+
 def decode(raw: bytes, suffix: str, rate: int):
     """Beliebiges Eingangsformat zu `(2, n)` float64 bei `rate`.
 
@@ -495,9 +606,12 @@ def decode(raw: bytes, suffix: str, rate: int):
             check=False,
         )
     if fertig.returncode != 0:
+        meldung = fertig.stderr.decode("utf-8", "replace").strip()
+        # Vollstaendig ins Protokoll, gekuerzt und ohne Pfade nach aussen.
+        print(f"ffmpeg scheiterte an der Eingabe: {meldung}")
         raise ValueError(
             "Die Datei liess sich nicht lesen: "
-            + fertig.stderr.decode("utf-8", "replace").strip()[:200]
+            + ohne_pfade(meldung.splitlines()[-1] if meldung else "kein Grund genannt")[:200]
         )
     flat = np.frombuffer(fertig.stdout, dtype=np.float32)
     if flat.size < rate:  # weniger als eine Sekunde
@@ -652,7 +766,49 @@ def api():
                     )
                     return
 
+                # Die Bremse gilt nur fuer neue Auftraege. `/status` wird
+                # waehrend einer Trennung im Sekundentakt gefragt — eine
+                # Zaehlung darauf wuerde den eigenen Fortschrittsbalken
+                # abwuergen.
+                if pfad == "/separate" and not self._darf_noch(kopf, scope):
+                    await self._absage(
+                        429,
+                        "Zu viele Trennungen in kurzer Zeit. Bitte später "
+                        "noch einmal — oder auf einem Rechner mit "
+                        "Grafikkarte sofort.",
+                        scope, receive, send,
+                    )
+                    return
+
             await self.app(scope, receive, send)
+
+        @staticmethod
+        def _darf_noch(kopf, scope) -> bool:
+            """Zaehlt die Auftraege einer Herkunft in dieser Stunde.
+
+            Die Herkunft steht in `X-Forwarded-For`, erster Eintrag; ohne
+            die Kopfzeile nimmt es die Gegenstelle aus dem Scope. Dass ein
+            Aufrufer sich die Kopfzeile selbst ausdenken kann, ist bekannt
+            und steht bei `MAX_AUFTRAEGE_JE_IP_STUNDE` — das hier ist eine
+            Bremse gegen Schleifen und Neugier, kein Schutzwall.
+
+            Faellt das Zaehlwerk aus, wird durchgelassen. Eine Bremse, die
+            bei einer Stoerung im Dict den ganzen Dienst anhaelt, waere
+            schlimmer als die Last, vor der sie schuetzt.
+            """
+            roh = kopf.get(b"x-forwarded-for", b"").decode("latin-1")
+            herkunft = roh.split(",")[0].strip() or (
+                (scope.get("client") or ("unbekannt",))[0]
+            )
+            schluessel = f"{herkunft}:{time.strftime('%Y-%m-%dT%H')}"
+            try:
+                bisher = int(ip_zaehler.get(schluessel) or 0)
+                if bisher >= MAX_AUFTRAEGE_JE_IP_STUNDE:
+                    return False
+                ip_zaehler[schluessel] = bisher + 1
+            except Exception:
+                return True
+            return True
 
         @staticmethod
         async def _absage(status, detail, scope, receive, send):
@@ -735,8 +891,33 @@ def api():
                 )
             teile.append(stueck)
 
+        # Vorbuchen, bevor gespawnt wird.
+        #
+        # Der Deckel oben hat den Zaehlstand gelesen, als dieser Auftrag
+        # noch nichts darin stehen hatte — und so ging es jeder anderen
+        # Anfrage derselben Sekunde auch. Erst mit dieser Buchung sieht
+        # die naechste, dass hier schon etwas laeuft.
+        #
+        # Gebucht wird die Schaetzung aus der Dateigroesse, gedeckelt auf
+        # die Hoechstdauer eines Auftrags. Im Container wird sie durch die
+        # echte Laenge ersetzt (siehe `trennen`), die Schaetzung ist also
+        # nur fuer die Dauer der Trennung im Weg — und in genau dieser
+        # Zeit soll sie es auch sein.
+        #
+        # Bleibt die Korrektur aus, weil der Auftrag nie laeuft, bleibt
+        # die Schaetzung bis Mitternacht stehen. Das ist die richtige
+        # Richtung zum Irren: es wird zu wenig getrennt, nicht zu viel
+        # bezahlt.
+        geschaetzt = min(
+            gelesen / (1024 * 1024) / MB_JE_MINUTE.get(suffix, MB_JE_MINUTE_VORGABE),
+            MAX_SECONDS / 60,
+        )
+        budget[heute] = float(budget.get(heute) or 0.0) + geschaetzt
+
         job = pysecrets.token_hex(8)
-        ruf = Separator().trennen.spawn(job, b"".join(teile), suffix)
+        ruf = Separator().trennen.spawn(
+            job, b"".join(teile), suffix, geschaetzt, heute
+        )
         # Die Kennung des Rufs steht im selben Eintrag wie der Fortschritt.
         # So kennt das Geraet nur **eine** Kennung — den Auftrag — und
         # fragt alles darueber nach.
@@ -784,7 +965,11 @@ def api():
         except OutputExpiredError:
             raise HTTPException(status_code=410, detail="Das Ergebnis ist abgelaufen.")
         except Exception as fehler:  # die Trennung selbst ist gescheitert
-            return {"zustand": "fehler", "grund": str(fehler)[:400]}
+            # Was Modal hier durchreicht, traegt gern den Rueckverfolgungspfad
+            # des Containers mit — Dateinamen, Verzeichnisse, Zeilennummern.
+            # Der Grund gehoert zum Aufrufer, der Pfad dorthin nicht.
+            print(f"Auftrag {job} gescheitert: {fehler!r}")
+            return {"zustand": "fehler", "grund": ohne_pfade(str(fehler))[:400]}
         return {"zustand": "fertig", **ergebnis}
 
     @web.get("/stem/{job}/{slug}")
@@ -830,6 +1015,10 @@ def api():
         heute = time.strftime("%Y-%m-%d")
         return {
             "ok": True,
+            # Welche Fassung hier laeuft. Siehe `FASSUNG`: damit faellt
+            # auf, wenn das Repo weitergegangen ist und der Endpunkt nicht
+            # — `./deploy.sh check-cloud` vergleicht beides.
+            "fassung": FASSUNG,
             "format": STEM_FORMAT,
             "gpu": GPU,
             "sekunden_je_minute": round(
@@ -886,5 +1075,14 @@ def aufraeumen() -> None:
     for tag in list(budget.keys()):
         if tag not in behalten:
             budget.pop(tag, None)
+    # Die Stundenzaehler je Herkunft ebenso. Ihr Schluessel traegt die
+    # Stunde im Klartext (`203.0.113.9:2026-11-18T14`), es genuegt also,
+    # den Tagesteil gegen dieselbe Liste zu halten. Ohne das waechst das
+    # Dict mit jedem Besucher und jeder Stunde weiter, und niemand sieht
+    # jemals hinein.
+    for schluessel in list(ip_zaehler.keys()):
+        tag = str(schluessel).rsplit(":", 1)[-1].split("T")[0]
+        if tag not in behalten:
+            ip_zaehler.pop(schluessel, None)
     results.commit()
     print(f"{weg} Auftraege geloescht")

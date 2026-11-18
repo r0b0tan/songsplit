@@ -29,6 +29,7 @@ Sicherheitskopfzeilen (CSP, nosniff, HSTS — siehe nginx-security-headers.conf)
 
   ./deploy.sh install-headers  Snippet auf den Server legen und einbinden
   ./deploy.sh check-headers    nachsehen, was die Seite wirklich ausliefert
+  ./deploy.sh check-cloud      laeuft auf Modal dieselbe Fassung wie hier?
 
 Sitzung (du meldest dich einmal selbst an, danach braucht das Script
 keine Zugangsdaten mehr — es benutzt denselben offenen Kanal):
@@ -49,6 +50,7 @@ while [ $# -gt 0 ]; do
     setup-key)      MODE=setup-key ;;
     install-headers) MODE=install-headers ;;
     check-headers)  MODE=check-headers ;;
+    check-cloud)    MODE=check-cloud ;;
     session|session-start) MODE=session ;;
     session-status) MODE=session-status ;;
     session-stop)   MODE=session-stop ;;
@@ -153,13 +155,18 @@ kopfzeilen_pruefen() {
 # Geprueft wird von aussen, an der ausgelieferten Seite: beides ist
 # oeffentlich, es braucht keinen Zugang zum Server. Damit faellt ein
 # Auseinanderlaufen beim naechsten Deploy auf und nicht am Handy.
+# Welchen Trennweg die ausgelieferte Seite nennt — leer, wenn keinen.
+trennweg_url() {
+  curl -sS --max-time 20 "${DEPLOY_URL%/}/cloud.json" 2>/dev/null \
+    | grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
+    | sed -E 's/.*:[[:space:]]*"(.*)"$/\1/'
+}
+
 csp_gegen_cloudjson() {
   local csp ziel
   csp=$(printf '%s\n' "$1" | grep -i '^content-security-policy:' | head -1)
   [ -n "$csp" ] || return 0
-  ziel=$(curl -sS --max-time 20 "${DEPLOY_URL%/}/cloud.json" 2>/dev/null \
-         | grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 \
-         | sed -E 's/.*:[[:space:]]*"(.*)"$/\1/')
+  ziel=$(trennweg_url)
   if [ -z "$ziel" ]; then
     info "cloud.json nennt keinen Trennweg — connect-src braucht keinen Eintrag."
     return 0
@@ -173,6 +180,45 @@ csp_gegen_cloudjson() {
        'failed to fetch' ab — auf dem Handy, wo es sonst keinen Weg gibt.
        Die Adresse gehoert in connect-src in nginx-security-headers.conf,
        danach: ./deploy.sh install-headers && ./deploy.sh --reload-nginx"
+  return 1
+}
+
+# Laeuft auf Modal dieselbe Fassung wie hier im Repo?
+#
+# Der Trennweg wird mit einem eigenen Befehl ausgeliefert
+# (`modal deploy cloud/app.py`) und nicht mit diesem Script. Genau deshalb
+# laeuft er auseinander: beim Audit vom 17.11.2026 stand dort wochenlang
+# eine aeltere Fassung, und gemerkt hat es niemand, weil nichts danach
+# fragte. Die Seite selbst bemerkt es nicht — sie ruft denselben Endpunkt
+# auf, er antwortet, nur eben anders als gedacht.
+#
+# Verglichen wird die Pruefsumme der Quelldatei: `/health` nennt die ersten
+# zwoelf Stellen (siehe `FASSUNG` in cloud/app.py), hier steht dasselbe aus
+# der Datei auf der Platte.
+cloud_fassung_pruefen() {
+  local datei="$SCRIPT_DIR/cloud/app.py" ziel hier dort
+  [ -f "$datei" ] || return 0
+  ziel=$(trennweg_url)
+  if [ -z "$ziel" ]; then
+    info "Kein Trennweg eingerichtet — nichts zu vergleichen."
+    return 0
+  fi
+  hier=$(sha256sum "$datei" | cut -c1-12)
+  dort=$(curl -sS --max-time 20 "${ziel%/}/health" 2>/dev/null \
+         | grep -o '"fassung"[[:space:]]*:[[:space:]]*"[^"]*"' \
+         | sed -E 's/.*:[[:space:]]*"(.*)"$/\1/')
+  if [ -z "$dort" ]; then
+    warn "Der Trennweg nennt keine Fassung. Laeuft dort noch eine Version
+       von vor dieser Pruefung? Dann hilft: ./.venv/bin/modal deploy cloud/app.py"
+    return 1
+  fi
+  if [ "$hier" = "$dort" ]; then
+    info "Trennweg laeuft auf der Fassung aus dem Repo ($hier)."
+    return 0
+  fi
+  warn "Der Trennweg laeuft auf einer anderen Fassung als cloud/app.py:
+       hier $hier, dort $dort.
+       Ausliefern mit: ./.venv/bin/modal deploy cloud/app.py"
   return 1
 }
 
@@ -221,6 +267,10 @@ case "$MODE" in
     # Braucht keinen Zugang: gefragt wird die Seite, nicht der Server.
     info "Pruefe die Kopfzeilen von $DEPLOY_URL"
     kopfzeilen_pruefen && exit 0 || exit 1
+    ;;
+  check-cloud)
+    info "Vergleiche cloud/app.py mit dem laufenden Trennweg"
+    cloud_fassung_pruefen && exit 0 || exit 1
     ;;
   session-stop)
     if session_alive; then
@@ -486,11 +536,18 @@ fi
 # Weile. Nur wenn Token und Zone hinterlegt sind.
 if [ -n "${CF_API_TOKEN:-}" ] && [ -n "${CF_ZONE_ID:-}" ]; then
   info "Leere den Cloudflare-Cache"
-  curl -fsS -X POST \
-    "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/purge_cache" \
-    -H "Authorization: Bearer $CF_API_TOKEN" \
-    -H 'Content-Type: application/json' \
-    --data '{"purge_everything":true}' >/dev/null \
+  # Der Token kommt ueber stdin und nicht als Argument.
+  #
+  # Argumente eines laufenden Prozesses stehen in /proc/<pid>/cmdline und
+  # damit in jedem `ps` — auf diesem Rechner fuer jeden angemeldeten
+  # Benutzer lesbar, waehrend der Aufruf laeuft. Dass das Fenster kurz ist,
+  # macht es nicht zu, es macht es nur schwer nachweisbar. `-H @-` liest
+  # Kopfzeilen von der Standardeingabe (curl 7.55+), eine je Zeile.
+  printf 'Authorization: Bearer %s\nContent-Type: application/json\n' "$CF_API_TOKEN" \
+    | curl -fsS -X POST \
+        "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/purge_cache" \
+        -H @- \
+        --data '{"purge_everything":true}' >/dev/null \
     && info "Cache geleert" || warn "Cache-Purge fehlgeschlagen"
 fi
 
@@ -532,3 +589,4 @@ fi
 # daran scheitert, ist trotzdem ein gelungener Deploy — die Dateien liegen
 # oben. Deshalb nur eine Warnung und kein Abbruch.
 kopfzeilen_pruefen || true
+cloud_fassung_pruefen || true

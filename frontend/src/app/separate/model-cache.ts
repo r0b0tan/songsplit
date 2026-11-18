@@ -186,7 +186,27 @@ export async function fetchWeights(
  * durchläuft und Unsinn liefert.
  */
 async function verify(buffer: ArrayBuffer, expected: string | null): Promise<void> {
-  if (!expected || !globalThis.crypto?.subtle) return;
+  if (!expected) return;
+  // Fehlt `crypto.subtle`, wird **nicht** geladen.
+  //
+  // Vorher stand hier ein stilles `return`, und das war die falsche
+  // Richtung: `crypto.subtle` fehlt genau dann, wenn die Seite in keinem
+  // sicheren Kontext läuft — also über reines `http://`. Das ist der eine
+  // Fall, in dem unterwegs jemand an den 174 MB Gewichten gedreht haben
+  // könnte, und ausgerechnet dort hätte niemand nachgesehen. Die Prüfung
+  // auszulassen, wo sie am meisten trägt, ist schlimmer als gar keine.
+  //
+  // Es kostet auch nichts: WebGPU gibt es im unsicheren Kontext ohnehin
+  // nicht, und die Tests liefern über `http://127.0.0.1` aus — localhost
+  // gilt als sicher, `crypto.subtle` ist dort da.
+  if (!globalThis.crypto?.subtle) {
+    throw new Error(
+      'Das Modell lässt sich nicht prüfen: dieser Browser stellt keine ' +
+        'Prüfsummen bereit. Das passiert bei einem Aufruf über http:// — ' +
+        'die Seite braucht https://, dann steht die Prüfung wieder zur ' +
+        'Verfügung.',
+    );
+  }
   const digest = await crypto.subtle.digest('SHA-256', buffer);
   const got = [...new Uint8Array(digest)]
     .map((b) => b.toString(16).padStart(2, '0'))
