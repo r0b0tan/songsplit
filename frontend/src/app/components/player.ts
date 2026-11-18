@@ -465,7 +465,16 @@ type LoopEnd = 'a' | 'b';
         justify-content: flex-end;
         gap: 4px;
       }
+      /* Nicht schrumpfen zu duerfen ist hier kein Feinschliff, sondern
+         die ganze Sache:
+         ohne sie geben die beiden Knoepfe als erste nach, wenn die Zeile
+         zu schmal wird. Quer gehalten blieben von 34 Pixeln Breite 14 —
+         zwei Schlitze unter dem Pegelregler. Wer mit dem Finger auf das
+         Plus zielte, traf die Schiene darueber, und statt der Tonhoehe
+         stieg die Lautstaerke. Eher soll die Zeile ueberlaufen als
+         unbedienbar werden. */
       .pitch button {
+        flex: none;
         min-height: 24px;
         width: 26px;
         padding: 0;
@@ -474,16 +483,22 @@ type LoopEnd = 'a' | 'b';
         font: 600 12px/1 var(--mono);
       }
       .pitch output {
+        flex: none;
         font: 10.5px/1 var(--mono);
         font-variant-numeric: tabular-nums;
         min-width: 5ch;
         text-align: center;
+        white-space: nowrap;
       }
       .pitch .what {
+        flex: none;
         font: 13px/1 var(--mono);
         color: var(--faint);
         margin-right: auto;
         cursor: help;
+      }
+      .pitch .unit {
+        color: var(--faint);
       }
       .pitch button {
         --icon-size: 12px;
@@ -702,6 +717,18 @@ type LoopEnd = 'a' | 'b';
         .level .val {
           display: none;
         }
+        /* Die Tonhoehe nur noch als Zahl: das Zeichen davor und die
+           Einheit dahinter kosten zusammen rund 30 Pixel, und die
+           braucht die Zeile fuer ihre beiden Schrittknoepfe. Was die
+           Zahl bedeutet, hat gerade der Tipp auf das ♯ im Namen
+           gesagt. */
+        .pitch .what,
+        .pitch .unit {
+          display: none;
+        }
+        .pitch output {
+          min-width: 3ch;
+        }
       }
       /* ------------------------------------------------------- Quer gehalten */
       /* Ein Telefon im Querformat hat gut 400 Pixel Hoehe, und davon gingen
@@ -730,7 +757,12 @@ type LoopEnd = 'a' | 'b';
              zu stellen machte die Bahnen wieder hoeher -- genau das, was
              dieser Block gerade abgeschafft hat. */
           --label: 186px;
-          --knobs: 138px;
+          /* 138 reichten, solange die Spalte nur Regler trug. Seit das
+             Speichern rechts daneben seine eigene Spalte hat, blieben
+             fuer die Tonhoehenzeile 73 Pixel — zu wenig fuer zwei
+             Fingerknoepfe. Die 24 Pixel mehr nimmt die Wellenform auf,
+             die quer ohnehin die breiteste Spalte ist. */
+          --knobs: 162px;
         }
         /* Enger an den Rand: die gewonnenen Pixel gehen an den Namen, der
            sonst nach drei Buchstaben abbricht. */
@@ -740,6 +772,13 @@ type LoopEnd = 'a' | 'b';
         }
         .deck {
           --save-pad: 7px;
+        }
+        .pitch .what,
+        .pitch .unit {
+          display: none;
+        }
+        .pitch output {
+          min-width: 3ch;
         }
 
         /* Der Songkopf sagt dasselbe in halber Hoehe. */
@@ -1150,7 +1189,7 @@ type LoopEnd = 'a' | 'b';
                     data-testid="pitch-value"
                     [attr.aria-label]="'Tonhöhe von ' + short(track.name)"
                   >
-                    {{ semitoneLabel(track.semitones) }}
+                    {{ semitoneValue(track.semitones) }}<span class="unit"> HT</span>
                   </output>
                   <button
                     data-testid="pitch-up"
@@ -1501,9 +1540,15 @@ export class PlayerComponent {
     return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   }
 
-  semitoneLabel(semitones: number): string {
-    if (semitones === 0) return '±0 HT';
-    return `${semitones > 0 ? '+' : '−'}${Math.abs(semitones)} HT`;
+  /**
+   * Die Zahl allein. Die Einheit steht als eigenes Stueck daneben, weil
+   * sie in schmalen Spalten wegfaellt: dort ist die Zahl das Noetige, und
+   * die 19 Pixel von " HT" entscheiden, ob die Schrittknoepfe noch ihre
+   * volle Breite behalten.
+   */
+  semitoneValue(semitones: number): string {
+    if (semitones === 0) return '±0';
+    return `${semitones > 0 ? '+' : '−'}${Math.abs(semitones)}`;
   }
 
   setLoop(range: LoopRange): void {

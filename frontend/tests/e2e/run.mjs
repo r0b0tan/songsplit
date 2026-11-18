@@ -247,6 +247,34 @@ async function main() {
       : 'kein Speichern-Ziel in den Spuren gefunden',
   );
 
+  // Die Schrittknoepfe der Tonhoehe muessen auch dann ihre Flaeche behalten,
+  // wenn die Reglerspalte schmal wird. Quer gehalten blieben von 34 Pixeln
+  // einmal 14 uebrig -- zwei Schlitze unmittelbar unter der Pegelschiene.
+  // Wer mit dem Finger auf das Plus zielte, traf die Schiene, und statt der
+  // Tonhoehe stieg die Lautstaerke. Geprueft wird deshalb in der engsten
+  // Lage, nicht in der bequemen.
+  await page.setViewportSize({ width: 870, height: 412 });
+  await page.waitForTimeout(400);
+  const ersteSpur = page.locator('[data-testid="track"]').first();
+  await ersteSpur.locator('[data-testid="track-name"]').click();
+  await page.waitForTimeout(300);
+  const stufen = await ersteSpur
+    .locator('[data-testid="pitch"] button')
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) };
+      }),
+    );
+  record(
+    'Tonhoehe: die Schrittknoepfe bleiben auch schmal greifbar',
+    stufen.length === 2 && stufen.every((b) => b.w >= 26 && b.h >= 24),
+    stufen.length ? stufen.map((b) => `${b.w}x${b.h}`).join(', ') : 'keine Schrittknoepfe gefunden',
+  );
+  await ersteSpur.locator('[data-testid="track-name"]').click();
+  await page.setViewportSize({ width: 1100, height: 1400 });
+  await page.waitForTimeout(400);
+
   // Wellenformen: sind sie tatsaechlich gezeichnet?
   const painted = await until(
     async () =>
