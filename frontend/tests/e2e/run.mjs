@@ -227,6 +227,26 @@ async function main() {
   const trackNames = await page.locator('[data-testid="track"] strong').allInnerTexts();
   record('Player laedt die drei Testspuren', true, trackNames.join(', '));
 
+  // Das Speichern je Spur steht sichtbar bei den Reglern, nicht versteckt
+  // an der Groessenangabe: dort fiel es quer gehaltenen Geraeten weg, weil
+  // diese Zeile dort nicht erscheint. Gemessen wird die sichtbare Flaeche,
+  // nicht die blosse Anwesenheit im Baum.
+  const dlBoxes = await page
+    .locator('[data-testid="track"] [data-testid="track-download"]')
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) };
+      }),
+    );
+  record(
+    'Jede Spur hat ein sichtbares Speichern-Ziel',
+    dlBoxes.length === 3 && dlBoxes.every((b) => b.w >= 20 && b.h >= 20),
+    dlBoxes.length
+      ? dlBoxes.map((b) => `${b.w}x${b.h}`).join(', ')
+      : 'kein Speichern-Ziel in den Spuren gefunden',
+  );
+
   // Wellenformen: sind sie tatsaechlich gezeichnet?
   const painted = await until(
     async () =>

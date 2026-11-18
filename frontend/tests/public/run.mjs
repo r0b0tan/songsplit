@@ -305,7 +305,7 @@ async function main() {
     // ------------------------------------------------ 4. WAV-Download
     const download = await Promise.all([
       page.waitForEvent('download', { timeout: 30_000 }),
-      page.locator('button.wav').first().click(),
+      page.locator('[data-testid="track-download"]').first().click(),
     ]).then(([d]) => d);
     const saved = join(work, 'stem.wav');
     await download.saveAs(saved);

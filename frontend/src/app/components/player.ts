@@ -353,26 +353,6 @@ type LoopEnd = 'a' | 'b';
       .track-note.bad {
         color: var(--bad);
       }
-      .track-note .wav {
-        display: inline-flex;
-        vertical-align: -2px;
-        margin-left: 2px;
-        --icon-size: 12px;
-      }
-      /* Im Browserpfad ist das ein Knopf, kein Link — er soll aber genauso
-         aussehen: dieselbe Handlung, dieselbe Stelle, nur ohne Datei
-         dahinter. */
-      .track-note button.wav {
-        appearance: none;
-        background: none;
-        border: none;
-        padding: 0;
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-      }
 
       /* ---------------------------------------------------------- Regler */
       .track-knobs {
@@ -397,6 +377,39 @@ type LoopEnd = 'a' | 'b';
         color: var(--dim);
         min-width: 3ch;
         text-align: right;
+      }
+      /* Das Speichern steht am rechten Ende der Pegelzeile, bei den
+         Reglern dieser einen Spur. Frueher hing es als 12-Pixel-Zeichen an
+         der Zeile "10 MB" — am Rechner kaum zu sehen, quer gehalten gar
+         nicht, weil diese Zeile dort wegfaellt.
+
+         Im Serverweg ist es ein Link auf eine liegende Datei, im
+         Browserpfad ein Knopf, der die WAV erst schreibt. Beide sehen
+         gleich aus: dieselbe Handlung, dieselbe Stelle, dieselbe Groesse. */
+      .level .wav {
+        box-sizing: border-box;
+        flex: none;
+        min-height: 24px;
+        width: 24px;
+        padding: 0;
+        display: grid;
+        place-items: center;
+        background: var(--panel-2);
+        border: 1px solid var(--edge);
+        border-radius: var(--radius-sm);
+        color: var(--dim);
+        text-decoration: none;
+        cursor: pointer;
+        --icon-size: 13px;
+        transition: border-color 0.12s, background 0.12s, color 0.12s;
+      }
+      .level .wav:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .level button.wav:disabled {
+        opacity: 0.42;
+        cursor: not-allowed;
       }
       /* Der Pegel ist gemessen, nicht gerechnet: er zeigt, was von dieser
          Spur wirklich im Mix ankommt — bei Stummschaltung also nichts. */
@@ -617,6 +630,16 @@ type LoopEnd = 'a' | 'b';
         .track-name {
           min-height: 30px;
         }
+        /* Und das Speichern ebenso: 24 Pixel sind mit der Maus genug, mit
+           dem Finger nicht. Der Platz dafuer kommt vom Pegelregler, der
+           hier ein Stueck kuerzer wird — eine Schiene, die man mit dem
+           Finger ohnehin grob stellt, vertraegt das eher als ein Ziel,
+           das man trifft oder verfehlt. */
+        .level .wav {
+          min-height: 34px;
+          width: 34px;
+          --icon-size: 15px;
+        }
       }
 
       /* ------------------------------------------------------------ Schmal */
@@ -732,15 +755,25 @@ type LoopEnd = 'a' | 'b';
           display: none;
         }
 
+        /* Das Speichern sitzt in der Pegelzeile, und dort ist quer gehalten
+           kein Platz zu verschenken. Die Prozentzahl geht: wie laut eine
+           Spur steht, sagt die Schiene daneben ohnehin, und unter 700
+           Pixel Breite steht sie schon jetzt nicht da. Ihre rund 25 Pixel
+           tragen das Download-Ziel, ohne dass die Wellenform etwas abgibt. */
+        .level .val {
+          display: none;
+        }
+
         /* Das hier war der eigentliche Hoehenfresser: nicht die Wellenform,
-           sondern die Zeile "12 MB" darunter. Mit dem Finger ist das
-           Download-Zeichen ein 36 Pixel hohes Ziel, macht mit Abstand 44
-           Pixel -- so wurde aus einer 66-Pixel-Bahn eine von 102.
+           sondern die Zeile "12 MB" darunter. Mit dem Finger waere sie mit
+           Abstand 44 Pixel hoch -- so wurde aus einer 66-Pixel-Bahn eine
+           von 102.
 
            Weg ist sie nicht: ein Tipp auf den Spurnamen klappt sie auf,
            zusammen mit der Tonhoehe. Was gemeldet werden muss, bleibt
            stehen -- eine Spur, die nicht geladen hat, sagt das weiter von
-           selbst. */
+           selbst. Das Speichern haengt nicht mehr daran: es steht jetzt
+           bei den Reglern und ist damit auch quer immer da. */
         .track .track-note {
           display: none;
         }
@@ -1027,32 +1060,7 @@ type LoopEnd = 'a' | 'b';
                 @switch (track.state) {
                   @case ('loading') { lädt … }
                   @case ('error') { {{ track.error }} }
-                  @default {
-                    {{ megabytes(track.bytes) }} MB
-                    @if (job().site === 'backend') {
-                      <a
-                        class="wav"
-                        [href]="track.downloadUrl"
-                        [download]="track.name + '.wav'"
-                        [attr.aria-label]="short(track.name) + ' als WAV speichern'"
-                        [title]="short(track.name) + ' als WAV speichern'"
-                      >
-                        <app-icon name="download" />
-                      </a>
-                    } @else {
-                      <!-- Browserpfad: es gibt keine Datei, auf die ein Link
-                           zeigen koennte. Die WAV entsteht beim Klick. -->
-                      <button
-                        type="button"
-                        class="wav"
-                        [attr.aria-label]="short(track.name) + ' als WAV speichern'"
-                        [title]="short(track.name) + ' als WAV speichern'"
-                        (click)="save(track)"
-                      >
-                        <app-icon name="download" />
-                      </button>
-                    }
-                  }
+                  @default { {{ megabytes(track.bytes) }} MB }
                 }
               </span>
             </div>
@@ -1092,6 +1100,35 @@ type LoopEnd = 'a' | 'b';
                   (input)="setVolume(track.slug, $event)"
                 />
                 <b class="val">{{ percent(track.volume) }}</b>
+                @if (job().site === 'backend' && track.state === 'ready') {
+                  <!-- Serverweg: die Datei liegt schon, ein Link genuegt. -->
+                  <a
+                    class="wav"
+                    data-testid="track-download"
+                    [href]="track.downloadUrl"
+                    [download]="track.name + '.wav'"
+                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
+                    [title]="short(track.name) + ' als WAV speichern'"
+                  >
+                    <app-icon name="download" />
+                  </a>
+                } @else {
+                  <!-- Browserpfad: es gibt keine Datei, auf die ein Link
+                       zeigen koennte. Die WAV entsteht beim Klick. Und
+                       solange eine Spur laedt, steht der Knopf gesperrt da
+                       statt zu fehlen — sonst springt die Zeile. -->
+                  <button
+                    type="button"
+                    class="wav"
+                    data-testid="track-download"
+                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
+                    [title]="short(track.name) + ' als WAV speichern'"
+                    [disabled]="track.state !== 'ready'"
+                    (click)="save(track)"
+                  >
+                    <app-icon name="download" />
+                  </button>
+                }
               </div>
 
               @if (showPitch(track)) {
