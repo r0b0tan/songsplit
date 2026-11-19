@@ -300,7 +300,7 @@ type LoopEnd = 'a' | 'b';
         background: none;
         border: 0;
         min-height: 0;
-        border-radius: 3px;
+        border-radius: 0;
         display: flex;
         /* Mittig, nicht auf der Grundlinie, und mittig in der Zeile.
            Der Name ist ein Schalter und damit hoeher als seine Schrift —

@@ -146,7 +146,11 @@ export class DeviceFacts {
     if (cached > 0) {
       rows.push({ label: 'Modelle im Cache', value: `${megabytes(cached)} MB` });
     }
-    rows.push({ label: 'Daten', value: 'verlassen das Gerät nicht' });
+    // „Daten verlassen das Geraet nicht" stand hier auch. Es war eine
+    // Zusicherung zwischen lauter Messwerten -- Laufzeit, Adapter,
+    // Cachegroesse --, und zwischen denen las sie sich wie Werbung. Die
+    // Aussage selbst bleibt richtig und steht, wo man sie sucht: in den
+    // FAQ und in der Datenschutzerklaerung.
     return rows;
   }
 

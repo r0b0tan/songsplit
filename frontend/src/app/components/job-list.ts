@@ -79,13 +79,26 @@ type Tab = 'alle' | 'songs' | 'tests';
       }
 
       /* ------------------------------------------------------- Kopfzeile */
+      /* Die Reiter sitzen **auf** der Trennlinie, nicht zwei Pixel
+         darueber: die Kopfzeile legt ihre letzte Pixelreihe ueber die
+         Linie der ersten Zeile (margin-bottom: -1px) und deckt sie dort
+         mit dem Strich des gewaehlten Reiters ab -- z-index, weil die
+         Zeile spaeter im Baum steht und sonst obenauf laege.
+
+         Vorher trennte die beiden ein Polster von 2 px. Solange die Ecken
+         rund waren, fiel das nicht auf; an kantigen Formen liest das Auge
+         jede Kante als Kante, und zwei Striche dicht nebeneinander sehen
+         aus wie ein Fehler. */
       .head {
+        position: relative;
+        z-index: 1;
         display: flex;
         gap: 12px 20px;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
-        padding: 19px 21px 2px;
+        padding: 19px 21px 0;
+        margin-bottom: -1px;
       }
       .head h2 {
         font-size: 19px;
@@ -130,11 +143,25 @@ type Tab = 'alle' | 'songs' | 'tests';
 
       /* ------------------------------------------------------------ Zeile */
       /* Eine Tabelle ohne Tabellenkopf: die Spalten stehen untereinander
-         fest, damit das Auge sie von Zeile zu Zeile wiederfindet. */
+         fest, damit das Auge sie von Zeile zu Zeile wiederfindet.
+
+         Der freie Platz gehoerte vorher zur Haelfte dem Modus: zwei
+         gleiche 1fr fuer Stueck und Modus, der Rest in festen Pixeln.
+         Weil der Modus ein kurzes Wort ist und das Stueck ein langer
+         Name, stand hinter dem Modus ein Loch von gut 200 px, waehrend
+         Dauer, Spurzahl und Handlung im letzten Drittel aneinander
+         klebten.
+
+         Jetzt dehnen sich vier Spalten statt zwei. Die festen Masse
+         bleiben als Untergrenze (minmax), damit nichts umbricht, wenn
+         die Karte schmal wird; darueber waechst jede Spalte nach ihrem
+         Anteil. Glyphe, Dauer und Menue bleiben fest -- sie tragen
+         Zeichen fester Breite, nichts darin koennte den Platz nutzen. */
       .row {
         display: grid;
         grid-template-columns:
-          20px minmax(0, 1fr) minmax(0, 1fr) 46px 80px 140px 26px;
+          20px minmax(0, 1.3fr) minmax(0, 1fr) 46px
+          minmax(80px, 0.45fr) minmax(140px, 0.7fr) 26px;
         align-items: center;
         gap: 14px;
         /* Luft in der Zeile: die Liste wird oft ueberflogen, und zwischen
@@ -170,6 +197,22 @@ type Tab = 'alle' | 'songs' | 'tests';
       .row.current .glyph {
         color: var(--accent);
       }
+      /* Eine Zeilenhoehe fuer alle Textspalten, obwohl die Schriftgrade
+         sich unterscheiden (14 px Stueck, 13 px Modus und Spurzahl,
+         12,5 px Ziffern).
+
+         Mittig gesetzt wird der Kasten, nicht der Text. Ein Kasten von
+         19,5 px und einer von 18,75 px haben in einer 66 px hohen Zeile
+         verschiedene Bruchteile uebrig, und beim Runden auf ganze Pixel
+         faellt der eine nach oben und der andere nach unten -- so sass
+         „3 Spuren" ein Pixel tiefer als „0:30". Gleich hohe Kaesten
+         runden gleich. 20 px ist die naechste gerade Zahl ueber der
+         groessten bisherigen Zeilenhoehe, also wird keine Zeile enger,
+         als ihre Schrift braucht. */
+      .song,
+      .cell {
+        line-height: 20px;
+      }
       .song {
         font-size: 14px;
         font-weight: 620;
@@ -195,6 +238,14 @@ type Tab = 'alle' | 'songs' | 'tests';
       }
 
       /* --------------------------------------------------------- Aktionen */
+      /* Die Spalte traegt einen Knopf, keinen Satz. Als Zeilenkasten haengt
+         der Knopf an der Schriftlinie der Zelle und damit am Strut einer
+         Schrift, die gar nichts anzeigt -- ein halbes Pixel daneben. Als
+         Flex-Kasten wird er gesetzt, wie er ist. */
+      .c-act {
+        display: flex;
+        align-items: center;
+      }
       .state {
         display: inline-flex;
         align-items: center;
@@ -243,7 +294,7 @@ type Tab = 'alle' | 'songs' | 'tests';
         display: grid;
         place-items: center;
         border: 0;
-        border-radius: 6px;
+        border-radius: 0;
         background: none;
         color: var(--faint);
         --icon-size: 16px;
@@ -275,7 +326,7 @@ type Tab = 'alle' | 'songs' | 'tests';
         margin: 0;
         padding: 0;
         border: 1px solid var(--edge);
-        border-radius: 10px;
+        border-radius: 0;
         background: var(--panel-2);
         color: var(--ink);
         /* Zwei Schatten: der weiche traegt das Schild ueber die Zeile,
@@ -314,7 +365,7 @@ type Tab = 'alle' | 'songs' | 'tests';
         rotate: 45deg;
         border-right: 1px solid var(--edge);
         border-bottom: 1px solid var(--edge);
-        border-bottom-right-radius: 2px;
+        border-bottom-right-radius: 0;
         background: var(--panel-2);
       }
       /* Durchsichtig: das Schild gehoert zur Zeile, es legt die Seite
@@ -339,7 +390,7 @@ type Tab = 'alle' | 'songs' | 'tests';
       .kill-ask-in button {
         min-height: 27px;
         padding-inline: 12px;
-        border-radius: 7px;
+        border-radius: 0;
         font-size: 12px;
         font-weight: 600;
         transition: background 0.12s, color 0.12s, border-color 0.12s;
@@ -390,7 +441,7 @@ type Tab = 'alle' | 'songs' | 'tests';
         min-height: 0;
         padding: 6px 8px;
         border: 0;
-        border-radius: 5px;
+        border-radius: 0;
         background: none;
         color: var(--ink);
         font-size: 12.5px;
@@ -570,7 +621,7 @@ type Tab = 'alle' | 'songs' | 'tests';
             }
           </div>
 
-          <div class="cell">
+          <div class="cell c-act">
             @switch (job.status) {
               @case ('done') {
                 @if (gone(job); as why) {

@@ -291,7 +291,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         /* Der gestrichelte Rand ist nicht grau, sondern gedaempft in der
            Akzentfarbe: die Flaeche gehoert zum Hauptweg. */
         border: 1px dashed light-dark(#c6a49d, #6d4c53);
-        border-radius: 12px;
+        border-radius: 0;
         /* Schein von oben, in Pflaume: er macht aus dem Kasten eine
            Flaeche, auf die man zielt. */
         background: radial-gradient(
@@ -366,7 +366,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         min-height: 48px;
         padding: 7px 9px;
         border: 1px solid var(--edge);
-        border-radius: 8px;
+        border-radius: 0;
         background: var(--panel-2);
         cursor: pointer;
         font-size: 13px;
@@ -472,7 +472,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         display: block;
         padding: 7px 9px;
         border: 1px solid transparent;
-        border-radius: 7px;
+        border-radius: 0;
         color: var(--ink);
         cursor: pointer;
       }
@@ -532,7 +532,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         margin-left: -4px;
         padding: 1px 2px 1px 4px;
         border: 1px solid transparent;
-        border-radius: 6px;
+        border-radius: 0;
         background: transparent;
         font: inherit;
         cursor: pointer;
@@ -666,7 +666,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
            sich, statt zu erscheinen. Sonst waere der Knopf unter dem
            Zeiger zwei Pixel groesser als daneben. */
         border: 1px solid transparent;
-        border-radius: 8px;
+        border-radius: 0;
         background: var(--panel-2);
         color: var(--dim);
         font-weight: 700;
@@ -710,7 +710,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         min-height: 38px;
         padding: 8px 14px;
         border: 0;
-        border-radius: 8px;
+        border-radius: 0;
         background: var(--key);
         color: var(--on-key);
         font-weight: 700;

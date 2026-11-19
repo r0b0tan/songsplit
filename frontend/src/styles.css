@@ -77,10 +77,15 @@
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono',
     Menlo, monospace;
 
-  /* Rundungen wie in der Vorlage exampledata/mixapart-uploadmaske: die
-     grosse Flaeche deutlich, die kleinen Schalter darin knapp. */
-  --radius: 18px;
-  --radius-sm: 8px;
+  /* Keine Rundungen. Die abgerundeten Ecken stammten aus der Vorlage
+     exampledata/mixapart-uploadmaske und liessen die Oberflaeche aussehen
+     wie jedes andere Werkzeug mit denselben 18 px. Kanten sind schaerfer
+     und gehoeren zu einem Mischpult, nicht zu einer Web-App.
+
+     Die Tokens bleiben als Tokens stehen: wer die Rundung zurueckholen
+     will, setzt zwei Zahlen, nicht vierzig Regeln. */
+  --radius: 0;
+  --radius-sm: 0;
 }
 
 * { box-sizing: border-box; }
@@ -303,7 +308,7 @@ input[type='range'] {
   align-items: center;
   gap: 5px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--edge);
   background: var(--panel-2);
   font: 500 11.5px/1.5 var(--sans);
