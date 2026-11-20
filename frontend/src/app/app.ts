@@ -511,18 +511,17 @@ import { StemStore } from './separate/stem-store';
           <span>MixApart {{ jahr }}</span>
         </span>
         <span class="legal-links">
-          <!-- Die FAQ liegt je Sprache einmal, siehe public/de/ und
-               public/en/. Impressum und Datenschutz nicht: sie richten sich
-               nach deutschem Recht, und die deutsche Fassung ist die
-               massgebliche. Das hreflang-Attribut sagt der Vorlesestimme
-               und dem Browser, dass dahinter eine andere Sprache steht. -->
+          <!-- Alle drei Seiten liegen je Sprache einmal, siehe public/de/
+               und public/en/. Massgeblich bleibt bei Impressum und
+               Datenschutz die deutsche Fassung; das steht in der
+               englischen oben drueber. -->
           <a [href]="'/' + i18n.lang() + '/faq.html'">FAQ</a>
           <span class="legal-dot" aria-hidden="true">&middot;</span>
-          <a href="/impressum.html" hreflang="de">{{ t().shell.imprint }}</a>
+          <a [href]="'/' + i18n.lang() + '/impressum.html'">{{ t().shell.imprint }}</a>
           <!-- Der Punkt trennt fuers Auge, nicht fuer die Vorlesestimme:
                sie liest zwei Verweise, kein Satzzeichen dazwischen. -->
           <span class="legal-dot" aria-hidden="true">&middot;</span>
-          <a href="/datenschutz.html" hreflang="de">{{ t().shell.privacy }}</a>
+          <a [href]="'/' + i18n.lang() + '/datenschutz.html'">{{ t().shell.privacy }}</a>
         </span>
       </div>
     </footer>

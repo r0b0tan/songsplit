@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Sechs Adressen, und mehr gibt es nicht.
+  Acht Adressen, und mehr gibt es nicht.
 
   MixApart ist eine einzige Anwendung: alles, was sie kann — Trennen, Deck,
   Verlauf —, passiert unter "/de/" beziehungsweise "/en/" und hinterlaesst
@@ -23,8 +23,8 @@
     /de/ und /en/      frontend/src/          (die Oberflaeche)
     /de/faq.html       frontend/public/de/faq.html
     /en/faq.html       frontend/public/en/faq.html
-    /datenschutz.html  frontend/public/datenschutz.html
-    /impressum.html    frontend/public/impressum.html
+    /de|en/datenschutz.html  frontend/public/de|en/datenschutz.html
+    /de|en/impressum.html    frontend/public/de|en/impressum.html
 
   Wer eine dieser Seiten aendert, setzt das Datum hier mit. Wird das zur
   Last, gehoert die Datei erzeugt statt gepflegt — ein Werkzeug neben
@@ -71,11 +71,27 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/faq.html" />
   </url>
   <url>
-    <loc>https://mixapart.de/datenschutz.html</loc>
-    <lastmod>2026-11-17</lastmod>
+    <loc>https://mixapart.de/de/datenschutz.html</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/datenschutz.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/datenschutz.html" />
   </url>
   <url>
-    <loc>https://mixapart.de/impressum.html</loc>
-    <lastmod>2026-11-17</lastmod>
+    <loc>https://mixapart.de/en/datenschutz.html</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/datenschutz.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/datenschutz.html" />
+  </url>
+  <url>
+    <loc>https://mixapart.de/de/impressum.html</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/impressum.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/impressum.html" />
+  </url>
+  <url>
+    <loc>https://mixapart.de/en/impressum.html</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/impressum.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/impressum.html" />
   </url>
 </urlset>
