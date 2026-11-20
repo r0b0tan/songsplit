@@ -191,7 +191,15 @@ export class WaveformComponent {
   /** Bahn in der Spurfarbe hinterlegen — fuer die Spur im Solo. */
   readonly lit = input(false);
   readonly emptyLabel = input('wird geladen …');
-  readonly label = input('Songposition');
+  /**
+   * Die Beschriftung fuer die Vorlesestimme.
+   *
+   * Ohne Vorgabe: wer eine Wellenform einhaengt, kennt die Spur und die
+   * Sprache. Ein deutscher Ruecktext stuende sonst in einer englischen
+   * Oberflaeche, und zwar genau dort, wo ihn niemand sieht und nur die
+   * Vorlesestimme ihn liest.
+   */
+  readonly label = input.required<string>();
 
   readonly seek = output<number>();
   readonly loopChange = output<LoopRange>();

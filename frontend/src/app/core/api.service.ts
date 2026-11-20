@@ -2,6 +2,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import type { Texte } from '../i18n/de';
+import { I18n } from '../i18n/i18n';
 import type { Health, Job, ModelInfo, ServerJob } from './models';
 import { VARIANT } from './variant';
 
@@ -25,6 +27,7 @@ function fromServer(job: ServerJob): Job {
     // Befund; hier wird der Satz zu einem, den die Oberflaeche unveraendert
     // durchreicht. Das ist die eine Stelle, an der das noetig ist.
     stage: job.stage === null ? null : { key: 'text', text: job.stage },
+    error: job.error === null ? null : { key: 'text', text: job.error },
     progress_of: job.progress === null ? null : 'blöcke',
     // Das Backend liefert die Restzeit mit, sobald es sie messen kann;
     // fehlt das Feld (aeltere Fassung), bleibt es bei `null`.
@@ -39,6 +42,7 @@ function modelFromServer(model: ModelInfo): ModelInfo {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
+  private readonly i18n = inject(I18n);
 
   readonly jobs = signal<Job[]>([]);
   readonly models = signal<ModelInfo[]>([]);
@@ -86,7 +90,7 @@ export class ApiService {
       this.health.set(health);
       this.connectionError.set(null);
     } catch (err) {
-      this.connectionError.set(describeHttp(err));
+      this.connectionError.set(describeHttp(err, this.i18n.t()));
     }
   }
 
@@ -96,7 +100,7 @@ export class ApiService {
       const models = await firstValueFrom(this.http.get<ModelInfo[]>('/api/models'));
       this.models.set(models.map(modelFromServer));
     } catch (err) {
-      this.connectionError.set(describeHttp(err));
+      this.connectionError.set(describeHttp(err, this.i18n.t()));
     }
   }
 
@@ -157,10 +161,18 @@ export class ApiService {
   }
 }
 
-export function describeHttp(err: unknown): string {
+/**
+ * Was schiefging, in einem Satz.
+ *
+ * Nimmt das Woerterbuch als Argument statt den Dienst zu holen: diese
+ * Funktion steht ausserhalb jeder Klasse und wird aus Komponenten gerufen,
+ * die `t()` ohnehin zur Hand haben. Ein `inject` hier hinge an einem
+ * Injektionskontext, den der Aufrufer nicht immer hat.
+ */
+export function describeHttp(err: unknown, texte: Texte): string {
   if (err instanceof HttpErrorResponse) {
     if (err.status === 0) {
-      return 'Keine Verbindung zum Backend. Laeuft es auf 127.0.0.1:8000?';
+      return texte.shell.noBackend;
     }
     const detail = (err.error as { detail?: string } | null)?.detail;
     return detail ?? `${err.status} ${err.statusText}`;

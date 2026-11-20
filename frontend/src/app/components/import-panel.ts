@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { ApiService, describeHttp } from '../core/api.service';
+import { ApiService } from '../core/api.service';
 import { IconComponent } from '../core/icon';
 import type { Texte } from '../i18n/de';
 import { I18n } from '../i18n/i18n';
@@ -1006,7 +1006,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
            „noch nicht geladen" und blieb es auch: Grund war ein alter
            Eintrag im Browser-Cache, und ohne diese Zeile gab es nichts,
            woran das zu erkennen war. -->
-      @if (site() === 'device' && device.modelProblem(); as why) {
+      @if (site() === 'device' && i18n.trouble(device.modelProblem()); as why) {
         <div class="notice" style="margin-top: 12px" data-testid="no-model">
           <span><strong>{{ t().card.modes.none }}</strong> {{ why }}</span>
         </div>
@@ -1791,7 +1791,7 @@ export class ImportPanelComponent {
       this.fileInput().nativeElement.value = '';
       this.started.emit(job);
     } catch (err) {
-      this.errorText.set(() => describeHttp(err));
+      this.errorText.set(() => this.i18n.describe(err));
     } finally {
       this.busy.set(false);
     }
@@ -1807,7 +1807,7 @@ export class ImportPanelComponent {
       if (this.api.enabled) await this.api.createTestJob();
       else this.device.createTestJob();
     } catch (err) {
-      this.errorText.set(() => describeHttp(err));
+      this.errorText.set(() => this.i18n.describe(err));
     } finally {
       this.busy.set(false);
     }

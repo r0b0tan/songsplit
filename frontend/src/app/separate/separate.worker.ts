@@ -41,6 +41,7 @@ import {
   type ExecutionProof,
   type WebGpuSupport,
 } from './runtime';
+import { AppError, troubleOf, type Trouble } from '../core/trouble';
 import { CancelledError, separate, type Timings } from './separator';
 
 /** Phasen, die die Oberflaeche getrennt anzeigt. */
@@ -116,7 +117,7 @@ export type FromWorker =
       /** Lagen die Gewichte schon im Cache? Dann war es kein Download. */
       modelFromCache: boolean;
     }
-  | { type: 'error'; jobId: string; message: string; cancelled: boolean };
+  | { type: 'error'; jobId: string; trouble: Trouble; cancelled: boolean };
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -198,7 +199,7 @@ async function handleStart(message: StartMessage): Promise<void> {
     post({
       type: 'error',
       jobId,
-      message: 'Es läuft schon eine Trennung in diesem Tab.',
+      trouble: { key: 'laeuft-schon' },
       cancelled: false,
     });
     return;
@@ -216,17 +217,15 @@ async function handleStart(message: StartMessage): Promise<void> {
     post({ type: 'stage', jobId, phase: 'modell-prüfen' });
     const manifest = await loadManifest(modelId);
     if (!manifest) {
-      throw new Error(
-        `Zu „${modelId}" liegt kein Modell bereit. ` +
-          'Dieser Trennmodus ist in dieser Variante nicht verfügbar.',
-      );
+      throw new AppError({ key: 'modell-fehlt', modelId });
     }
     const shape = shapeOf(manifest);
     if (message.sampleRate !== shape.sampleRate) {
-      throw new Error(
-        `Das Modell rechnet mit ${shape.sampleRate} Hz, bekommen hat es ` +
-          `${message.sampleRate} Hz.`,
-      );
+      throw new AppError({
+        key: 'rate-passt-nicht',
+        model: shape.sampleRate,
+        input: message.sampleRate,
+      });
     }
 
     const ort = await loadRuntime();
@@ -316,7 +315,7 @@ async function handleStart(message: StartMessage): Promise<void> {
     post({
       type: 'error',
       jobId,
-      message: cancelled ? 'Abgebrochen' : explain(err),
+      trouble: cancelled ? { key: 'text', text: 'Abgebrochen' } : explain(err),
       cancelled,
     });
   } finally {
@@ -325,7 +324,7 @@ async function handleStart(message: StartMessage): Promise<void> {
 }
 
 /**
- * Macht aus einem Fehler eine Meldung, mit der sich etwas anfangen laesst.
+ * Macht aus einem Fehler einen Befund, mit dem sich etwas anfangen laesst.
  *
  * Besonders beim Speicher: „Array buffer allocation failed" sagt niemandem,
  * was zu tun ist. Ein Trennjob belegt das Modell (174 MB), die Zwischen-
@@ -334,17 +333,13 @@ async function handleStart(message: StartMessage): Promise<void> {
  * Gigabyte und mehr zusammen, und ein 32-Bit-Tab oder ein voller Rechner
  * steigt dabei aus.
  */
-function explain(err: unknown): string {
+function explain(err: unknown): Trouble {
   const text = describe(err);
   if (
     err instanceof RangeError ||
     /allocation failed|out of memory|Aborted\(OOM|enomem/i.test(text)
   ) {
-    return (
-      'Der Speicher hat nicht gereicht. Ein kürzeres Stück, der Modus ' +
-      '„Schnell" statt „Instrumente" oder ein Neuladen des Tabs hilft; ' +
-      `andere Tabs zu schließen gibt ebenfalls Platz. (${text})`
-    );
+    return { key: 'speicher-aus', detail: text };
   }
-  return text;
+  return troubleOf(err);
 }

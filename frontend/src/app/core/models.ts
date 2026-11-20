@@ -1,3 +1,5 @@
+import type { Trouble } from './trouble';
+
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 
 /**
@@ -102,7 +104,8 @@ export interface Job {
    */
   remaining_seconds: number | null;
   stage: JobStage | null;
-  error: string | null;
+  /** Was schiefging, als Befund. Zum Satz wird er in der Oberflaeche. */
+  error: Trouble | null;
   is_test_path: boolean;
   device: string | null;
   duration_seconds: number | null;
@@ -173,4 +176,7 @@ export interface Health {
  * ihn in `{ key: 'text' }` — an einer Stelle, nicht an jeder, die einen
  * Job anfasst.
  */
-export type ServerJob = Omit<Job, 'stage'> & { stage: string | null };
+export type ServerJob = Omit<Job, 'stage' | 'error'> & {
+  stage: string | null;
+  error: string | null;
+};

@@ -26,6 +26,7 @@ import { BROWSER_MODELS } from '../separate/catalog';
 import { decodeForModel } from '../separate/decode';
 import { clearCache } from '../separate/model-cache';
 import { makeReferenceSignal } from '../separate/reference-signal';
+import { AppError } from '../core/trouble';
 import { I18n } from '../i18n/i18n';
 import { adapterLabel, probeWebGpu, type ExecutionProof } from '../separate/runtime';
 import type { FromWorker } from '../separate/separate.worker';
@@ -438,7 +439,7 @@ export class BenchPageComponent {
           resolve(message);
         } else if (message.type === 'error') {
           worker.removeEventListener('message', onMessage);
-          reject(new Error(message.message));
+          reject(new AppError(message.trouble));
         }
       };
       worker.addEventListener('message', onMessage);

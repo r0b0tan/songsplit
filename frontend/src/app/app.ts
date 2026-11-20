@@ -21,6 +21,7 @@ import { JobsService } from './core/jobs.service';
 import type { Job } from './core/models';
 import { DeviceSeparator } from './separate/device-separator';
 import { isMobileDevice } from './separate/platform';
+import { I18n } from './i18n/i18n';
 import { StemStore } from './separate/stem-store';
 
 /**
@@ -453,9 +454,7 @@ import { StemStore } from './separate/stem-store';
           @if (separatorProblem(); as detail) {
             <div class="notice bad">
               <span>
-                <strong>audio-separator ist nicht verfügbar:</strong> {{ detail }}.
-                Echte Trennungen sind daher nicht möglich. Der Testpfad
-                funktioniert weiterhin.
+                {{ t().shell.noSeparator(detail) }}
               </span>
             </div>
           }
@@ -527,7 +526,7 @@ import { StemStore } from './separate/stem-store';
     <dialog
       #runDialog
       class="run-modal"
-      aria-label="Trennung läuft"
+      [attr.aria-label]="t().shell.runDialog"
       (close)="stopWatching()"
       (pointerdown)="markBackdrop($event, runDialog)"
       (click)="closeOnBackdrop($event, runDialog)"
@@ -545,7 +544,9 @@ import { StemStore } from './separate/stem-store';
     <dialog
       #deckDialog
       class="deck-modal"
-      [attr.aria-label]="selected() ? 'Deck: ' + selected()!.source_name : 'Deck'"
+      [attr.aria-label]="
+        selected() ? t().shell.deckOf(selected()!.source_name) : t().shell.deck
+      "
       (close)="closeJob()"
       (pointerdown)="markBackdrop($event, deckDialog)"
       (click)="closeOnBackdrop($event, deckDialog)"
@@ -585,7 +586,7 @@ import { StemStore } from './separate/stem-store';
           class="turn"
           role="button"
           tabindex="0"
-          aria-label="Bitte das Gerät drehen — antippen, um das Deck trotzdem hochkant zu zeigen"
+          [attr.aria-label]="t().shell.turnAria"
           (click)="hochkantEgal.set(true)"
           (keydown.enter)="hochkantEgal.set(true)"
           (keydown.space)="hochkantEgal.set(true)"
@@ -594,11 +595,8 @@ import { StemStore } from './separate/stem-store';
             <app-icon class="turn-ring" name="rotate-cw" />
             <app-icon class="turn-phone" name="smartphone" />
           </span>
-          <h2>Bitte Gerät drehen</h2>
-          <p>
-            Um alle Spuren an einer gemeinsamen Zeitachse zu zeigen,
-            braucht der Player die Breite des Querformats.
-          </p>
+          <h2>{{ t().shell.turnHead }}</h2>
+          <p>{{ t().shell.turnWhy }}</p>
         </div>
       }
     </dialog>
@@ -615,6 +613,8 @@ export class AppComponent {
   private readonly engine = inject(MixEngine);
   protected readonly jobs = inject(JobsService);
   private readonly store = inject(StemStore);
+  private readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
   private readonly device = inject(DeviceSeparator);
 
   readonly selected = signal<Job | null>(null);

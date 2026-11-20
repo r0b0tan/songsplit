@@ -29,6 +29,7 @@ import {
   type CloudHealth,
 } from '../core/cloud-config';
 import type { Job, JobStage, ModelInfo, Stem } from '../core/models';
+import { AppError, troubleOf } from '../core/trouble';
 import { decodeForModel } from './decode';
 import { StemStore } from './stem-store';
 
@@ -185,7 +186,7 @@ export class CloudSeparator {
    */
   async start(file: File): Promise<Job> {
     const config = this.config();
-    if (!config) throw new Error('Der Serverweg ist auf dieser Seite nicht eingerichtet.');
+    if (!config) throw new AppError({ key: 'serverweg-fehlt' });
 
     const form = new FormData();
     form.append('datei', file, file.name);
@@ -221,7 +222,7 @@ export class CloudSeparator {
     void this.verfolgen(job.id).catch((err: unknown) => {
       this.patch(job.id, {
         status: 'failed',
-        error: err instanceof Error ? err.message : String(err),
+        error: troubleOf(err),
         stage: null,
         progress: null,
         progress_of: null,
@@ -255,7 +256,13 @@ export class CloudSeparator {
       const stand = (await this.fetchJson(`/status/${jobId}`)) as StatusAntwort;
 
       if (stand.zustand === 'fehler') {
-        throw new Error(stand.grund || 'Die Trennung ist auf dem Server gescheitert.');
+        // Der Server schreibt seinen Grund fuer Menschen; er wird
+        // durchgereicht. Schweigt er, steht der eigene Satz da.
+        throw new AppError(
+          stand.grund
+            ? { key: 'text', text: stand.grund }
+            : { key: 'server-gescheitert' },
+        );
       }
       if (stand.zustand === 'fertig') {
         await this.abholen(jobId, stand);
@@ -373,7 +380,7 @@ export class CloudSeparator {
 
   private async fetchRaw(pfad: string, init: RequestInit = {}): Promise<Response> {
     const config = this.config();
-    if (!config) throw new Error('Der Serverweg ist nicht eingerichtet.');
+    if (!config) throw new AppError({ key: 'serverweg-fehlt' });
     const antwort = await fetch(`${config.url}${pfad}`, {
       ...init,
       headers: { ...(init.headers ?? {}), 'X-Mixapart-Token': config.token },
@@ -389,7 +396,8 @@ export class CloudSeparator {
       } catch {
         // Keine JSON-Antwort — dann bleibt es beim Statuscode.
       }
-      throw new Error(grund);
+      // Fuer Menschen geschrieben („Hoechstens 25 MB") — durchgereicht.
+      throw new AppError({ key: 'text', text: grund });
     }
     return antwort;
   }

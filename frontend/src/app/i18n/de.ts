@@ -309,6 +309,8 @@ export const DE = {
     length: (mmss: string) => `${mmss} lang`,
     /** Was statt des Modellnamens dasteht, wenn nichts getrennt wird. */
     testPath: 'Testpfad — trennt nichts',
+    /** Der Name des Testjobs, im Verlauf und als Überschrift im Deck. */
+    testStems: 'Testspuren',
     /** „htdemucs — 4 Spuren" */
     model: (name: string, stems: number) => `${name} — ${stems} Spuren`,
     almost: 'gleich fertig',
@@ -345,6 +347,228 @@ export const DE = {
     assigning: 'wird zugeteilt',
     model: 'Modell',
     stems: 'Spuren',
+  },
+
+  /**
+   * Der Verlauf.
+   *
+   * Die Reiter tragen ihre Beschriftung nicht mehr in `TABS`, sondern
+   * hier: dort stand sie neben dem Schluessel, an dem gefiltert wird, und
+   * ein Reiter, dessen Name sein Schluessel ist, laesst sich nicht
+   * uebersetzen, ohne den Filter mitzuuebersetzen.
+   */
+  list: {
+    head: 'Verlauf',
+    filter: 'Verlauf filtern',
+    tabs: { alle: 'Alle', songs: 'Songs', tests: 'Testläufe' },
+    more: 'Weitere Aktionen für den Verlauf',
+    purge: { songs: 'Alle fertigen Songs löschen', tests: 'Alle Testläufe löschen', alle: 'Alle abgeschlossenen löschen' },
+    purgeArmed: (n: number) => `Wirklich? ${n} löschen`,
+    empty: 'In dieser Sicht steht nichts.',
+    failed: 'Fehlgeschlagen',
+    stems: (n: number) => `${n} Spuren`,
+    /** Am fertigen Job, als Titel des Knopfes. */
+    separated: 'Fertig getrennt',
+    separatedIn: (seconds: string) => `in ${seconds} s getrennt`,
+    open: 'Im Deck öffnen',
+    opened: 'Im Deck geöffnet',
+    running: 'läuft',
+    queued: 'wartet',
+    /** Das Ergebnis ist dem Speicherbudget zum Opfer gefallen. */
+    gone: 'Ergebnis nicht mehr im Speicher',
+    goneWhy:
+      'Die Spuren lagen nur im Arbeitsspeicher dieser Sitzung und sind einem ' +
+      'neueren Ergebnis gewichen. Denselben Song erneut zu trennen geht.',
+    remove: (title: string) => `Löschen: ${title}`,
+    removeJob: 'Job löschen',
+    reallyRemove: 'Wirklich löschen?',
+    yes: 'Ja',
+    no: 'Nein',
+    pages: 'Seiten des Verlaufs',
+    back: 'Eine Seite zurück',
+    next: 'Eine Seite vor',
+    pageOf: (page: number, pages: number) => `Seite ${page} / ${pages}`,
+    inView: (n: number) => `${n} Jobs in dieser Sicht`,
+  },
+
+  /**
+   * Was schiefging — aus dem Befund `Trouble` gebaut.
+   *
+   * Die Saetze sagen, soweit es geht, auch was zu tun ist. Ein Fehler, der
+   * nur feststellt, laesst den Menschen stehen.
+   */
+  trouble: {
+    dateiLeer: 'Die Datei ist leer.',
+    nichtDekodierbar: (detail: string) =>
+      'Die Datei ließ sich nicht dekodieren. Der Browser nimmt MP3 und WAV; ' +
+      'bei einer WAV-Datei mit 24 oder 32 Bit hilft es, sie als 16 Bit zu ' +
+      `speichern. (${detail})`,
+    falscheRate: (got: number, wanted: number) =>
+      `Der Browser hat die Datei mit ${got} Hz dekodiert, obwohl ${wanted} Hz ` +
+      'verlangt waren. Ohne die richtige Abtastrate würde die Trennung in ' +
+      'der falschen Tonhöhe laufen.',
+    nurMp3Wav: 'Nur MP3 und WAV.',
+
+    modellHttp: (status: number, url: string) =>
+      `Modell nicht ladbar: HTTP ${status} für ${url}`,
+    modellZuGross:
+      'Die Modellstücke sind zusammen größer als im manifest.json steht. ' +
+      'Vermutlich passen Stücke und Beschreibung nicht zueinander.',
+    modellUnvollstaendig: (loaded: number, total: number) =>
+      `Das Modell ist unvollständig: ${loaded} von ${total} Byte.`,
+    keinePruefsummen:
+      'Das Modell lässt sich nicht prüfen: dieser Browser stellt keine ' +
+      'Prüfsummen bereit. Das passiert bei einem Aufruf über http:// — ' +
+      'die Seite braucht https://, dann steht die Prüfung wieder zur ' +
+      'Verfügung.',
+    pruefsummeFalsch:
+      'Die Prüfsumme des Modells stimmt nicht. Die geladenen Stücke passen ' +
+      'nicht zu dem, was im manifest.json steht — ein abgebrochener ' +
+      'Download oder eine halb aktualisierte Auslieferung.',
+    modellFehlt: (modelId: string) =>
+      `Zu „${modelId}" liegt kein Modell bereit. Dieser Trennmodus ist in ` +
+      'dieser Variante nicht verfügbar.',
+    modusUnbekannt: (mode: string) => `„${mode}" gibt es auf diesem Gerät nicht.`,
+    ratePasstNicht: (model: number, input: number) =>
+      `Das Modell rechnet mit ${model} Hz, bekommen hat es ${input} Hz.`,
+
+    laeuftSchon:
+      'Es läuft schon eine Trennung in diesem Tab. Erst abwarten oder abbrechen.',
+    geraetWirdGeprueft: 'Das Gerät wird noch geprüft. Einen Moment.',
+    speicherAus: (detail: string) =>
+      'Der Speicher hat nicht gereicht. Ein kürzeres Stück, der Modus ' +
+      '„Schnell" statt „Instrumente" oder ein Neuladen des Tabs hilft; ' +
+      `andere Tabs zu schließen gibt ebenfalls Platz. (${detail})`,
+    trennungAbgebrochen: (detail: string) => `Der Trennvorgang brach ab: ${detail}`,
+    trennungWeg:
+      'Der Trennvorgang brach ohne Meldung ab. Das passiert, wenn dem Browser ' +
+      'der Speicher ausgeht — ein kürzeres Stück oder ein Neuladen des ' +
+      'Tabs hilft.',
+    dspAbgebrochen: (detail: string) => `Die Signalverarbeitung brach ab: ${detail}`,
+    dspWeg:
+      'Die Signalverarbeitung brach ohne Meldung ab — meist fehlender ' +
+      'Speicher. Ein kürzeres Stück oder ein Neuladen des Tabs hilft.',
+
+    serverwegFehlt: 'Der Serverweg ist auf dieser Seite nicht eingerichtet.',
+    serverGescheitert: 'Die Trennung ist auf dem Server gescheitert.',
+
+    modiUnlesbar: (liste: string) =>
+      `Diese Trennmodi liegen nicht in lesbarer Form vor: ${liste}. Ein ` +
+      'Neuladen der Seite holt die Beschreibung neu.',
+    keineModi:
+      'Keine Modellbeschreibung ist lesbar. Entweder fehlt der Export ' +
+      'unter /models/ — er liegt nicht im Repo und entsteht mit ' +
+      '„python backend/tools/export_htdemucs_onnx.py htdemucs" —, ' +
+      'oder eine veraltete Beschreibung liegt im Browser-Cache und das ' +
+      'Netz ist nicht erreichbar, um sie zu ersetzen. Einmal mit Netz ' +
+      'neu laden räumt den zweiten Fall auf.',
+  },
+
+  /** Die Huelle: Band, Fenster und der Hinweis zum Drehen. */
+  shell: {
+    noSeparator: (detail: string) =>
+      `audio-separator ist nicht verfügbar: ${detail}. Echte Trennungen sind ` +
+      'daher nicht möglich. Der Testpfad funktioniert weiterhin.',
+    runDialog: 'Trennung läuft',
+    deck: 'Deck',
+    deckOf: (song: string) => `Deck: ${song}`,
+    turnAria:
+      'Bitte das Gerät drehen — antippen, um das Deck trotzdem hochkant zu zeigen',
+    turnHead: 'Bitte Gerät drehen',
+    turnWhy:
+      'Um alle Spuren an einer gemeinsamen Zeitachse zu zeigen, braucht der ' +
+      'Player die Breite des Querformats.',
+    /** Die Marken auf der Zeitachse. */
+    loopStart: 'Loop-Anfang A',
+    loopEnd: 'Loop-Ende B',
+    songPosition: 'Songposition',
+    /** Das Backend antwortet nicht. */
+    noBackend: 'Keine Verbindung zum Backend. Läuft es auf 127.0.0.1:8000?',
+  },
+
+  /** Das Deck: abspielen, ueben, speichern. */
+  deck: {
+    testPath: 'Testpfad',
+    testLead: 'Testpfad.',
+    testWhy:
+      'Diese Spuren sind synthetisch, es wurde nichts getrennt. Die beiden ' +
+      'Klickspuren klicken auf genau denselben Zeitpunkten: synchron hört ' +
+      'man einen einzigen Klick.',
+    stems: (n: number) => `${n} Spuren`,
+    playback: (percent: string) => `Wiedergabe ${percent} %`,
+    cancelLoad: 'Laden abbrechen',
+    close: 'Deck schließen',
+    loading: 'Spuren werden geladen und dekodiert …',
+    loadedOf: (done: number, total: number) => `${done} von ${total} Spuren`,
+    fetching: 'Spuren werden geholt',
+
+    play: 'Abspielen',
+    pause: 'Pause',
+    toStart: 'An den Anfang',
+    back5: 'Fünf Sekunden zurück',
+    forward5: 'Fünf Sekunden vor',
+    loopToggle: 'Loop zwischen A und B ein- oder ausschalten',
+    loopNone: 'Noch kein Loop gesetzt — A/B unten setzen oder in eine Wellenform ziehen',
+
+    practice: 'Übemodus',
+    mix: 'Mix',
+    /** Was im Kopf steht: welche Spuren gerade zu hören sind. */
+    allStems: 'Alle Spuren',
+    allStemsMuted: (muted: number) => `Alle Spuren, ${muted} stumm`,
+    soloOne: (stem: string) => `${stem} solo`,
+    soloMany: (n: number) => `${n} Spuren solo`,
+    clearSolo: 'Solo aufheben',
+    masterRate: 'Mix-Tempo',
+    masterRateAria: 'Mix-Tempo in Prozent',
+    soloRateApplies: '(Solo-Tempo gilt)',
+
+    headTrack: 'Spur · Mute · Solo',
+    headPitch: 'Tonhöhe',
+    showPitch: (stem: string) => `Tonhöhe von ${stem} anzeigen`,
+    pitchOf: (stem: string) => `Tonhöhe von ${stem}`,
+    semitones: 'Tonhöhe in Halbtönen',
+    semitoneUnit: ' HT',
+    down1: (stem: string) => `${stem} einen Halbton tiefer`,
+    up1: (stem: string) => `${stem} einen Halbton höher`,
+    muted: 'stumm — wieder hörbar machen',
+    mute: 'stummschalten',
+    muteAria: (stem: string) => `${stem} stummschalten`,
+    soloed: 'solo — aufheben',
+    solo: 'nur diese Spur hören',
+    soloAria: (stem: string) => `${stem} solo hören`,
+    position: (stem: string) => `Songposition auf Spur ${stem}`,
+    level: (stem: string) => `Pegel von ${stem} in Prozent`,
+    soloRate: 'Solo-Tempo',
+    soloRateAria: (stem: string) => `Solo-Tempo von ${stem} in Prozent`,
+    save: (stem: string) => `${stem} als WAV speichern`,
+    notLoaded: 'nicht geladen',
+    stemLoading: 'wird geladen …',
+    loadingShort: 'lädt …',
+
+    loop: 'A–B Loop',
+    loopStartAria: 'Loop-Anfang A in Millisekunden',
+    loopEndAria: 'Loop-Ende B in Millisekunden',
+    loopStartTitle: 'Loop-Anfang in Millisekunden — Pfeiltasten stufen in 10 ms',
+    loopEndTitle: 'Loop-Ende in Millisekunden — Pfeiltasten stufen in 10 ms',
+    loopSetStart: 'Loop-Anfang A auf die aktuelle Stelle setzen',
+    loopSetEnd: 'Loop-Ende B auf die aktuelle Stelle setzen',
+    loopClear: 'Loop löschen',
+    loopOn: 'Loop an',
+    loopOff: 'Loop aus',
+    loopEmpty: 'Kein Loop · Zum Setzen mit der Maus markieren',
+    loopHelp:
+      'Die Marken A und B lassen sich auf der Zeitachse ziehen — mit Maus, ' +
+      'Finger oder Tastatur: Pfeiltasten 1 s, mit Umschalt 0,1 s, Bild auf/ab ' +
+      '10 s, Pos1 und Ende an die Grenze.',
+    loopHelpSr: 'Hinweis zur Bedienung der Loop-Marken',
+
+    tech: 'Technik',
+    techPosition: 'Position in Sekunden des Originalsongs',
+    techContext: (hz: number) => `gemeinsamer AudioContext ${hz} Hz`,
+    techLead: (lead: number | null, node: number | null) =>
+      `Umschaltung ${lead} ms im Voraus, für alle Spuren auf dieselbe ` +
+      `Audiozeit (Stretch-Knoten ${node} ms)`,
+    techMemory: (mb: string) => `${mb} MB insgesamt im Arbeitsspeicher, dekodiert`,
   },
 
   /** Das Innere der Importkarte. */

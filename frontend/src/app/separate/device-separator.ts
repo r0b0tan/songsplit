@@ -29,6 +29,7 @@ import { cachedBytes, isCached } from './model-cache';
 import { adapterLabel, type ExecutionProof, type WebGpuSupport } from './runtime';
 import { STEM_LABELS } from '../core/stem-labels';
 import { I18n } from '../i18n/i18n';
+import { AppError, troubleOf, type Trouble } from '../core/trouble';
 import { StemStore } from './stem-store';
 import { TEST_DURATION_S, TEST_SAMPLE_RATE, makeTestStems } from './test-signals';
 import type { FromWorker, Phase, StartMessage } from './separate.worker';
@@ -193,7 +194,7 @@ export class DeviceSeparator {
    * Importkarte sieht aus wie fertig geladen, nur ohne Auswahl, und
    * niemand kann sehen woran es liegt.
    */
-  readonly modelProblem = signal<string | null>(null);
+  readonly modelProblem = signal<Trouble | null>(null);
 
   /**
    * Fragt ab, welche Modi ausgeliefert sind.
@@ -241,11 +242,7 @@ export class DeviceSeparator {
     this.models.set(infos);
     this.modelsVerified.set(true);
     if (broken.length) {
-      this.modelProblem.set(
-        'Diese Trennmodi liegen nicht in lesbarer Form vor: ' +
-          broken.join('; ') +
-          '. Ein Neuladen der Seite holt die Beschreibung neu.',
-      );
+      this.modelProblem.set({ key: 'modi-unlesbar', liste: broken.join('; ') });
     } else if (!infos.length) {
       // Zwei Ursachen mit derselben Folge, und keine davon laesst sich von
       // hier aus unterscheiden: der Export fehlt, oder eine veraltete
@@ -256,14 +253,7 @@ export class DeviceSeparator {
       // Repo liegen: ein frischer Klon hat `frontend/public/models/` gar
       // nicht. Deshalb steht der Befehl dabei — wer das hier liest, sitzt
       // ohnehin vor dem Quelltext.
-      this.modelProblem.set(
-        'Keine Modellbeschreibung ist lesbar. Entweder fehlt der Export ' +
-          'unter /models/ — er liegt nicht im Repo und entsteht mit ' +
-          '„python backend/tools/export_htdemucs_onnx.py htdemucs" —, ' +
-          'oder eine veraltete Beschreibung liegt im Browser-Cache und das ' +
-          'Netz ist nicht erreichbar, um sie zu ersetzen. Einmal mit Netz ' +
-          'neu laden räumt den zweiten Fall auf.',
-      );
+      this.modelProblem.set({ key: 'keine-modi' });
     } else {
       this.modelProblem.set(null);
     }
@@ -320,13 +310,10 @@ export class DeviceSeparator {
   async start(file: File, modelName: string): Promise<Job> {
     await this.init();
     if (this.run()) {
-      throw new Error(
-        'Es läuft schon eine Trennung in diesem Tab. ' +
-          'Erst abwarten oder abbrechen.',
-      );
+      throw new AppError({ key: 'laeuft-schon' });
     }
     if (!ACCEPTED_TYPES.test(file.name)) {
-      throw new Error('Nur MP3 und WAV.');
+      throw new AppError({ key: 'nur-mp3-wav' });
     }
     // Fehlende Grafikbeschleunigung ist kein Grund abzulehnen: der
     // Worker fällt dann auf WASM zurück und rechnet auf dem Prozessor. Die
@@ -335,12 +322,12 @@ export class DeviceSeparator {
     // Abgelehnt wird nur, wenn gar nichts geht.
     const support = this.support();
     if (support === null) {
-      throw new Error('Das Gerät wird noch geprüft. Einen Moment.');
+      throw new AppError({ key: 'geraet-wird-geprueft' });
     }
     const modelId = this.idFor(modelName);
     const info = this.models().find((m) => m.name === modelName);
     if (!modelId || !info) {
-      throw new Error(`„${modelName}" gibt es auf diesem Gerät nicht.`);
+      throw new AppError({ key: 'modus-unbekannt', mode: modelName });
     }
 
     const jobId = `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -393,7 +380,7 @@ export class DeviceSeparator {
         decoded.channels.map((c) => c.buffer),
       );
     } catch (err) {
-      this.fail(jobId, err instanceof Error ? err.message : String(err));
+      this.fail(jobId, troubleOf(err));
       throw err;
     }
     return job;
@@ -412,7 +399,7 @@ export class DeviceSeparator {
     this.store.put({ jobId, stems: stems.map((s) => ({ source: s.slug, channels: s.channels })), sampleRate: TEST_SAMPLE_RATE });
     const job: Job = {
       id: jobId,
-      source_name: 'Testspuren',
+      source_name: this.i18n.t().run.testStems,
       model: 'test-signals',
       // Ein Satz, den die Oberflaeche uebersetzt: sie erkennt den
       // Testpfad an `is_test_path` und schreibt ihn selbst.
@@ -500,9 +487,8 @@ export class DeviceSeparator {
         this.fail(
           id,
           event.message
-            ? `Die Signalverarbeitung brach ab: ${event.message}`
-            : 'Die Signalverarbeitung brach ohne Meldung ab — meist fehlender ' +
-                'Speicher. Ein kürzeres Stück oder ein Neuladen des Tabs hilft.',
+            ? { key: 'dsp-abgebrochen', detail: event.message }
+            : { key: 'dsp-weg' },
         );
       }
     });
@@ -520,10 +506,8 @@ export class DeviceSeparator {
       this.fail(
         id,
         event.message
-          ? `Der Trennvorgang brach ab: ${event.message}`
-          : 'Der Trennvorgang brach ohne Meldung ab. Das passiert, wenn dem ' +
-              'Browser der Speicher ausgeht — ein kürzeres Stück oder ein ' +
-              'Neuladen des Tabs hilft.',
+          ? { key: 'trennung-abgebrochen', detail: event.message }
+          : { key: 'trennung-weg' },
       );
     });
     this.worker = worker;
@@ -624,7 +608,7 @@ export class DeviceSeparator {
           // „Fehlgeschlagen" im Verlauf zu stehen.
           this.remove(message.jobId);
         } else {
-          this.fail(message.jobId, message.message);
+          this.fail(message.jobId, message.trouble);
         }
         return;
       }
@@ -693,10 +677,10 @@ export class DeviceSeparator {
     void this.refreshModels();
   }
 
-  private fail(jobId: string, message: string): void {
+  private fail(jobId: string, trouble: Trouble): void {
     this.patch(jobId, {
       status: 'failed',
-      error: message,
+      error: trouble,
       stage: null,
       progress: null,
       progress_of: null,

@@ -12,6 +12,8 @@
  * `stem-store.ts`.
  */
 
+import { AppError } from '../core/trouble';
+
 const CACHE_NAME = 'mixapart-modelle-v1';
 
 export interface DownloadProgress {
@@ -140,7 +142,7 @@ export async function fetchWeights(
   for (const url of urls) {
     const response = await fetch(url, { signal });
     if (!response.ok) {
-      throw new Error(`Modell nicht ladbar: HTTP ${response.status} für ${url}`);
+      throw new AppError({ key: 'modell-http', status: response.status, url });
     }
     if (!response.body) {
       // Ohne lesbaren Strom (manche Proxys) gibt es je Stueck nur ein
@@ -156,10 +158,7 @@ export async function fetchWeights(
       const { done, value } = await reader.read();
       if (done) break;
       if (loaded + value.byteLength > expectedBytes) {
-        throw new Error(
-          'Die Modellstücke sind zusammen größer als im manifest.json steht. ' +
-            'Vermutlich passen Stücke und Beschreibung nicht zueinander.',
-        );
+        throw new AppError({ key: 'modell-zu-gross' });
       }
       view.set(value, loaded);
       loaded += value.byteLength;
@@ -168,9 +167,11 @@ export async function fetchWeights(
   }
 
   if (loaded !== expectedBytes) {
-    throw new Error(
-      `Das Modell ist unvollständig: ${loaded} von ${expectedBytes} Byte.`,
-    );
+    throw new AppError({
+      key: 'modell-unvollstaendig',
+      loaded,
+      total: expectedBytes,
+    });
   }
   await verify(buffer, expectedSha256);
   await put(cache, cacheKey, buffer, 'application/octet-stream');
@@ -200,23 +201,14 @@ async function verify(buffer: ArrayBuffer, expected: string | null): Promise<voi
   // nicht, und die Tests liefern über `http://127.0.0.1` aus — localhost
   // gilt als sicher, `crypto.subtle` ist dort da.
   if (!globalThis.crypto?.subtle) {
-    throw new Error(
-      'Das Modell lässt sich nicht prüfen: dieser Browser stellt keine ' +
-        'Prüfsummen bereit. Das passiert bei einem Aufruf über http:// — ' +
-        'die Seite braucht https://, dann steht die Prüfung wieder zur ' +
-        'Verfügung.',
-    );
+    throw new AppError({ key: 'keine-pruefsummen' });
   }
   const digest = await crypto.subtle.digest('SHA-256', buffer);
   const got = [...new Uint8Array(digest)]
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
   if (got !== expected) {
-    throw new Error(
-      'Die Prüfsumme des Modells stimmt nicht. Die geladenen Stücke passen ' +
-        'nicht zu dem, was im manifest.json steht — ein abgebrochener ' +
-        'Download oder eine halb aktualisierte Auslieferung.',
-    );
+    throw new AppError({ key: 'pruefsumme-falsch' });
   }
 }
 

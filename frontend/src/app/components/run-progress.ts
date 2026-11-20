@@ -174,7 +174,7 @@ import { I18n } from '../i18n/i18n';
           <div class="eyebrow step"><b>{{ t().run.eyebrow }}</b></div>
           <h2 class="lede">{{ job().source_name }}</h2>
           <div class="facts">
-            <span>{{ modelLine() }}</span>
+            <span>{{ jobs.modelLine(job()) }}</span>
             @if (job().device && job().device !== 'keins') {
               <span class="sep">/</span>
               <span>{{ job().device!.toUpperCase() }}</span>
@@ -199,7 +199,7 @@ import { I18n } from '../i18n/i18n';
 
       @if (job().status === 'failed') {
         <div class="notice bad" style="margin-top: 16px">
-          <span>{{ job().error ?? t().run.failed }}</span>
+          <span>{{ i18n.trouble(job().error) ?? t().run.failed }}</span>
         </div>
       } @else {
         @if (share() !== null) {
@@ -272,7 +272,7 @@ import { I18n } from '../i18n/i18n';
 })
 export class RunProgressComponent {
   readonly facts = inject(DeviceFacts);
-  private readonly jobs = inject(JobsService);
+  protected readonly jobs = inject(JobsService);
   protected readonly i18n = inject(I18n);
   protected readonly t = this.i18n.t;
 
@@ -330,26 +330,6 @@ export class RunProgressComponent {
     return this.i18n.stage(job.stage) ?? this.i18n.status(job.status);
   });
 
-  /**
-   * Die Zeile unter dem Dateinamen: welches Modell, wie viele Spuren.
-   *
-   * Frueher stand hier `model_label` — ein Satz, den der Erzeuger des
-   * Jobs geschrieben hatte („htdemucs — 4 Spuren"), und zwar beim Geraet,
-   * beim Serverweg und im Backend je einmal. Gebaut wird er jetzt hier,
-   * aus dem technischen Namen und der Spurzahl des Modells. Der Name ist
-   * in jeder Sprache derselbe, die Zahl auch; uebersetzt wird nur das
-   * Wort dazwischen.
-   *
-   * Faellt das Modell nicht auf — ein alter Job, ein Modus, den es nicht
-   * mehr gibt —, bleibt der Satz stehen, den der Job mitbringt.
-   */
-  readonly modelLine = computed(() => {
-    const job = this.job();
-    if (job.is_test_path) return this.t().run.testPath;
-    const model = this.jobs.models().find((m) => m.name === job.model);
-    if (!model) return job.model_label;
-    return this.t().run.model(job.model, model.stems.length);
-  });
 
   /** Laufzeit seit dem Start der Trennung, sonst seit dem Anlegen. */
   readonly elapsed = computed(() => {

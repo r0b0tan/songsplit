@@ -3,6 +3,7 @@ import {
   ElementRef,
   computed,
   effect,
+  inject,
   input,
   output,
   signal,
@@ -11,6 +12,7 @@ import {
 } from '@angular/core';
 
 import { LOOP_MIN_SECONDS, type LoopRange } from '../audio/mix-engine';
+import { I18n } from '../i18n/i18n';
 
 /**
  * Die gemeinsame Zeitachse ueber allen Spuren: Zeitmarken, Abspielkopf und
@@ -239,7 +241,7 @@ type Endpoint = 'a' | 'b';
               [attr.data-endpoint]="end"
               [attr.data-dragging]="dragging() === end"
               role="slider"
-              [attr.aria-label]="end === 'a' ? 'Loop-Anfang A' : 'Loop-Ende B'"
+              [attr.aria-label]="end === 'a' ? t().shell.loopStart : t().shell.loopEnd"
               aria-valuemin="0"
               [attr.aria-valuemax]="duration().toFixed(2)"
               [attr.aria-valuenow]="at(end).toFixed(2)"
@@ -263,6 +265,9 @@ type Endpoint = 'a' | 'b';
   `,
 })
 export class TimeRulerComponent {
+  private readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
+
   readonly duration = input(0);
   readonly position = input(0);
   readonly loop = input<LoopRange | null>(null);

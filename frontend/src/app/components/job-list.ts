@@ -525,19 +525,19 @@ type Tab = 'alle' | 'songs' | 'tests';
   template: `
     <section class="panel history">
       <div class="head">
-        <h2>Verlauf</h2>
+        <h2>{{ t().list.head }}</h2>
 
-        <div class="tabs" role="tablist" aria-label="Verlauf filtern">
-          @for (t of TABS; track t.key) {
+        <div class="tabs" role="tablist" [attr.aria-label]="t().list.filter">
+          @for (t of TABS; track t) {
             <button
               class="tab"
               role="tab"
               data-testid="tab"
-              [attr.aria-selected]="tab() === t.key"
-              [disabled]="!count(t.key) && tab() !== t.key"
-              (click)="setTab(t.key)"
+              [attr.aria-selected]="tab() === t"
+              [disabled]="!count(t) && tab() !== t"
+              (click)="setTab(t)"
             >
-              {{ t.label }} <b>{{ count(t.key) }}</b>
+              {{ tabLabel(t) }} <b>{{ count(t) }}</b>
             </button>
           }
 
@@ -549,7 +549,7 @@ type Tab = 'alle' | 'songs' | 'tests';
             <button
               class="dots"
               data-testid="purge"
-              aria-label="Weitere Aktionen für den Verlauf"
+              [attr.aria-label]="t().list.more"
               [attr.aria-expanded]="menu() === 'liste'"
               (click)="toggleMenu('liste')"
             >
@@ -565,7 +565,7 @@ type Tab = 'alle' | 'songs' | 'tests';
                   (click)="armOrPurge()"
                 >
                   <app-icon name="trash" />
-                  {{ purgeArmed() ? 'Wirklich? ' + removable() + ' löschen' : purgeLabel() }}
+                  {{ purgeArmed() ? t().list.purgeArmed(removable()) : purgeLabel() }}
                 </button>
               </div>
             }
@@ -578,7 +578,7 @@ type Tab = 'alle' | 'songs' | 'tests';
            Fall, der sich durch einen Klick aufloest -- ein Reiter ohne
            Treffer, waehrend andere welche haben. -->
       @if (filtered().length === 0) {
-        <p class="empty">In dieser Sicht steht nichts.</p>
+        <p class="empty">{{ t().list.empty }}</p>
       }
 
       @for (job of visible(); track job.id; let i = $index) {
@@ -601,8 +601,11 @@ type Tab = 'alle' | 'songs' | 'tests';
           </div>
 
           @if (job.status === 'failed') {
-            <div class="cell bad truncate c-mode" [title]="job.error ?? 'Fehlgeschlagen'">
-              {{ job.error ?? 'Fehlgeschlagen' }}
+            <div
+              class="cell bad truncate c-mode"
+              [title]="i18n.trouble(job.error) ?? t().list.failed"
+            >
+              {{ i18n.trouble(job.error) ?? t().list.failed }}
             </div>
           } @else {
             <div class="cell truncate c-mode" [title]="mode(job)">{{ mode(job) }}</div>
@@ -614,7 +617,7 @@ type Tab = 'alle' | 'songs' | 'tests';
 
           <div class="cell truncate c-stems">
             @if (job.status === 'done') {
-              {{ job.stems.length }} Spuren
+              {{ t().list.stems(job.stems.length) }}
             } @else if (job.status === 'failed') {
               —
             } @else {
@@ -630,7 +633,7 @@ type Tab = 'alle' | 'songs' | 'tests';
                        Sitzung und ist dem Budget zum Opfer gefallen. Der
                        Job bleibt stehen, damit man sieht, dass er lief —
                        aufmachen kann man ihn nicht mehr. -->
-                  <span class="state" data-testid="stems-gone" [title]="goneHint">
+                  <span class="state" data-testid="stems-gone" [title]="t().list.goneWhy">
                     {{ why }}
                   </span>
                 } @else {
@@ -638,21 +641,21 @@ type Tab = 'alle' | 'songs' | 'tests';
                     class="open"
                     data-testid="open-in-player"
                     [attr.aria-pressed]="job.id === selectedId()"
-                    [title]="elapsed(job) ?? 'Fertig getrennt'"
+                    [title]="elapsed(job) ?? t().list.separated"
                     (click)="open.emit(job)"
                   >
                     <app-icon name="square-arrow-out-up-right" />
-                    {{ job.id === selectedId() ? 'Im Deck geöffnet' : 'Im Deck öffnen' }}
+                    {{ job.id === selectedId() ? t().list.opened : t().list.open }}
                   </button>
                 }
               }
               @case ('failed') {
-                <span class="state bad">Fehlgeschlagen</span>
+                <span class="state bad">{{ t().list.failed }}</span>
               }
               @default {
                 <span class="state">
                   <app-icon name="clock" />
-                  {{ job.status === 'processing' ? 'läuft' : 'wartet' }}
+                  {{ job.status === 'processing' ? t().list.running : t().list.queued }}
                 </span>
               }
             }
@@ -669,8 +672,8 @@ type Tab = 'alle' | 'songs' | 'tests';
           <button
             class="dots kill"
             type="button"
-            [attr.aria-label]="'Löschen: ' + name(job).title"
-            title="Job löschen"
+            [attr.aria-label]="t().list.remove(name(job).title)"
+            [title]="t().list.removeJob"
             (click)="ask(job, $event)"
           >
             <app-icon name="trash" />
@@ -679,31 +682,31 @@ type Tab = 'alle' | 'songs' | 'tests';
       }
 
       @if (pages() > 1) {
-        <nav class="pager" aria-label="Seiten des Verlaufs">
+        <nav class="pager" [attr.aria-label]="t().list.pages">
           <button
             class="icon sm"
             data-testid="page-back"
-            aria-label="Eine Seite zurück"
-            title="Eine Seite zurück"
+            [attr.aria-label]="t().list.back"
+            [title]="t().list.back"
             [disabled]="page() === 0"
             (click)="turn(-1)"
           >
             <app-icon name="chevron-left" />
           </button>
           <span class="mono tiny dim" aria-live="polite" data-testid="page-of">
-            Seite {{ page() + 1 }} / {{ pages() }}
+            {{ t().list.pageOf(page() + 1, pages()) }}
           </span>
           <button
             class="icon sm"
             data-testid="page-next"
-            aria-label="Eine Seite vor"
-            title="Eine Seite vor"
+            [attr.aria-label]="t().list.next"
+            [title]="t().list.next"
             [disabled]="page() >= pages() - 1"
             (click)="turn(1)"
           >
             <app-icon name="chevron-right" />
           </button>
-          <span class="tiny faint of">{{ filtered().length }} Jobs in dieser Sicht</span>
+          <span class="tiny faint of">{{ t().list.inView(filtered().length) }}</span>
         </nav>
       }
     </section>
@@ -730,9 +733,13 @@ type Tab = 'alle' | 'songs' | 'tests';
       @if (pending(); as job) {
         <!-- Der Klick im Schild darf nicht als Klick daneben gelten. -->
         <div class="kill-ask-in" (click)="$event.stopPropagation()">
-          <span class="kill-ask-text">Wirklich löschen?</span>
-          <button type="button" class="kill-ask-yes" (click)="remove(job)">Ja</button>
-          <button type="button" class="kill-ask-no" (click)="confirm.close()">Nein</button>
+          <span class="kill-ask-text">{{ t().list.reallyRemove }}</span>
+          <button type="button" class="kill-ask-yes" (click)="remove(job)">
+            {{ t().list.yes }}
+          </button>
+          <button type="button" class="kill-ask-no" (click)="confirm.close()">
+            {{ t().list.no }}
+          </button>
         </div>
       }
     </dialog>
@@ -741,16 +748,25 @@ type Tab = 'alle' | 'songs' | 'tests';
 export class JobListComponent {
   readonly jobs = inject(JobsService);
   protected readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
   readonly selectedId = input<string | null>(null);
   readonly open = output<Job>();
   readonly closed = output<string>();
 
 
-  readonly TABS: readonly { key: Tab; label: string }[] = [
-    { key: 'alle', label: 'Alle' },
-    { key: 'songs', label: 'Songs' },
-    { key: 'tests', label: 'Testläufe' },
-  ];
+  /**
+   * Die Reiter, nur noch als Schluessel.
+   *
+   * Hier stand die Beschriftung daneben. Sie gehoert nicht hierher: der
+   * Schluessel filtert, die Beschriftung wird gelesen, und wer beides in
+   * einem Eintrag fuehrt, uebersetzt beim naechsten Mal versehentlich den
+   * Filter mit.
+   */
+  readonly TABS: readonly Tab[] = ['alle', 'songs', 'tests'];
+
+  protected tabLabel(tab: Tab): string {
+    return this.t().list.tabs[tab];
+  }
 
   /** Job, dessen Loeschen im Dialog gerade zur Frage steht. */
   readonly pending = signal<Job | null>(null);
@@ -818,13 +834,7 @@ export class JobListComponent {
 
   readonly removable = computed(() => this.doomed().length);
 
-  readonly purgeLabel = computed(() => {
-    switch (this.tab()) {
-      case 'songs': return 'Alle fertigen Songs löschen';
-      case 'tests': return 'Alle Testläufe löschen';
-      default: return 'Alle abgeschlossenen löschen';
-    }
-  });
+  readonly purgeLabel = computed(() => this.t().list.purge[this.tab()]);
 
   name(job: Job): { title: string; artist: string | null } {
     return songName(job.source_name);
@@ -878,9 +888,6 @@ export class JobListComponent {
     return this.jobs.unavailableReason(job);
   }
 
-  readonly goneHint =
-    'Die Spuren lagen nur im Arbeitsspeicher dieser Sitzung und sind einem ' +
-    'neueren Ergebnis gewichen. Denselben Song erneut zu trennen geht.';
 
   formatDuration(seconds: number): string {
     const m = Math.floor(seconds / 60);
@@ -891,7 +898,7 @@ export class JobListComponent {
   /** Laufzeit der Trennung, sobald sie bekannt ist. */
   elapsed(job: Job): string | null {
     if (job.started_at && job.finished_at) {
-      return `in ${(job.finished_at - job.started_at).toFixed(1)} s getrennt`;
+      return this.t().list.separatedIn((job.finished_at - job.started_at).toFixed(1));
     }
     return null;
   }

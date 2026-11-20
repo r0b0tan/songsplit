@@ -206,6 +206,7 @@ export const EN: Texte = {
     back: 'Back',
     length: (mmss: string) => `${mmss} long`,
     testPath: 'Test path — separates nothing',
+    testStems: 'Test stems',
     model: (name: string, stems: number) => `${name} — ${stems} stems`,
     almost: 'almost done',
     secondsLeft: (s: number) => `about ${s} s left`,
@@ -232,6 +233,205 @@ export const EN: Texte = {
     assigning: 'being assigned',
     model: 'Model',
     stems: 'Stems',
+  },
+
+  list: {
+    head: 'History',
+    filter: 'Filter the history',
+    tabs: { alle: 'All', songs: 'Songs', tests: 'Test runs' },
+    more: 'More actions for the history',
+    purge: { songs: 'Delete all finished songs', tests: 'Delete all test runs', alle: 'Delete all finished' },
+    purgeArmed: (n: number) => `Really? Delete ${n}`,
+    empty: 'Nothing in this view.',
+    failed: 'Failed',
+    stems: (n: number) => `${n} stems`,
+    separated: 'Separated',
+    separatedIn: (seconds: string) => `separated in ${seconds} s`,
+    open: 'Open in deck',
+    opened: 'Opened in deck',
+    running: 'running',
+    queued: 'waiting',
+    gone: 'Result no longer in memory',
+    goneWhy:
+      "The stems were only held in this session's memory and have given way " +
+      'to a newer result. Separating the same song again works.',
+    remove: (title: string) => `Delete: ${title}`,
+    removeJob: 'Delete job',
+    reallyRemove: 'Really delete?',
+    yes: 'Yes',
+    no: 'No',
+    pages: 'History pages',
+    back: 'One page back',
+    next: 'One page forward',
+    pageOf: (page: number, pages: number) => `Page ${page} / ${pages}`,
+    inView: (n: number) => `${n} jobs in this view`,
+  },
+
+  trouble: {
+    dateiLeer: 'The file is empty.',
+    nichtDekodierbar: (detail: string) =>
+      'The file could not be decoded. The browser takes MP3 and WAV; for a ' +
+      'WAV file at 24 or 32 bit it helps to save it as 16 bit. ' +
+      `(${detail})`,
+    falscheRate: (got: number, wanted: number) =>
+      `The browser decoded the file at ${got} Hz although ${wanted} Hz were ` +
+      'asked for. Without the right sample rate the separation would run at ' +
+      'the wrong pitch.',
+    nurMp3Wav: 'MP3 and WAV only.',
+
+    modellHttp: (status: number, url: string) =>
+      `Model not loadable: HTTP ${status} for ${url}`,
+    modellZuGross:
+      'The model pieces together are larger than the manifest.json says. ' +
+      'The pieces and the description probably do not belong together.',
+    modellUnvollstaendig: (loaded: number, total: number) =>
+      `The model is incomplete: ${loaded} of ${total} bytes.`,
+    keinePruefsummen:
+      'The model cannot be verified: this browser provides no checksums. ' +
+      'That happens when the page is opened over http:// — it needs ' +
+      'https://, and the check is available again.',
+    pruefsummeFalsch:
+      'The checksum of the model does not match. The pieces that were loaded ' +
+      'do not belong to what the manifest.json describes — either an ' +
+      'interrupted download or a half-updated deployment.',
+    modellFehlt: (modelId: string) =>
+      `No model is available for “${modelId}”. This separation mode is ` +
+      'not available in this build.',
+    modusUnbekannt: (mode: string) =>
+      `“${mode}” does not exist on this device.`,
+    ratePasstNicht: (model: number, input: number) =>
+      `The model computes at ${model} Hz, but it was given ${input} Hz.`,
+
+    laeuftSchon:
+      'A separation is already running in this tab. Wait for it or cancel it.',
+    geraetWirdGeprueft: 'The device is still being checked. One moment.',
+    speicherAus: (detail: string) =>
+      'There was not enough memory. A shorter excerpt, the mode ' +
+      '“Fast” instead of “Instruments” or reloading the tab helps; ' +
+      `closing other tabs frees room as well. (${detail})`,
+    trennungAbgebrochen: (detail: string) => `The separation broke off: ${detail}`,
+    trennungWeg:
+      'The separation broke off without a message. That happens when the ' +
+      'browser runs out of memory — a shorter excerpt or reloading the tab ' +
+      'helps.',
+    dspAbgebrochen: (detail: string) => `Signal processing broke off: ${detail}`,
+    dspWeg:
+      'Signal processing broke off without a message — usually missing ' +
+      'memory. A shorter excerpt or reloading the tab helps.',
+
+    serverwegFehlt: 'The server route is not set up on this page.',
+    serverGescheitert: 'The separation failed on the server.',
+
+    modiUnlesbar: (liste: string) =>
+      `These separation modes are not available in readable form: ${liste}. ` +
+      'Reloading the page fetches the descriptions again.',
+    keineModi:
+      'No model description is readable. Either the export under /models/ is ' +
+      'missing — it is not in the repository and is produced with ' +
+      '“python backend/tools/export_htdemucs_onnx.py htdemucs” — ' +
+      'or an outdated description sits in the browser cache and the network ' +
+      'cannot be reached to replace it. Reloading once with a network ' +
+      'connection clears the second case.',
+  },
+
+  shell: {
+    noSeparator: (detail: string) =>
+      `audio-separator is not available: ${detail}. Real separations are ` +
+      'therefore not possible. The test path still works.',
+    runDialog: 'Separation running',
+    deck: 'Deck',
+    deckOf: (song: string) => `Deck: ${song}`,
+    turnAria: 'Please turn the device — tap to show the deck upright anyway',
+    turnHead: 'Please turn the device',
+    turnWhy:
+      'To show every stem on a shared timeline, the player needs the width of ' +
+      'landscape orientation.',
+    loopStart: 'Loop start A',
+    loopEnd: 'Loop end B',
+    songPosition: 'Song position',
+    noBackend: 'No connection to the backend. Is it running on 127.0.0.1:8000?',
+  },
+
+  deck: {
+    testPath: 'Test path',
+    testLead: 'Test path.',
+    testWhy:
+      'These stems are synthetic, nothing was separated. The two click tracks ' +
+      'click at exactly the same moments: in sync you hear a single click.',
+    stems: (n: number) => `${n} stems`,
+    playback: (percent: string) => `Playback ${percent} %`,
+    cancelLoad: 'Cancel loading',
+    close: 'Close the deck',
+    loading: 'Loading and decoding the stems …',
+    loadedOf: (done: number, total: number) => `${done} of ${total} stems`,
+    fetching: 'Fetching the stems',
+
+    play: 'Play',
+    pause: 'Pause',
+    toStart: 'To the start',
+    back5: 'Five seconds back',
+    forward5: 'Five seconds forward',
+    loopToggle: 'Switch the loop between A and B on or off',
+    loopNone: 'No loop set yet — set A/B below or drag across a waveform',
+
+    practice: 'Practice',
+    mix: 'Mix',
+    allStems: 'All stems',
+    allStemsMuted: (muted: number) => `All stems, ${muted} muted`,
+    soloOne: (stem: string) => `${stem} solo`,
+    soloMany: (n: number) => `${n} stems solo`,
+    clearSolo: 'Clear solo',
+    masterRate: 'Mix tempo',
+    masterRateAria: 'Mix tempo in percent',
+    soloRateApplies: '(solo tempo applies)',
+
+    headTrack: 'Stem · Mute · Solo',
+    headPitch: 'Pitch',
+    showPitch: (stem: string) => `Show the pitch of ${stem}`,
+    pitchOf: (stem: string) => `Pitch of ${stem}`,
+    semitones: 'Pitch in semitones',
+    semitoneUnit: ' st',
+    down1: (stem: string) => `${stem} one semitone down`,
+    up1: (stem: string) => `${stem} one semitone up`,
+    muted: 'muted — make audible again',
+    mute: 'mute',
+    muteAria: (stem: string) => `Mute ${stem}`,
+    soloed: 'solo — clear',
+    solo: 'hear this stem alone',
+    soloAria: (stem: string) => `Hear ${stem} alone`,
+    position: (stem: string) => `Song position on stem ${stem}`,
+    level: (stem: string) => `Level of ${stem} in percent`,
+    soloRate: 'Solo tempo',
+    soloRateAria: (stem: string) => `Solo tempo of ${stem} in percent`,
+    save: (stem: string) => `Save ${stem} as WAV`,
+    notLoaded: 'not loaded',
+    stemLoading: 'loading …',
+    loadingShort: 'loading …',
+
+    loop: 'A–B loop',
+    loopStartAria: 'Loop start A in milliseconds',
+    loopEndAria: 'Loop end B in milliseconds',
+    loopStartTitle: 'Loop start in milliseconds — arrow keys step by 10 ms',
+    loopEndTitle: 'Loop end in milliseconds — arrow keys step by 10 ms',
+    loopSetStart: 'Set loop start A to the current position',
+    loopSetEnd: 'Set loop end B to the current position',
+    loopClear: 'Clear the loop',
+    loopOn: 'Loop on',
+    loopOff: 'Loop off',
+    loopEmpty: 'No loop · drag across a waveform to set one',
+    loopHelp:
+      'The A and B marks can be dragged along the timeline — with mouse, ' +
+      'finger or keyboard: arrow keys 1 s, with shift 0.1 s, page up/down ' +
+      '10 s, home and end to the edges.',
+    loopHelpSr: 'How to use the loop marks',
+
+    tech: 'Technical',
+    techPosition: 'Position in seconds of the original song',
+    techContext: (hz: number) => `shared AudioContext ${hz} Hz`,
+    techLead: (lead: number | null, node: number | null) =>
+      `Switching ${lead} ms ahead, onto the same audio time for every stem ` +
+      `(stretch node ${node} ms)`,
+    techMemory: (mb: string) => `${mb} MB decoded in memory in total`,
   },
 
   card: {

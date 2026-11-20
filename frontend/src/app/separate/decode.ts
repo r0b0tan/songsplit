@@ -11,6 +11,8 @@
  * ist der ganze Weg, und keiner der Schritte kennt ein Netz.
  */
 
+import { AppError } from '../core/trouble';
+
 export interface DecodedInput {
   /** Genau so viele Kanäle, wie das Modell erwartet. */
   channels: Float32Array[];
@@ -30,7 +32,7 @@ export async function decodeForModel(
   targetChannels: number,
 ): Promise<DecodedInput> {
   const bytes = await file.arrayBuffer();
-  if (!bytes.byteLength) throw new Error('Die Datei ist leer.');
+  if (!bytes.byteLength) throw new AppError({ key: 'datei-leer' });
 
   // Länge und Kanalzahl stehen erst nach dem Dekodieren fest, deshalb ein
   // Context mit einem Bild: `decodeAudioData` richtet sich nicht danach.
@@ -39,11 +41,10 @@ export async function decodeForModel(
   try {
     buffer = await probe.decodeAudioData(bytes);
   } catch (err) {
-    throw new Error(
-      'Die Datei ließ sich nicht dekodieren. Der Browser nimmt MP3 und WAV; ' +
-        'bei einer WAV-Datei mit 24 oder 32 Bit hilft es, sie als 16 Bit zu ' +
-        `speichern. (${err instanceof Error ? err.message : String(err)})`,
-    );
+    throw new AppError({
+      key: 'nicht-dekodierbar',
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 
   // `decodeAudioData` liefert den Puffer in der Rate des Contexts, eine
@@ -51,11 +52,11 @@ export async function decodeForModel(
   // trotzdem da: wäre sie es einmal nicht, klänge die Trennung einfach zu
   // hoch oder zu tief, und niemand käme auf die Abtastrate.
   if (buffer.sampleRate !== targetRate) {
-    throw new Error(
-      `Der Browser hat die Datei mit ${buffer.sampleRate} Hz dekodiert, ` +
-        `obwohl ${targetRate} Hz verlangt waren. Ohne die richtige Abtastrate ` +
-        'würde die Trennung in der falschen Tonhöhe laufen.',
-    );
+    throw new AppError({
+      key: 'falsche-rate',
+      got: buffer.sampleRate,
+      wanted: targetRate,
+    });
   }
 
   const notes: string[] = [];

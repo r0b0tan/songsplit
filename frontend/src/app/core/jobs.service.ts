@@ -17,6 +17,7 @@ import { CloudSeparator } from '../separate/cloud-separator';
 import { DeviceSeparator } from '../separate/device-separator';
 import { StemStore } from '../separate/stem-store';
 import { ApiService } from './api.service';
+import { I18n } from '../i18n/i18n';
 import type { Job, ModelInfo } from './models';
 import { VARIANT } from './variant';
 
@@ -29,6 +30,7 @@ export class JobsService {
   private readonly device = inject(DeviceSeparator);
   private readonly cloud = inject(CloudSeparator);
   private readonly store = inject(StemStore);
+  private readonly i18n = inject(I18n);
 
   /** Gibt es überhaupt eine Wahl, oder nur „Auf diesem Gerät"? */
   readonly serverAvailable = VARIANT.backend;
@@ -82,6 +84,26 @@ export class JobsService {
    * Browserpfad hängt es am Budget in `StemStore` — ältere Ergebnisse werden
    * verdrängt, und dann sagt der Verlauf das.
    */
+  /**
+   * Welches Modell, wie viele Spuren — die Zeile unter dem Dateinamen.
+   *
+   * Sie steht im Trennfenster und im Deck, und deshalb steht sie hier und
+   * nicht zweimal dort. Frueher brachte jeder Erzeuger eines Jobs den Satz
+   * fertig mit (`model_label`); gebaut wird er jetzt aus dem technischen
+   * Namen und der Spurzahl des Modells, denn beide sind in jeder Sprache
+   * dieselben.
+   *
+   * Faellt das Modell nicht auf — ein alter Job, ein Modus, den es nicht
+   * mehr gibt —, bleibt der Satz stehen, den der Job mitbringt. Lieber
+   * eine Zeile in der falschen Sprache als eine leere.
+   */
+  modelLine(job: Job): string {
+    const t = this.i18n.t();
+    if (job.is_test_path) return t.run.testPath;
+    const model = this.models().find((m) => m.name === job.model);
+    return model ? t.run.model(job.model, model.stems.length) : job.model_label;
+  }
+
   openable(job: Job): boolean {
     if (job.status !== 'done') return false;
     if (job.site === 'backend') return true;
@@ -98,7 +120,7 @@ export class JobsService {
   unavailableReason(job: Job): string | null {
     if (job.status !== 'done' || job.site === 'backend') return null;
     if (this.store.available().has(job.id)) return null;
-    return 'Ergebnis nicht mehr im Speicher';
+    return this.i18n.t().list.gone;
   }
 
   async remove(job: Job): Promise<void> {

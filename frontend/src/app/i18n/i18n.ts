@@ -18,6 +18,7 @@ import { Injectable, computed, effect, signal } from '@angular/core';
 
 import type { JobStage, JobStatus } from '../core/models';
 import { stemSlug } from '../core/stem-labels';
+import { troubleOf, type Trouble } from '../core/trouble';
 import type { GpuReason } from '../separate/runtime';
 import { DE, type Texte } from './de';
 import { EN } from './en';
@@ -197,6 +198,51 @@ export class I18n {
   /** Der Zustand eines Jobs, wo keine Phase dasteht. */
   status(status: JobStatus): string {
     return this.t().status[status];
+  }
+
+  /**
+   * Was schiefging, in einem Satz.
+   *
+   * Wie `gpuReason` und `stage`: ein `switch`, damit der Compiler einen
+   * neuen Fall anmahnt, statt ihn leer zu lassen. `text` ist die
+   * Durchreiche für Meldungen, die von woanders kommen.
+   */
+  trouble(trouble: Trouble | null): string | null {
+    if (!trouble) return null;
+    const t = this.t().trouble;
+    switch (trouble.key) {
+      case 'datei-leer': return t.dateiLeer;
+      case 'nicht-dekodierbar': return t.nichtDekodierbar(trouble.detail);
+      case 'falsche-rate': return t.falscheRate(trouble.got, trouble.wanted);
+      case 'nur-mp3-wav': return t.nurMp3Wav;
+      case 'modell-http': return t.modellHttp(trouble.status, trouble.url);
+      case 'modell-zu-gross': return t.modellZuGross;
+      case 'modell-unvollstaendig':
+        return t.modellUnvollstaendig(trouble.loaded, trouble.total);
+      case 'keine-pruefsummen': return t.keinePruefsummen;
+      case 'pruefsumme-falsch': return t.pruefsummeFalsch;
+      case 'modell-fehlt': return t.modellFehlt(trouble.modelId);
+      case 'modus-unbekannt': return t.modusUnbekannt(trouble.mode);
+      case 'rate-passt-nicht':
+        return t.ratePasstNicht(trouble.model, trouble.input);
+      case 'laeuft-schon': return t.laeuftSchon;
+      case 'geraet-wird-geprueft': return t.geraetWirdGeprueft;
+      case 'speicher-aus': return t.speicherAus(trouble.detail);
+      case 'trennung-abgebrochen': return t.trennungAbgebrochen(trouble.detail);
+      case 'trennung-weg': return t.trennungWeg;
+      case 'dsp-abgebrochen': return t.dspAbgebrochen(trouble.detail);
+      case 'dsp-weg': return t.dspWeg;
+      case 'serverweg-fehlt': return t.serverwegFehlt;
+      case 'server-gescheitert': return t.serverGescheitert;
+      case 'modi-unlesbar': return t.modiUnlesbar(trouble.liste);
+      case 'keine-modi': return t.keineModi;
+      case 'text': return trouble.text;
+    }
+  }
+
+  /** Dasselbe für etwas, das gerade geworfen wurde. */
+  describe(err: unknown): string {
+    return this.trouble(troubleOf(err)) ?? '';
   }
 
   constructor() {

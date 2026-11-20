@@ -26,6 +26,7 @@ import { RangeScrollGuard } from '../core/range-scroll-guard';
 import type { Job } from '../core/models';
 import { stemColor } from '../core/stem-colors';
 import { shortStemName } from '../core/stem-name';
+import { JobsService } from '../core/jobs.service';
 import { I18n } from '../i18n/i18n';
 import { StemStore } from '../separate/stem-store';
 import { downloadWav } from '../separate/wav';
@@ -893,18 +894,15 @@ type LoopEnd = 'a' | 'b';
       <header class="song">
         <div class="grow">
           <div class="eyebrow">
-            {{ job().model_label }}
+            {{ jobs.modelLine(job()) }}
             @if (job().device && job().device !== 'keins') {
               · {{ job().device!.toUpperCase() }}
-            }
-            @if (job().is_test_path && !job().model_label.includes('Testpfad')) {
-              · Testpfad
             }
           </div>
           <h2 class="title">{{ job().source_name }}</h2>
           @if (!booting()) {
             <div class="song-meta">
-              <span>{{ engine.tracks().length }} Spuren</span>
+              <span>{{ t().deck.stems(engine.tracks().length) }}</span>
               <span class="sep">/</span>
               <span>{{ clock(engine.duration()) }}</span>
               @if (engine.sampleRate()) {
@@ -913,15 +911,15 @@ type LoopEnd = 'a' | 'b';
               }
               @if (engine.effectiveRateView() !== 1) {
                 <span class="sep">/</span>
-                <span>Wiedergabe {{ percent(engine.effectiveRateView()) }} %</span>
+                <span>{{ t().deck.playback(percent(engine.effectiveRateView())) }}</span>
               }
             </div>
           }
         </div>
         <button
           class="icon close"
-          [attr.aria-label]="booting() ? 'Laden abbrechen' : 'Deck schließen'"
-          [title]="booting() ? 'Laden abbrechen' : 'Deck schließen'"
+          [attr.aria-label]="booting() ? t().deck.cancelLoad : t().deck.close"
+          [title]="booting() ? t().deck.cancelLoad : t().deck.close"
           (click)="close.emit()"
         >
           <app-icon name="x" />
@@ -934,12 +932,12 @@ type LoopEnd = 'a' | 'b';
              antwortet dann nicht. -->
         <div class="boot" role="status" aria-live="polite">
           <span class="spinner" aria-hidden="true"></span>
-          <p class="boot-what">Spuren werden geladen und dekodiert …</p>
+          <p class="boot-what">{{ t().deck.loading }}</p>
           <p class="mono tiny faint">
             @if (engine.tracks().length) {
-              {{ settled() }} von {{ engine.tracks().length }} Spuren
+              {{ t().deck.loadedOf(settled(), engine.tracks().length) }}
             } @else {
-              Spuren werden geholt
+              {{ t().deck.fetching }}
             }
           </p>
         </div>
@@ -949,9 +947,7 @@ type LoopEnd = 'a' | 'b';
             @if (job().is_test_path) {
               <div class="notice test">
                 <span>
-                  <strong>Testpfad.</strong> Diese Spuren sind synthetisch, es
-                  wurde nichts getrennt. Die beiden Klickspuren klicken auf genau
-                  denselben Zeitpunkten: synchron hört man einen einzigen Klick.
+                  <strong>{{ t().deck.testLead }}</strong> {{ t().deck.testWhy }}
                 </span>
               </div>
             }
@@ -968,15 +964,15 @@ type LoopEnd = 'a' | 'b';
               class="key play"
               data-testid="playpause"
               [disabled]="!ready()"
-              [attr.aria-label]="engine.playing() ? 'Pause' : 'Abspielen'"
+              [attr.aria-label]="engine.playing() ? t().deck.pause : t().deck.play"
               (click)="engine.toggle()"
             >
               <app-icon [name]="engine.playing() ? 'pause' : 'play'" [weight]="2.4" />
             </button>
             <button
               class="icon"
-              aria-label="An den Anfang"
-              title="An den Anfang"
+              [attr.aria-label]="t().deck.toStart"
+              [title]="t().deck.toStart"
               [disabled]="!ready()"
               (click)="engine.seek(0)"
             >
@@ -984,8 +980,8 @@ type LoopEnd = 'a' | 'b';
             </button>
             <button
               class="sm step"
-              aria-label="Fünf Sekunden zurück"
-              title="Fünf Sekunden zurück"
+              [attr.aria-label]="t().deck.back5"
+              [title]="t().deck.back5"
               [disabled]="!ready()"
               (click)="nudge(-5)"
             >
@@ -993,8 +989,8 @@ type LoopEnd = 'a' | 'b';
             </button>
             <button
               class="sm step"
-              aria-label="Fünf Sekunden vor"
-              title="Fünf Sekunden vor"
+              [attr.aria-label]="t().deck.forward5"
+              [title]="t().deck.forward5"
               [disabled]="!ready()"
               (click)="nudge(5)"
             >
@@ -1010,8 +1006,8 @@ type LoopEnd = 'a' | 'b';
               [attr.aria-pressed]="engine.loopEnabled() && !!engine.loop()"
               [title]="
                 engine.loop()
-                  ? 'Loop zwischen A und B ein- oder ausschalten'
-                  : 'Noch kein Loop gesetzt — A/B unten setzen oder in eine Wellenform ziehen'
+                  ? t().deck.loopToggle
+                  : t().deck.loopNone
               "
               (click)="engine.setLoopEnabled(!engine.loopEnabled())"
             >
@@ -1021,14 +1017,14 @@ type LoopEnd = 'a' | 'b';
 
           <div class="row-tight">
             <span class="mode">
-              <span class="eyebrow">{{ engine.loneSolo() ? 'Übemodus' : 'Mix' }}</span>
+              <span class="eyebrow">{{ engine.loneSolo() ? t().deck.practice : t().deck.mix }}</span>
               <b aria-live="polite" [title]="modeLabel()">{{ modeLabel() }}</b>
             </span>
             @if (anySolo()) {
               <button
                 class="icon sm"
-                aria-label="Solo aufheben"
-                title="Solo aufheben"
+                [attr.aria-label]="t().deck.clearSolo"
+                [title]="t().deck.clearSolo"
                 (click)="engine.clearSolo()"
               >
                 <app-icon name="x" />
@@ -1039,9 +1035,9 @@ type LoopEnd = 'a' | 'b';
           <div class="tempo">
             <div class="tempo-label">
               <label class="small" for="master-rate">
-                Mix-Tempo
+                {{ t().deck.masterRate }}
                 @if (engine.loneSolo()) {
-                  <span class="faint tiny">(Solo-Tempo gilt)</span>
+                  <span class="faint tiny">{{ t().deck.soloRateApplies }}</span>
                 }
               </label>
               <span class="mono small">{{ percent(engine.masterRate()) }} %</span>
@@ -1055,7 +1051,7 @@ type LoopEnd = 'a' | 'b';
               step="1"
               [value]="engine.masterRate() * 100"
               [disabled]="!ready() || !!engine.loneSolo()"
-              aria-label="Mix-Tempo in Prozent"
+              [attr.aria-label]="t().deck.masterRateAria"
               (input)="setMasterRate($event)"
             />
           </div>
@@ -1063,7 +1059,7 @@ type LoopEnd = 'a' | 'b';
 
         <!-- ------------------------------------------------------- Workspace -->
         <div class="table-head">
-          <div class="heading eyebrow">Spur · Mute · Solo</div>
+          <div class="heading eyebrow">{{ t().deck.headTrack }}</div>
           <app-time-ruler
             [duration]="engine.duration()"
             [position]="engine.position()"
@@ -1078,7 +1074,7 @@ type LoopEnd = 'a' | 'b';
                durch — eine eigene Spalte, keine Unterabteilung der
                Tonhoehe. -->
           <div class="head-knobs">
-            <div class="heading eyebrow">Tonhöhe</div>
+            <div class="heading eyebrow">{{ t().deck.headPitch }}</div>
             <div class="head-save" aria-hidden="true"></div>
           </div>
         </div>
@@ -1101,7 +1097,7 @@ type LoopEnd = 'a' | 'b';
                 class="track-name"
                 data-testid="track-name"
                 [attr.aria-pressed]="showPitch(track)"
-                [attr.aria-label]="'Tonhöhe von ' + short(track.name) + ' anzeigen'"
+                [attr.aria-label]="t().deck.showPitch(short(track.name))"
                 [disabled]="track.state !== 'ready'"
                 (click)="togglePitch(track.slug)"
               >
@@ -1112,9 +1108,9 @@ type LoopEnd = 'a' | 'b';
                 <button
                   class="icon"
                   data-testid="mute"
-                  [attr.aria-label]="short(track.name) + ' stummschalten'"
+                  [attr.aria-label]="t().deck.muteAria(short(track.name))"
                   [attr.aria-pressed]="track.muted"
-                  [title]="track.muted ? 'stumm — wieder hörbar machen' : 'stummschalten'"
+                  [title]="track.muted ? t().deck.muted : t().deck.mute"
                   [disabled]="track.state !== 'ready'"
                   (click)="engine.toggleMute(track.slug)"
                 >
@@ -1123,9 +1119,9 @@ type LoopEnd = 'a' | 'b';
                 <button
                   class="icon"
                   data-testid="solo"
-                  [attr.aria-label]="short(track.name) + ' solo hören'"
+                  [attr.aria-label]="t().deck.soloAria(short(track.name))"
                   [attr.aria-pressed]="track.solo"
-                  [title]="track.solo ? 'solo — aufheben' : 'nur diese Spur hören'"
+                  [title]="track.solo ? t().deck.soloed : t().deck.solo"
                   [disabled]="track.state !== 'ready'"
                   (click)="engine.toggleSolo(track.slug)"
                 >
@@ -1134,7 +1130,7 @@ type LoopEnd = 'a' | 'b';
               </span>
               <span class="track-note" [class.bad]="track.state === 'error'">
                 @switch (track.state) {
-                  @case ('loading') { lädt … }
+                  @case ('loading') { {{ t().deck.loadingShort }} }
                   @case ('error') { {{ track.error }} }
                   @default { {{ megabytes(track.bytes) }} MB }
                 }
@@ -1151,7 +1147,7 @@ type LoopEnd = 'a' | 'b';
               [faded]="!audible(track)"
               [lit]="track.solo"
               [emptyLabel]="waveformLabel(track)"
-              [label]="'Songposition auf Spur ' + short(track.name)"
+              [label]="t().deck.position(short(track.name))"
               [minHeight]="track.solo ? 76 : 52"
               (seek)="engine.seek($event)"
               (loopChange)="setLoop($event)"
@@ -1170,7 +1166,7 @@ type LoopEnd = 'a' | 'b';
                   step="1"
                   [value]="track.volume * 100"
                   [disabled]="track.state !== 'ready'"
-                  [attr.aria-label]="'Pegel von ' + short(track.name) + ' in Prozent'"
+                  [attr.aria-label]="t().deck.level(short(track.name))"
                   (input)="setVolume(track.slug, $event)"
                 />
                 <b class="val">{{ percent(track.volume) }}</b>
@@ -1178,9 +1174,9 @@ type LoopEnd = 'a' | 'b';
 
               @if (showPitch(track)) {
                 <div class="pitch" data-testid="pitch">
-                  <span class="what" aria-hidden="true" title="Tonhöhe in Halbtönen">♯</span>
+                  <span class="what" aria-hidden="true" [title]="t().deck.semitones">♯</span>
                   <button
-                    [attr.aria-label]="short(track.name) + ' einen Halbton tiefer'"
+                    [attr.aria-label]="t().deck.down1(short(track.name))"
                     [disabled]="track.state !== 'ready' || track.semitones <= -SEMITONE_RANGE"
                     (click)="stepSemitones(track, -1)"
                   >
@@ -1188,13 +1184,15 @@ type LoopEnd = 'a' | 'b';
                   </button>
                   <output
                     data-testid="pitch-value"
-                    [attr.aria-label]="'Tonhöhe von ' + short(track.name)"
+                    [attr.aria-label]="t().deck.pitchOf(short(track.name))"
                   >
-                    {{ semitoneValue(track.semitones) }}<span class="unit"> HT</span>
+                    {{ semitoneValue(track.semitones) }}<span class="unit">{{
+                      t().deck.semitoneUnit
+                    }}</span>
                   </output>
                   <button
                     data-testid="pitch-up"
-                    [attr.aria-label]="short(track.name) + ' einen Halbton höher'"
+                    [attr.aria-label]="t().deck.up1(short(track.name))"
                     [disabled]="track.state !== 'ready' || track.semitones >= SEMITONE_RANGE"
                     (click)="stepSemitones(track, 1)"
                   >
@@ -1206,7 +1204,7 @@ type LoopEnd = 'a' | 'b';
               @if (isLoneSolo(track)) {
                 <div class="solo-tempo">
                   <label [attr.for]="'solo-rate-' + track.slug">
-                    <span>Solo-Tempo</span>
+                    <span>{{ t().deck.soloRate }}</span>
                     <output class="mono">{{ percent(track.soloRate) }} %</output>
                   </label>
                   <input
@@ -1217,7 +1215,7 @@ type LoopEnd = 'a' | 'b';
                     [max]="SOLO_RATE_MAX * 100"
                     step="1"
                     [value]="track.soloRate * 100"
-                    [attr.aria-label]="'Solo-Tempo von ' + short(track.name) + ' in Prozent'"
+                    [attr.aria-label]="t().deck.soloRateAria(short(track.name))"
                     (input)="setSoloRate(track.slug, $event)"
                   />
                 </div>
@@ -1232,8 +1230,8 @@ type LoopEnd = 'a' | 'b';
                     data-testid="track-download"
                     [href]="track.downloadUrl"
                     [download]="short(track.name) + '.wav'"
-                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
-                    [title]="short(track.name) + ' als WAV speichern'"
+                    [attr.aria-label]="t().deck.save(short(track.name))"
+                    [title]="t().deck.save(short(track.name))"
                   >
                     <app-icon name="download" />
                   </a>
@@ -1246,8 +1244,8 @@ type LoopEnd = 'a' | 'b';
                     type="button"
                     class="wav"
                     data-testid="track-download"
-                    [attr.aria-label]="short(track.name) + ' als WAV speichern'"
-                    [title]="short(track.name) + ' als WAV speichern'"
+                    [attr.aria-label]="t().deck.save(short(track.name))"
+                    [title]="t().deck.save(short(track.name))"
                     [disabled]="track.state !== 'ready'"
                     (click)="save(track)"
                   >
@@ -1263,7 +1261,7 @@ type LoopEnd = 'a' | 'b';
         <!-- --------------------------------------------------- Statusleiste -->
         <footer class="status">
           <div class="row-tight loop-edit" [class.unset]="!engine.loop()">
-            <span class="eyebrow">A–B Loop</span>
+            <span class="eyebrow">{{ t().deck.loop }}</span>
             @for (end of ends; track end) {
               <span class="field">
                 <b aria-hidden="true">{{ end === 'a' ? 'A' : 'B' }}</b>
@@ -1277,13 +1275,13 @@ type LoopEnd = 'a' | 'b';
                   [disabled]="!ready()"
                   [attr.aria-label]="
                     end === 'a'
-                      ? 'Loop-Anfang A in Millisekunden'
-                      : 'Loop-Ende B in Millisekunden'
+                      ? t().deck.loopStartAria
+                      : t().deck.loopEndAria
                   "
                   [title]="
                     end === 'a'
-                      ? 'Loop-Anfang in Millisekunden — Pfeiltasten stufen in 10 ms'
-                      : 'Loop-Ende in Millisekunden — Pfeiltasten stufen in 10 ms'
+                      ? t().deck.loopStartTitle
+                      : t().deck.loopEndTitle
                   "
                   (change)="commitMark(end, $event)"
                 />
@@ -1291,13 +1289,13 @@ type LoopEnd = 'a' | 'b';
                 <button
                   [attr.aria-label]="
                     end === 'a'
-                      ? 'Loop-Anfang A auf die aktuelle Stelle setzen'
-                      : 'Loop-Ende B auf die aktuelle Stelle setzen'
+                      ? t().deck.loopSetStart
+                      : t().deck.loopSetEnd
                   "
                   [title]="
                     end === 'a'
-                      ? 'Loop-Anfang A auf die aktuelle Stelle setzen'
-                      : 'Loop-Ende B auf die aktuelle Stelle setzen'
+                      ? t().deck.loopSetStart
+                      : t().deck.loopSetEnd
                   "
                   [disabled]="!ready()"
                   (click)="markHere(end)"
@@ -1309,8 +1307,8 @@ type LoopEnd = 'a' | 'b';
             @if (engine.loop()) {
               <button
                 class="icon sm"
-                aria-label="Loop löschen"
-                title="Loop löschen"
+                [attr.aria-label]="t().deck.loopClear"
+                [title]="t().deck.loopClear"
                 (click)="engine.clearLoop()"
               >
                 <app-icon name="x" />
@@ -1320,23 +1318,23 @@ type LoopEnd = 'a' | 'b';
 
           @if (engine.loop(); as loop) {
             <span class="mono tiny dim">
-              {{ engine.loopEnabled() ? 'Loop an' : 'Loop aus' }} ·
+              {{ engine.loopEnabled() ? t().deck.loopOn : t().deck.loopOff }} ·
               {{ time(loop.a) }} – {{ time(loop.b) }}
               ({{ (loop.b - loop.a).toFixed(2) }} s)
             </span>
           } @else {
             <span class="mono tiny faint">
-              Kein Loop · Zum Setzen mit der Maus markieren
+              {{ t().deck.loopEmpty }}
             </span>
           }
 
           @if (engine.loop()) {
             <span
               class="hint"
-              title="Die Marken A und B lassen sich auf der Zeitachse ziehen — mit Maus, Finger oder Tastatur: Pfeiltasten 1 s, mit Umschalt 0,1 s, Bild auf/ab 10 s, Pos1 und Ende an die Grenze."
+              [title]="t().deck.loopHelp"
             >
               <app-icon name="info" />
-              <span class="sr">Hinweis zur Bedienung der Loop-Marken</span>
+              <span class="sr">{{ t().deck.loopHelpSr }}</span>
             </span>
           }
         </footer>
@@ -1345,22 +1343,20 @@ type LoopEnd = 'a' | 'b';
         <details class="tech">
           <summary>
             <app-icon name="info" />
-            Technik
+            {{ t().deck.tech }}
           </summary>
-          <span>Position in Sekunden des Originalsongs</span>
-          @if (engine.sampleRate()) {
-            <span>gemeinsamer AudioContext {{ engine.sampleRate() }} Hz</span>
+          <span>{{ t().deck.techPosition }}</span>
+          @if (engine.sampleRate(); as hz) {
+            <span>{{ t().deck.techContext(hz) }}</span>
           }
           @if (engine.leadMs() !== null) {
             <span>
-              Umschaltung {{ engine.leadMs() }} ms im Voraus, für alle Spuren auf
-              dieselbe Audiozeit (Stretch-Knoten {{ engine.nodeLatencyMs() }} ms)
+              {{ t().deck.techLead(engine.leadMs(), engine.nodeLatencyMs()) }}
             </span>
           }
           @if (engine.memoryBytes()) {
             <span>
-              {{ megabytes(engine.memoryBytes()) }} MB insgesamt im Arbeitsspeicher,
-              dekodiert
+              {{ t().deck.techMemory(megabytes(engine.memoryBytes())) }}
             </span>
           }
         </details>
@@ -1372,6 +1368,8 @@ export class PlayerComponent {
   readonly engine = inject(MixEngine);
   private readonly store = inject(StemStore);
   protected readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
+  protected readonly jobs = inject(JobsService);
   readonly job = input.required<Job>();
   readonly close = output<void>();
 
@@ -1468,12 +1466,15 @@ export class PlayerComponent {
   readonly anySolo = computed(() => this.engine.tracks().some((t: TrackView) => t.solo));
 
   readonly modeLabel = computed(() => {
+    const d = this.t().deck;
     const lone = this.engine.loneSolo();
-    if (lone) return `${shortStemName(lone.name)} solo`;
+    // `short` und nicht `shortStemName`: der Name geht erst durch das
+    // Woerterbuch und dann durch die Kuerzung, siehe dort.
+    if (lone) return d.soloOne(this.short(lone.name));
     const solos = this.engine.tracks().filter((t) => t.solo);
-    if (solos.length > 1) return `${solos.length} Spuren solo`;
+    if (solos.length > 1) return d.soloMany(solos.length);
     const muted = this.engine.tracks().filter((t) => t.muted).length;
-    return muted ? `Alle Spuren, ${muted} stumm` : 'Alle Spuren';
+    return muted ? d.allStemsMuted(muted) : d.allStems;
   });
 
   /**
@@ -1528,8 +1529,8 @@ export class PlayerComponent {
   }
 
   waveformLabel(track: TrackView): string {
-    if (track.state === 'error') return 'nicht geladen';
-    return 'wird geladen …';
+    const d = this.t().deck;
+    return track.state === 'error' ? d.notLoaded : d.stemLoading;
   }
 
   megabytes(bytes: number): string {
