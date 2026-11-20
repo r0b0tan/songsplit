@@ -2,7 +2,9 @@ import { Component, DestroyRef, computed, inject, input, output, signal } from '
 
 import { DeviceFacts } from '../core/device-facts';
 import { IconComponent } from '../core/icon';
-import { STATUS_LABELS, type Job } from '../core/models';
+import { JobsService } from '../core/jobs.service';
+import type { Job } from '../core/models';
+import { I18n } from '../i18n/i18n';
 
 /**
  * Das Fenster, das beim Trennen aufgeht.
@@ -169,10 +171,10 @@ import { STATUS_LABELS, type Job } from '../core/models';
     <section class="panel run">
       <div class="head">
         <div class="grow">
-          <div class="eyebrow step"><b>Trennung</b></div>
+          <div class="eyebrow step"><b>{{ t().run.eyebrow }}</b></div>
           <h2 class="lede">{{ job().source_name }}</h2>
           <div class="facts">
-            <span>{{ job().model_label }}</span>
+            <span>{{ modelLine() }}</span>
             @if (job().device && job().device !== 'keins') {
               <span class="sep">/</span>
               <span>{{ job().device!.toUpperCase() }}</span>
@@ -186,8 +188,8 @@ import { STATUS_LABELS, type Job } from '../core/models';
         @if (dismissible()) {
           <button
             class="icon close"
-            aria-label="Fenster schließen, Trennung läuft weiter"
-            title="Fenster schließen, Trennung läuft weiter"
+            [attr.aria-label]="t().run.hide"
+            [title]="t().run.hide"
             (click)="close.emit()"
           >
             <app-icon name="x" />
@@ -197,7 +199,7 @@ import { STATUS_LABELS, type Job } from '../core/models';
 
       @if (job().status === 'failed') {
         <div class="notice bad" style="margin-top: 16px">
-          <span>{{ job().error ?? 'Die Trennung ist fehlgeschlagen.' }}</span>
+          <span>{{ job().error ?? t().run.failed }}</span>
         </div>
       } @else {
         @if (share() !== null) {
@@ -248,12 +250,12 @@ import { STATUS_LABELS, type Job } from '../core/models';
           <!-- Nur auf dem Geraet: ein Backendjob laeuft in einem Prozess,
                den die Oberflaeche nicht anhalten kann. -->
           <button class="link" data-testid="cancel-run" (click)="cancel.emit()">
-            Abbrechen
+            {{ t().run.cancel }}
           </button>
         }
         @if (dismissible()) {
           <button class="link" (click)="close.emit()">
-            {{ job().status === 'failed' ? 'Schließen' : 'Im Hintergrund weiterlaufen lassen' }}
+            {{ job().status === 'failed' ? t().run.close : t().run.background }}
           </button>
         } @else if (job().status === 'failed') {
           <!-- Eingebettet gibt es nichts wegzuklicken — aber ein
@@ -261,7 +263,7 @@ import { STATUS_LABELS, type Job } from '../core/models';
                diesen Knopf stuende auf dem Handy eine Fehlermeldung, hinter
                der die Importkarte liegt und nicht mehr hervorkommt. -->
           <button class="link" data-testid="run-dismiss" (click)="close.emit()">
-            Zurück
+            {{ t().run.back }}
           </button>
         }
       </div>
@@ -270,6 +272,9 @@ import { STATUS_LABELS, type Job } from '../core/models';
 })
 export class RunProgressComponent {
   readonly facts = inject(DeviceFacts);
+  private readonly jobs = inject(JobsService);
+  protected readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
 
   readonly job = input.required<Job>();
 
@@ -321,8 +326,29 @@ export class RunProgressComponent {
 
   readonly stage = computed(() => {
     const job = this.job();
-    if (job.status === 'queued') return 'Wartet auf einen freien Platz';
-    return job.stage ?? STATUS_LABELS[job.status];
+    if (job.status === 'queued') return this.t().run.queued;
+    return this.i18n.stage(job.stage) ?? this.i18n.status(job.status);
+  });
+
+  /**
+   * Die Zeile unter dem Dateinamen: welches Modell, wie viele Spuren.
+   *
+   * Frueher stand hier `model_label` — ein Satz, den der Erzeuger des
+   * Jobs geschrieben hatte („htdemucs — 4 Spuren"), und zwar beim Geraet,
+   * beim Serverweg und im Backend je einmal. Gebaut wird er jetzt hier,
+   * aus dem technischen Namen und der Spurzahl des Modells. Der Name ist
+   * in jeder Sprache derselbe, die Zahl auch; uebersetzt wird nur das
+   * Wort dazwischen.
+   *
+   * Faellt das Modell nicht auf — ein alter Job, ein Modus, den es nicht
+   * mehr gibt —, bleibt der Satz stehen, den der Job mitbringt.
+   */
+  readonly modelLine = computed(() => {
+    const job = this.job();
+    if (job.is_test_path) return this.t().run.testPath;
+    const model = this.jobs.models().find((m) => m.name === job.model);
+    if (!model) return job.model_label;
+    return this.t().run.model(job.model, model.stems.length);
   });
 
   /** Laufzeit seit dem Start der Trennung, sonst seit dem Anlegen. */
@@ -352,15 +378,18 @@ export class RunProgressComponent {
   readonly remaining = computed(() => {
     const seconds = this.job().remaining_seconds;
     if (seconds === null || this.job().status !== 'processing') return null;
-    if (seconds < 8) return 'gleich fertig';
-    if (seconds < 60) return `noch etwa ${Math.round(seconds / 5) * 5} s`;
-    const halbe = Math.round(seconds / 30) / 2;
-    return `noch etwa ${halbe.toFixed(1).replace('.0', '').replace('.', ',')} min`;
+    const t = this.t().run;
+    if (seconds < 8) return t.almost;
+    if (seconds < 60) return t.secondsLeft(Math.round(seconds / 5) * 5);
+    // Die Nachkommastelle formatiert jede Sprache selbst: im Deutschen
+    // steht dort ein Komma, im Englischen ein Punkt.
+    return t.minutesLeft(Math.round(seconds / 30) / 2);
   });
 
   readonly length = computed(() => {
     const seconds = this.job().duration_seconds ?? 0;
     const m = Math.floor(seconds / 60);
-    return `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')} lang`;
+    const mmss = `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+    return this.t().run.length(mmss);
   });
 }

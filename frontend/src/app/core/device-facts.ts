@@ -15,6 +15,7 @@ import { Injectable, inject } from '@angular/core';
 import { CloudSeparator } from '../separate/cloud-separator';
 import { DeviceSeparator } from '../separate/device-separator';
 import { adapterLabel } from '../separate/runtime';
+import { I18n } from '../i18n/i18n';
 import { ApiService } from './api.service';
 import type { Site } from './jobs.service';
 
@@ -36,6 +37,18 @@ export class DeviceFacts {
   private readonly api = inject(ApiService);
   private readonly browser = inject(DeviceSeparator);
   private readonly cloud = inject(CloudSeparator);
+  private readonly i18n = inject(I18n);
+
+  /**
+   * Die Benennungen und die wenigen Worte unter den Messwerten.
+   *
+   * Als Eigenschaft und nicht je Methode geholt: jede Zeile unten liest
+   * sie, und `t()` ist ein Signal — beim Umschalten rechnet jede
+   * Fassung, die diese Zeilen anzeigt, neu.
+   */
+  private get f() {
+    return this.i18n.t().facts;
+  }
 
   summary(site: Site): Summary {
     if (site === 'device') return this.browserSummary();
@@ -51,19 +64,19 @@ export class DeviceFacts {
 
   private browserSummary(): Summary {
     const support = this.browser.support();
-    if (!support) return { method: 'wird geprüft', device: '' };
+    if (!support) return { method: this.f.checking, device: '' };
     return {
-      method: support.available ? 'WebGPU' : 'Prozessor (WASM)',
+      method: support.available ? 'WebGPU' : this.f.cpu,
       device: adapterLabel(support.adapter),
     };
   }
 
   private serverSummary(): Summary {
     const device = this.api.health()?.device;
-    if (!device) return { method: 'wird geprüft', device: '' };
+    if (!device) return { method: this.f.checking, device: '' };
     return {
       method: device.effective.toUpperCase(),
-      device: device.gpu_name ?? 'Prozessor dieses Rechners',
+      device: device.gpu_name ?? this.f.localCpu,
     };
   }
 
@@ -84,7 +97,7 @@ export class DeviceFacts {
     // einer Auskunft. Der Ort dagegen steht fest — und er ist ohnehin das,
     // was an diesem Weg zaehlt.
     return {
-      method: 'Server',
+      method: this.f.server,
       device: this.anbieter(),
     };
   }
@@ -126,25 +139,25 @@ export class DeviceFacts {
     // ihm dieselben Saetze ein drittes Mal hinzustellen, macht die
     // Angaben nicht ehrlicher, nur unleserlicher.
     return [
-      { label: 'Anbieter', value: this.anbieter() },
-      { label: 'Grafikkarte', value: run?.karte || 'wird zugeteilt' },
-      { label: 'Modell', value: 'htdemucs' },
-      { label: 'Spuren', value: 'MP3, 192 kbit/s' },
+      { label: this.f.provider, value: this.anbieter() },
+      { label: this.f.gpu, value: run?.karte || this.f.assigning },
+      { label: this.f.model, value: 'htdemucs' },
+      { label: this.f.stems, value: 'MP3, 192 kbit/s' },
     ];
   }
 
   private browserRows(): Fact[] {
     const support = this.browser.support();
-    if (!support) return [{ label: 'Gerät', value: 'wird geprüft' }];
+    if (!support) return [{ label: this.f.device, value: this.f.checking }];
     const rows: Fact[] = [
-      { label: 'Rechnet auf', value: support.available ? 'WebGPU' : 'Prozessor (WASM)' },
-      { label: 'Adapter', value: adapterLabel(support.adapter) },
+      { label: this.f.runsOn, value: support.available ? 'WebGPU' : this.f.cpu },
+      { label: this.f.adapter, value: adapterLabel(support.adapter) },
     ];
     const version = this.browser.runtimeVersion();
     if (version) rows.push({ label: 'ONNX Runtime', value: version });
     const cached = this.browser.cachedModelBytes();
     if (cached > 0) {
-      rows.push({ label: 'Modelle im Cache', value: `${megabytes(cached)} MB` });
+      rows.push({ label: this.f.cachedModels, value: `${megabytes(cached)} MB` });
     }
     // „Daten verlassen das Geraet nicht" stand hier auch. Es war eine
     // Zusicherung zwischen lauter Messwerten -- Laufzeit, Adapter,
@@ -156,20 +169,20 @@ export class DeviceFacts {
 
   private serverRows(): Fact[] {
     const device = this.api.health()?.device;
-    if (!device) return [{ label: 'Backend', value: 'Verbindung wird geprüft' }];
+    if (!device) return [{ label: this.f.backend, value: this.f.connecting }];
     const rows: Fact[] = [
-      { label: 'Rechnet auf', value: device.effective.toUpperCase() },
-      { label: 'Gerät', value: device.gpu_name ?? 'Prozessor dieses Rechners' },
+      { label: this.f.runsOn, value: device.effective.toUpperCase() },
+      { label: this.f.device, value: device.gpu_name ?? this.f.localCpu },
     ];
     if (device.vram_total_gib) {
       rows.push({
-        label: 'Grafikspeicher',
-        value: `${device.vram_free_gib} von ${device.vram_total_gib} GB frei`,
+        label: this.f.vram,
+        value: this.f.vramFree(device.vram_free_gib, device.vram_total_gib),
       });
     }
     if (device.torch_version) rows.push({ label: 'PyTorch', value: device.torch_version });
     if (device.cuda_runtime) rows.push({ label: 'CUDA', value: device.cuda_runtime });
-    rows.push({ label: 'Daten', value: 'nur lokal' });
+    rows.push({ label: this.f.data, value: this.f.localOnly });
     return rows;
   }
 }

@@ -16,6 +16,7 @@
  */
 import { Injectable, computed, effect, signal } from '@angular/core';
 
+import type { JobStage, JobStatus } from '../core/models';
 import { stemSlug } from '../core/stem-labels';
 import type { GpuReason } from '../separate/runtime';
 import { DE, type Texte } from './de';
@@ -166,6 +167,36 @@ export class I18n {
       case 'runtime-schweigt':
         return gpu.runtimeSilent;
     }
+  }
+
+  /**
+   * Was gerade geschieht, in einem Satz.
+   *
+   * Wie `gpuReason`: ein `switch`, damit der Compiler eine neue Phase
+   * anmahnt. Der Fall `text` ist die Durchreiche fuer das Python-Backend,
+   * dessen Phasen schon als Satz ankommen — in der Sprache, in der es
+   * geschrieben ist, und nicht in der, die hier gilt.
+   */
+  stage(stage: JobStage | null): string | null {
+    if (!stage) return null;
+    const t = this.t().stages;
+    switch (stage.key) {
+      case 'modell-mb':
+        return t.modellMb(stage.loaded, stage.total);
+      case 'block':
+        return t.block(stage.done, stage.total);
+      case 'spuren':
+        return t.spuren(stage.done, stage.total);
+      case 'text':
+        return stage.text;
+      default:
+        return t[stage.key];
+    }
+  }
+
+  /** Der Zustand eines Jobs, wo keine Phase dasteht. */
+  status(status: JobStatus): string {
+    return this.t().status[status];
   }
 
   constructor() {

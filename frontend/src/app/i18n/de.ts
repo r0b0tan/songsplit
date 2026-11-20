@@ -254,6 +254,99 @@ export const DE = {
     no: 'nein',
   },
 
+  /**
+   * Der Stand eines Jobs — aus dem Befund `JobStage` gebaut.
+   *
+   * Die Schluessel heissen wie die Phasen, weil sie dieselben sind. Was
+   * das Backend als fertigen Satz schickt, kommt hier nicht vorbei.
+   */
+  stages: {
+    warten: 'Wartet',
+    'modell-prüfen': 'Modell wird geprüft',
+    'laufzeit-laden': 'Laufzeit wird geladen',
+    'modell-laden': 'Modell wird geladen',
+    'modell-bereit': 'Modell liegt bereit',
+    'sitzung-anlegen': 'Modell wird vorbereitet',
+    trennen: 'Wird getrennt',
+    fertig: 'Fertig',
+    'cloud-warten': 'Wartet auf eine freie Grafikkarte',
+    'cloud-lesen': 'Die Datei wird gelesen',
+    'cloud-schreiben': 'Die Spuren werden geschrieben',
+    modellMb: (loaded: number, total: number) =>
+      `Modell wird geladen (${loaded} MB von ${total} MB)`,
+    block: (done: number, total: number) =>
+      `Wird getrennt (Block ${done} von ${total})`,
+    spuren: (done: number, total: number) =>
+      `Spuren werden geladen (${done} von ${total})`,
+  },
+
+  /** Der Zustand eines Jobs, wo keine Phase dasteht. */
+  status: {
+    queued: 'Wartet',
+    processing: 'Wird verarbeitet',
+    done: 'Fertig',
+    failed: 'Fehlgeschlagen',
+  },
+
+  /**
+   * Das Fenster der laufenden Trennung.
+   *
+   * Die Restzeit ist grosszuegig gerundet — das steht im Code begruendet.
+   * Hier ist nur zu beachten, dass die Nachkommastelle im Deutschen ein
+   * Komma hat und im Englischen einen Punkt; deshalb formatiert jede
+   * Sprache die Zahl selbst und bekommt sie nicht fertig gereicht.
+   */
+  run: {
+    eyebrow: 'Trennung',
+    hide: 'Fenster schließen, Trennung läuft weiter',
+    failed: 'Die Trennung ist fehlgeschlagen.',
+    queued: 'Wartet auf einen freien Platz',
+    cancel: 'Abbrechen',
+    close: 'Schließen',
+    background: 'Im Hintergrund weiterlaufen lassen',
+    back: 'Zurück',
+    /** Die Laenge des Liedes, hinter den Angaben zum Modell. */
+    length: (mmss: string) => `${mmss} lang`,
+    /** Was statt des Modellnamens dasteht, wenn nichts getrennt wird. */
+    testPath: 'Testpfad — trennt nichts',
+    /** „htdemucs — 4 Spuren" */
+    model: (name: string, stems: number) => `${name} — ${stems} Spuren`,
+    almost: 'gleich fertig',
+    secondsLeft: (s: number) => `noch etwa ${s} s`,
+    minutesLeft: (min: number) =>
+      `noch etwa ${min.toFixed(1).replace('.0', '').replace('.', ',')} min`,
+  },
+
+  /**
+   * Worauf gerechnet wird — die Tabelle im Trennfenster und die zwei
+   * Zeilen in der Importkarte.
+   *
+   * Die Werte daneben sind grossenteils Messwerte und bleiben, wie sie
+   * sind: ein Adaptername, eine Fassungsnummer, „CUDA". Uebersetzt wird,
+   * was ein Wort ist.
+   */
+  facts: {
+    checking: 'wird geprüft',
+    connecting: 'Verbindung wird geprüft',
+    cpu: 'Prozessor (WASM)',
+    localCpu: 'Prozessor dieses Rechners',
+    server: 'Server',
+    runsOn: 'Rechnet auf',
+    adapter: 'Adapter',
+    device: 'Gerät',
+    backend: 'Backend',
+    cachedModels: 'Modelle im Cache',
+    vram: 'Grafikspeicher',
+    vramFree: (free: number | null, total: number) => `${free} von ${total} GB frei`,
+    data: 'Daten',
+    localOnly: 'nur lokal',
+    provider: 'Anbieter',
+    gpu: 'Grafikkarte',
+    assigning: 'wird zugeteilt',
+    model: 'Modell',
+    stems: 'Spuren',
+  },
+
   /** Das Innere der Importkarte. */
   card: {
     eyebrow: 'Import',

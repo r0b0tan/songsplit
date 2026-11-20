@@ -1,6 +1,48 @@
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 
 /**
+ * Was gerade geschieht — als Befund, nicht als Satz.
+ *
+ * Dieselbe Trennung wie bei `GpuReason`, aus demselben Grund: die Phasen
+ * entstehen im Worker und im Abfragelauf des Serverwegs, also dort, wo die
+ * gewaehlte Sprache nicht bekannt ist. Gemeldet wird, **was** laeuft; den
+ * Satz schreibt `I18n.stage`.
+ *
+ * `text` ist die Ausnahme und steht fuer den Serverweg mit Python-Backend:
+ * dessen Phasen kommen als fertige Saetze ueber `/api/jobs` und lassen
+ * sich hier nicht mehr aufloesen. Sie werden durchgereicht wie ein
+ * Spurname, den die Tabelle nicht kennt — lieber ein Satz in der falschen
+ * Sprache als gar keiner.
+ */
+export type JobStage =
+  /** Eine Phase ohne Zahlen. */
+  | { key: PlainStage }
+  /** Der Modelldownload, in Megabyte. */
+  | { key: 'modell-mb'; loaded: number; total: number }
+  /** Die Trennung, in Bloecken. Geraet wie Serverweg. */
+  | { key: 'block'; done: number; total: number }
+  /** Der Serverweg holt die fertigen Spuren ab. */
+  | { key: 'spuren'; done: number; total: number }
+  /** Ein fertiger Satz vom Backend. */
+  | { key: 'text'; text: string };
+
+export type PlainStage =
+  /** In der Warteschlange. */
+  | 'warten'
+  | 'modell-prüfen'
+  | 'laufzeit-laden'
+  | 'modell-laden'
+  /** Der Download entfaellt, die Gewichte liegen schon. */
+  | 'modell-bereit'
+  | 'sitzung-anlegen'
+  | 'trennen'
+  | 'fertig'
+  /** Serverweg: noch kein Container, meist eine Warteschlange. */
+  | 'cloud-warten'
+  | 'cloud-lesen'
+  | 'cloud-schreiben';
+
+/**
  * Wo ein Job gerechnet wurde.
  *
  * `device` ist der Browser mit WebGPU, `backend` der oertliche Python-Dienst,
@@ -59,7 +101,7 @@ export interface Job {
    * bewusst übersprungen, siehe `device-separator.ts`.
    */
   remaining_seconds: number | null;
-  stage: string | null;
+  stage: JobStage | null;
   error: string | null;
   is_test_path: boolean;
   device: string | null;
@@ -123,9 +165,12 @@ export interface Health {
   processing: number;
 }
 
-export const STATUS_LABELS: Record<JobStatus, string> = {
-  queued: 'Wartet',
-  processing: 'Wird verarbeitet',
-  done: 'Fertig',
-  failed: 'Fehlgeschlagen',
-};
+/**
+ * Wie der Job ueber die Leitung kommt.
+ *
+ * Nur ein Feld weicht ab, und genau darum geht es: das Backend schickt
+ * seine Phase als fertigen Satz. `fromServer` in `api.service.ts` packt
+ * ihn in `{ key: 'text' }` — an einer Stelle, nicht an jeder, die einen
+ * Job anfasst.
+ */
+export type ServerJob = Omit<Job, 'stage'> & { stage: string | null };

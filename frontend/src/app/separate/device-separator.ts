@@ -73,17 +73,6 @@ function provisionalModels(): ModelInfo[] {
   }));
 }
 
-/** Was die Oberfläche je Phase schreibt. */
-const PHASE_TEXT: Record<Phase, string> = {
-  warten: 'Wartet',
-  'modell-prüfen': 'Modell wird geprüft',
-  'laufzeit-laden': 'Laufzeit wird geladen',
-  'modell-laden': 'Modell wird geladen',
-  'sitzung-anlegen': 'Modell wird vorbereitet',
-  trennen: 'Wird getrennt',
-  fertig: 'Fertig',
-};
-
 export interface DeviceRun {
   jobId: string;
   phase: Phase;
@@ -365,7 +354,7 @@ export class DeviceSeparator {
       progress: null,
       progress_of: null,
       remaining_seconds: null,
-      stage: PHASE_TEXT['warten'],
+      stage: { key: 'warten' },
       error: null,
       is_test_path: false,
       device: 'WebGPU',
@@ -425,7 +414,9 @@ export class DeviceSeparator {
       id: jobId,
       source_name: 'Testspuren',
       model: 'test-signals',
-      model_label: 'Testpfad — trennt nichts',
+      // Ein Satz, den die Oberflaeche uebersetzt: sie erkennt den
+      // Testpfad an `is_test_path` und schreibt ihn selbst.
+      model_label: '',
       site: 'device',
       status: 'done',
       progress: 1,
@@ -554,7 +545,7 @@ export class DeviceSeparator {
       case 'stage': {
         this.run.update((r) => (r ? { ...r, phase: message.phase } : r));
         this.patch(message.jobId, {
-          stage: PHASE_TEXT[message.phase],
+          stage: { key: message.phase },
           // Beim Wechsel in eine Phase ohne eigenen Fortschritt verschwindet
           // der Prozentwert, statt auf dem alten Stand stehenzubleiben.
           ...(message.phase === 'trennen' ||
@@ -587,8 +578,12 @@ export class DeviceSeparator {
           // Antwort auf eine andere Frage.
           remaining_seconds: null,
           stage: message.fromCache
-            ? 'Modell liegt bereit'
-            : `Modell wird geladen (${mb(message.loaded)} von ${mb(message.total)})`,
+            ? { key: 'modell-bereit' }
+            : {
+                key: 'modell-mb',
+                loaded: megabytes(message.loaded),
+                total: megabytes(message.total),
+              },
         });
         return;
       }
@@ -615,7 +610,7 @@ export class DeviceSeparator {
           progress: share,
           progress_of: 'blöcke',
           remaining_seconds: remaining === null ? null : remaining / 1000,
-          stage: `Wird getrennt (Block ${message.blocksDone} von ${message.blocksTotal})`,
+          stage: { key: 'block', done: message.blocksDone, total: message.blocksTotal },
         });
         return;
       }
@@ -809,5 +804,15 @@ export function remainingMs(
 }
 
 function mb(bytes: number): string {
-  return `${Math.round(bytes / 1e6)} MB`;
+  return `${megabytes(bytes)} MB`;
+}
+
+/**
+ * Megabyte als Zahl, ohne Einheit.
+ *
+ * Die Einheit haengt die Oberflaeche an — sie steht im Woerterbuch, denn
+ * sie steht in einem Satz, und der ist in jeder Sprache anders gebaut.
+ */
+function megabytes(bytes: number): number {
+  return Math.round(bytes / 1e6);
 }

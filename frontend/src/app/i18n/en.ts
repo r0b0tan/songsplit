@@ -168,6 +168,72 @@ export const EN: Texte = {
     no: 'no',
   },
 
+  stages: {
+    warten: 'Waiting',
+    'modell-prüfen': 'Checking the model',
+    'laufzeit-laden': 'Loading the runtime',
+    'modell-laden': 'Loading the model',
+    'modell-bereit': 'Model ready',
+    'sitzung-anlegen': 'Preparing the model',
+    trennen: 'Separating',
+    fertig: 'Done',
+    'cloud-warten': 'Waiting for a free graphics card',
+    'cloud-lesen': 'Reading the file',
+    'cloud-schreiben': 'Writing the stems',
+    modellMb: (loaded: number, total: number) =>
+      `Loading the model (${loaded} MB of ${total} MB)`,
+    block: (done: number, total: number) =>
+      `Separating (block ${done} of ${total})`,
+    spuren: (done: number, total: number) =>
+      `Loading stems (${done} of ${total})`,
+  },
+
+  status: {
+    queued: 'Waiting',
+    processing: 'Processing',
+    done: 'Done',
+    failed: 'Failed',
+  },
+
+  run: {
+    eyebrow: 'Separation',
+    hide: 'Close this window, separation keeps running',
+    failed: 'The separation failed.',
+    queued: 'Waiting for a free slot',
+    cancel: 'Cancel',
+    close: 'Close',
+    background: 'Keep running in the background',
+    back: 'Back',
+    length: (mmss: string) => `${mmss} long`,
+    testPath: 'Test path — separates nothing',
+    model: (name: string, stems: number) => `${name} — ${stems} stems`,
+    almost: 'almost done',
+    secondsLeft: (s: number) => `about ${s} s left`,
+    minutesLeft: (min: number) => `about ${min.toFixed(1).replace('.0', '')} min left`,
+  },
+
+  facts: {
+    checking: 'checking',
+    connecting: 'checking the connection',
+    cpu: 'Processor (WASM)',
+    localCpu: "this computer's processor",
+    server: 'Server',
+    runsOn: 'Runs on',
+    adapter: 'Adapter',
+    device: 'Device',
+    backend: 'Backend',
+    cachedModels: 'Models cached',
+    vram: 'Graphics memory',
+    vramFree: (free: number | null, total: number) => `${free} of ${total} GB free`,
+    data: 'Data',
+    localOnly: 'local only',
+    provider: 'Provider',
+    gpu: 'Graphics card',
+    assigning: 'being assigned',
+    model: 'Model',
+    stems: 'Stems',
+  },
+
   card: {
     eyebrow: 'Import',
     lede: 'Separate a song',

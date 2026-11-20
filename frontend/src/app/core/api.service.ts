@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import type { Health, Job, ModelInfo } from './models';
+import type { Health, Job, ModelInfo, ServerJob } from './models';
 import { VARIANT } from './variant';
 
 /** Schnelleres Nachfragen, solange etwas laeuft. */
@@ -16,10 +16,15 @@ const POLL_IDLE_MS = 5000;
  * stehen sie fest. Sie hier zu setzen heisst, dass der Verlauf beide Arten
  * ohne Sonderfall behandeln kann.
  */
-function fromServer(job: Job): Job {
+function fromServer(job: ServerJob): Job {
   return {
     ...job,
     site: 'backend',
+    // Das Backend schreibt seine Phase als fertigen Satz — in der Sprache,
+    // in der es geschrieben ist. Der Rest der Anwendung rechnet mit einem
+    // Befund; hier wird der Satz zu einem, den die Oberflaeche unveraendert
+    // durchreicht. Das ist die eine Stelle, an der das noetig ist.
+    stage: job.stage === null ? null : { key: 'text', text: job.stage },
     progress_of: job.progress === null ? null : 'blöcke',
     // Das Backend liefert die Restzeit mit, sobald es sie messen kann;
     // fehlt das Feld (aeltere Fassung), bleibt es bei `null`.
@@ -74,7 +79,7 @@ export class ApiService {
     if (!this.enabled) return;
     try {
       const [jobs, health] = await Promise.all([
-        firstValueFrom(this.http.get<Job[]>('/api/jobs')),
+        firstValueFrom(this.http.get<ServerJob[]>('/api/jobs')),
         firstValueFrom(this.http.get<Health>('/api/health')),
       ]);
       this.jobs.set(jobs.map(fromServer));
@@ -99,14 +104,16 @@ export class ApiService {
     const body = new FormData();
     body.append('file', file, file.name);
     body.append('model', model);
-    const job = await firstValueFrom(this.http.post<Job>('/api/jobs', body));
+    const job = await firstValueFrom(this.http.post<ServerJob>('/api/jobs', body));
     await this.refresh();
     this.schedule();
     return fromServer(job);
   }
 
   async createTestJob(): Promise<Job> {
-    const job = await firstValueFrom(this.http.post<Job>('/api/jobs/test-signals', {}));
+    const job = await firstValueFrom(
+      this.http.post<ServerJob>('/api/jobs/test-signals', {}),
+    );
     await this.refresh();
     return fromServer(job);
   }

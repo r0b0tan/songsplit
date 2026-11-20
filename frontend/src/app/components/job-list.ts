@@ -12,7 +12,7 @@ import {
 
 import { IconComponent } from '../core/icon';
 import { JobsService } from '../core/jobs.service';
-import { STATUS_LABELS, type Job } from '../core/models';
+import type { Job } from '../core/models';
 import { songName } from '../core/song-name';
 import { I18n } from '../i18n/i18n';
 
@@ -618,7 +618,7 @@ type Tab = 'alle' | 'songs' | 'tests';
             } @else if (job.status === 'failed') {
               —
             } @else {
-              {{ job.stage ?? STATUS_LABELS[job.status] }}
+              {{ i18n.stage(job.stage) ?? i18n.status(job.status) }}
             }
           </div>
 
@@ -740,12 +740,11 @@ type Tab = 'alle' | 'songs' | 'tests';
 })
 export class JobListComponent {
   readonly jobs = inject(JobsService);
-  private readonly i18n = inject(I18n);
+  protected readonly i18n = inject(I18n);
   readonly selectedId = input<string | null>(null);
   readonly open = output<Job>();
   readonly closed = output<string>();
 
-  readonly STATUS_LABELS = STATUS_LABELS;
 
   readonly TABS: readonly { key: Tab; label: string }[] = [
     { key: 'alle', label: 'Alle' },

@@ -28,7 +28,7 @@ import {
   type CloudConfig,
   type CloudHealth,
 } from '../core/cloud-config';
-import type { Job, ModelInfo, Stem } from '../core/models';
+import type { Job, JobStage, ModelInfo, Stem } from '../core/models';
 import { decodeForModel } from './decode';
 import { StemStore } from './stem-store';
 
@@ -205,7 +205,7 @@ export class CloudSeparator {
       progress: null,
       progress_of: null,
       remaining_seconds: null,
-      stage: 'Wartet auf einen Container',
+      stage: { key: 'cloud-warten' },
       error: null,
       is_test_path: false,
       device: null,
@@ -283,21 +283,29 @@ export class CloudSeparator {
     }
   }
 
-  private stufentext(stand: StatusAntwort): string {
+  /**
+   * Die Phase des Endpunkts als Befund.
+   *
+   * Frueher stand hier der fertige Satz. Dieser Code laeuft zwar auf dem
+   * Hauptfaden, koennte also uebersetzen — aber dann stuenden dieselben
+   * drei Saetze an einer zweiten Stelle neben denen des Browserpfads, und
+   * eine davon waere irgendwann die veraltete.
+   */
+  private stufentext(stand: StatusAntwort): JobStage {
     switch (stand.phase) {
       case 'dekodieren':
-        return 'Die Datei wird gelesen';
+        return { key: 'cloud-lesen' };
       case 'trennen':
         return stand.blocks
-          ? `Wird getrennt (Block ${stand.block ?? 0} von ${stand.blocks})`
-          : 'Wird getrennt';
+          ? { key: 'block', done: stand.block ?? 0, total: stand.blocks }
+          : { key: 'trennen' };
       case 'kodieren':
-        return 'Die Spuren werden geschrieben';
+        return { key: 'cloud-schreiben' };
       default:
         // Der aufschlussreiche Fall: der Auftrag liegt beim Anbieter, aber
         // es läuft noch kein Container. Meist der Start, manchmal eine
         // Warteschlange, weil gerade keine Grafikkarte frei ist.
-        return 'Wartet auf eine freie Grafikkarte';
+        return { key: 'cloud-warten' };
     }
   }
 
@@ -310,7 +318,7 @@ export class CloudSeparator {
   private async abholen(jobId: string, stand: StatusAntwort): Promise<void> {
     const liste = stand.stems ?? [];
     this.patch(jobId, {
-      stage: `Spuren werden geladen (0 von ${liste.length})`,
+      stage: { key: 'spuren', done: 0, total: liste.length },
       progress: null,
       progress_of: null,
       remaining_seconds: null,
@@ -333,7 +341,7 @@ export class CloudSeparator {
         bytes: eintrag.bytes,
       });
       this.patch(jobId, {
-        stage: `Spuren werden geladen (${index + 1} von ${liste.length})`,
+        stage: { key: 'spuren', done: index + 1, total: liste.length },
       });
     }
 
