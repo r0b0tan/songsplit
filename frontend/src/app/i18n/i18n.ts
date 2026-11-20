@@ -56,21 +56,54 @@ function isLang(value: unknown): value is Lang {
 }
 
 /**
+ * Die Sprache, die in der Adresse steht — oder `null`.
+ *
+ * `/de/` und `/en/` sind die ausgelieferten Seiten, jede mit eigenem
+ * Titel, eigener Beschreibung und `hreflang` auf die andere (siehe
+ * `tools/locales.mjs`). Steht die Sprache im Pfad, hat der Pfad recht:
+ * eine Seite, die sich im Kopf als deutsch ausgibt und englisch anzeigt,
+ * widerspricht sich selbst, und ein verschickter Link zeigte beim
+ * Empfänger etwas anderes als beim Absender.
+ */
+function fromPath(): Lang | null {
+  try {
+    const treffer = /^\/(de|en)(?:\/|$)/.exec(location.pathname);
+    return treffer && isLang(treffer[1]) ? treffer[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Trug die Adresse beim Laden eine Sprache?
+ *
+ * Einmal beim Start festgehalten, denn danach schreibt der Umschalter sie
+ * selbst hinein. Nur wo sie von Anfang an stand, wird sie beim Umschalten
+ * mitgezogen — unter `/` kam die Sprache von woanders, und dort etwas
+ * hineinzuschreiben erfaende eine Adresse, die es so nicht gibt.
+ */
+const PFAD_FUEHRT = fromPath() !== null;
+
+/**
  * Die Sprache beim Start, in dieser Reihenfolge:
  *
- * 1. `?lang=de` in der Adresse. Das ist der Weg fuer die Tests: sie pruefen
+ * 1. `/de/` oder `/en/` im Pfad — die ausgelieferte Seite sagt, was sie
+ *    ist, und das schlaegt alles andere.
+ * 2. `?lang=de` in der Adresse. Das ist der Weg fuer die Tests: sie pruefen
  *    deutsche Texte und sollen das weiter tun koennen, ohne vorher am
  *    Speicher des Browsers zu drehen. Gleichzeitig ist es der Link, mit
- *    dem sich eine Sprache verschicken laesst.
- * 2. Die letzte eigene Wahl.
- * 3. Die Spracheinstellung des Browsers, siehe `FOLLOW_BROWSER`.
- * 4. Englisch.
+ *    dem sich unter `/` eine Sprache verschicken laesst.
+ * 3. Die letzte eigene Wahl.
+ * 4. Die Spracheinstellung des Browsers, siehe `FOLLOW_BROWSER`.
+ * 5. Englisch.
  *
  * Jeder Zugriff ist eingeklammert: `localStorage` wirft im Privatmodus und
  * bei abgeschalteten Seitendaten, und eine Seite, die daran nicht startet,
  * waere an einer Nebensache gescheitert.
  */
 function startLang(): Lang {
+  const ausPfad = fromPath();
+  if (ausPfad) return ausPfad;
   try {
     const wished = new URLSearchParams(location.search).get('lang');
     if (isLang(wished)) return wished;
@@ -251,6 +284,21 @@ export class I18n {
       // `<html lang>` ist keine Zierde: daran entscheidet die
       // Vorlesestimme ihre Aussprache und der Browser seine Trennregeln.
       document.documentElement.lang = lang;
+      // Die Adresse zieht mit, ohne neu zu laden. Ein echter Seitenwechsel
+      // waere hier teuer: in der oeffentlichen Variante liegen die
+      // getrennten Spuren nur im Arbeitsspeicher der Sitzung, und wer
+      // gerade vier davon offen hat, verloere sie beim Umschalten.
+      //
+      // `replaceState` statt `pushState`: die Sprache ist kein Ort, den man
+      // besucht. Ein Zurueck soll dahin fuehren, wo man herkam, und nicht
+      // durch zwei Fassungen derselben Seite blaettern.
+      if (PFAD_FUEHRT) {
+        const rest = location.pathname.replace(/^\/(?:de|en)(?=\/|$)/, '');
+        const ziel = `/${lang}${rest || '/'}${location.search}${location.hash}`;
+        if (ziel !== location.pathname + location.search + location.hash) {
+          history.replaceState(history.state, '', ziel);
+        }
+      }
       try {
         localStorage.setItem(STORAGE_KEY, lang);
       } catch {

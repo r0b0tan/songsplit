@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Vier Adressen, und mehr gibt es nicht.
+  Fuenf Adressen, und mehr gibt es nicht.
 
   MixApart ist eine einzige Anwendung: alles, was sie kann — Trennen, Deck,
-  Verlauf —, passiert unter "/" und hinterlaesst keine eigene Adresse. Der
+  Verlauf —, passiert unter "/de/" beziehungsweise "/en/" und hinterlaesst
+  keine eigene Adresse. Der
   Messmodus unter "#bench" ist ein Fragmentbezeichner; er erreicht den Server
   nie und gehoert deshalb nicht hierher, selbst wenn er eine andere Seite
   zeigt. Daneben stehen die drei statischen Seiten.
@@ -19,7 +20,7 @@
   bekommt es stillschweigend ignoriert. Die Daten unten stammen aus dem
   jeweils letzten Commit, der die Seite beruehrt hat:
 
-    /                  frontend/src/          (die Oberflaeche)
+    /de/ und /en/      frontend/src/          (die Oberflaeche)
     /faq.html          frontend/public/faq.html
     /datenschutz.html  frontend/public/datenschutz.html
     /impressum.html    frontend/public/impressum.html
@@ -28,10 +29,33 @@
   Last, gehoert die Datei erzeugt statt gepflegt — ein Werkzeug neben
   frontend/tools/, das die Daten aus `git log` nimmt.
 -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+>
+  <!-- Die Anwendung steht unter zwei Adressen, je eine Sprache. "/" selbst
+       gehoert nicht hierher: es leitet nach der Spracheinstellung des
+       Browsers weiter und ist damit keine Seite, sondern ein Wegweiser.
+       Genannt wird es trotzdem, als x-default im hreflang-Block — dort
+       heisst es genau das: die Adresse fuer alle, fuer die keine der
+       benannten Sprachen die richtige ist.
+
+       Die Verweise stehen bei **jeder** der beiden Adressen und schliessen
+       die eigene ein. Das ist keine Doppelung, sondern die Vorschrift:
+       hreflang-Angaben gelten nur, wenn sie sich gegenseitig bestaetigen. -->
   <url>
-    <loc>https://mixapart.de/</loc>
-    <lastmod>2026-11-17</lastmod>
+    <loc>https://mixapart.de/de/</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mixapart.de/" />
+  </url>
+  <url>
+    <loc>https://mixapart.de/en/</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mixapart.de/" />
   </url>
   <url>
     <loc>https://mixapart.de/faq.html</loc>
