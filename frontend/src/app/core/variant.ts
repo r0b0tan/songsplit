@@ -20,5 +20,5 @@ import type { Variant } from './variant.types';
 export const VARIANT: Variant = {
   kind: 'lokal',
   backend: true,
-  label: 'Lokale Verarbeitung',
+  labelKey: 'local',
 };

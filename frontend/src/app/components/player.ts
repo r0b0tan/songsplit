@@ -26,6 +26,7 @@ import { RangeScrollGuard } from '../core/range-scroll-guard';
 import type { Job } from '../core/models';
 import { stemColor } from '../core/stem-colors';
 import { shortStemName } from '../core/stem-name';
+import { I18n } from '../i18n/i18n';
 import { StemStore } from '../separate/stem-store';
 import { downloadWav } from '../separate/wav';
 import { TimeRulerComponent } from './time-ruler';
@@ -1104,7 +1105,7 @@ type LoopEnd = 'a' | 'b';
                 [disabled]="track.state !== 'ready'"
                 (click)="togglePitch(track.slug)"
               >
-                <strong [title]="track.name">{{ short(track.name) }}</strong>
+                <strong [title]="i18n.stem(track.name)">{{ short(track.name) }}</strong>
                 <span class="hash" aria-hidden="true">♯</span>
               </button>
               <span class="buttons">
@@ -1230,7 +1231,7 @@ type LoopEnd = 'a' | 'b';
                     class="wav"
                     data-testid="track-download"
                     [href]="track.downloadUrl"
-                    [download]="track.name + '.wav'"
+                    [download]="short(track.name) + '.wav'"
                     [attr.aria-label]="short(track.name) + ' als WAV speichern'"
                     [title]="short(track.name) + ' als WAV speichern'"
                   >
@@ -1370,6 +1371,7 @@ type LoopEnd = 'a' | 'b';
 export class PlayerComponent {
   readonly engine = inject(MixEngine);
   private readonly store = inject(StemStore);
+  protected readonly i18n = inject(I18n);
   readonly job = input.required<Job>();
   readonly close = output<void>();
 
@@ -1425,7 +1427,7 @@ export class PlayerComponent {
     const held = this.store.get(this.job().id);
     const found = held?.stems.find((s) => s.source === track.slug);
     if (!held || !found) return;
-    downloadWav(found.channels, held.sampleRate, `${track.name}.wav`);
+    downloadWav(found.channels, held.sampleRate, `${this.short(track.name)}.wav`);
   }
 
   readonly MASTER_RATE_MIN = MASTER_RATE_MIN;
@@ -1474,8 +1476,20 @@ export class PlayerComponent {
     return muted ? `Alle Spuren, ${muted} stumm` : 'Alle Spuren';
   });
 
+  /**
+   * Der Name einer Spur, so wie er auf den Schirm gehoert.
+   *
+   * Zwei Schritte in einem: erst die Sprache, dann die Laenge. Die
+   * Reihenfolge ist nicht beliebig — `shortStemName` kuerzt einen Namen
+   * ueber 24 Zeichen auf seine letzte Klammergruppe, und das betrifft
+   * genau die Spuren, die `i18n.stem` nicht kennt und unveraendert
+   * durchreicht. Ein bekannter Spurname ist in beiden Sprachen kurz.
+   *
+   * Hier liest jede Beschriftung der Spurleiste mit, und von hier aus
+   * wechselt sie beim Umschalten.
+   */
   short(name: string): string {
-    return shortStemName(name);
+    return shortStemName(this.i18n.stem(name));
   }
 
   color(track: TrackView, index: number): string {

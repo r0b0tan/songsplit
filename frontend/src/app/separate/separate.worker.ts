@@ -173,9 +173,7 @@ async function handleProbe(): Promise<void> {
       available: false,
       adapter: null,
       code: 'GPU-05',
-      reason:
-        `Die Geräteprüfung brach ab: ${describe(err)}. Getrennt wird dann ` +
-        'auf dem Prozessor.',
+      reason: { key: 'pruefung-abgebrochen', detail: describe(err) },
       // Die Pruefung brach ab, bevor sie etwas herausfand — da ist die
       // WebGL-Auskunft das einzige, was ueberhaupt noch etwas ueber das
       // Geraet sagt. Sie steht auf einem eigenen Weg und ist von dem

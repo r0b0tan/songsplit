@@ -27,6 +27,8 @@ import {
 import { ACCEPTED_TYPES, decodeForModel } from './decode';
 import { cachedBytes, isCached } from './model-cache';
 import { adapterLabel, type ExecutionProof, type WebGpuSupport } from './runtime';
+import { STEM_LABELS } from '../core/stem-labels';
+import { I18n } from '../i18n/i18n';
 import { StemStore } from './stem-store';
 import { TEST_DURATION_S, TEST_SAMPLE_RATE, makeTestStems } from './test-signals';
 import type { FromWorker, Phase, StartMessage } from './separate.worker';
@@ -70,17 +72,6 @@ function provisionalModels(): ModelInfo[] {
     site: 'device' as const,
   }));
 }
-
-/** Dieselben Anzeigenamen wie `STEM_LABELS` im Backend. */
-const STEM_LABELS: Record<string, string> = {
-  vocals: 'Gesang',
-  drums: 'Drums',
-  bass: 'Bass',
-  other: 'Rest',
-  guitar: 'Gitarre',
-  piano: 'Klavier',
-  instrumental: 'Begleitung',
-};
 
 /** Was die Oberfläche je Phase schreibt. */
 const PHASE_TEXT: Record<Phase, string> = {
@@ -127,6 +118,7 @@ export interface DeviceResultInfo {
 @Injectable({ providedIn: 'root' })
 export class DeviceSeparator {
   private readonly store = inject(StemStore);
+  private readonly i18n = inject(I18n);
 
   /** Jobs dieser Sitzung, jüngster zuerst. */
   readonly jobs = signal<Job[]>([]);
@@ -193,9 +185,7 @@ export class DeviceSeparator {
         available: false,
         adapter: null,
         code: 'GPU-06',
-        reason:
-          'Der Trennvorgang ließ sich nicht vorbereiten. Die ONNX-Runtime ' +
-          'unter /vendor/onnxruntime/ antwortet nicht.',
+        reason: { key: 'runtime-schweigt' },
         // Hier bewusst nicht nachgesehen: der Worker schweigt, es geht also
         // gar nicht um die Grafikeinheit. Ein Treibername waere an dieser
         // Stelle eine Antwort auf eine Frage, die niemand gestellt hat —
@@ -242,7 +232,10 @@ export class DeviceSeparator {
           // Prozessor. Was das bedeutet, steht als Warnung in der
           // Importkarte, nicht als „nicht verfügbar" an der Karte.
           available: true,
-          detail: this.support()?.reason ?? null,
+          // Der Grund steht als Befund am Geraet (`support().reason`) und
+          // wird dort zum Satz, wo die Sprache bekannt ist. Hier bliebe er
+          // ohnehin liegen: kein Bauteil zeigt `detail` an.
+          detail: null,
           downloaded: await isCached(key),
           missing_files: [],
           site: 'device',
@@ -303,19 +296,24 @@ export class DeviceSeparator {
   diagnosis(): string {
     const s = this.support();
     const nav = globalThis.navigator;
+    // Der Bericht geht an einen Menschen, der helfen soll. Er steht
+    // deshalb in der Sprache dessen, der ihn abschickt — die Codes,
+    // Adapternamen und Fassungen darin sind ohnehin in jeder dieselben.
+    const r = this.i18n.t().report;
     const lines = [
-      'MixApart — Gerätebericht',
-      `Code: ${s?.code ?? (s?.available ? 'in Ordnung' : 'unbekannt')}`,
-      `WebGPU: ${s?.available ? 'nutzbar' : 'nicht nutzbar'}`,
+      r.head,
+      `${r.code}: ${s?.code ?? (s?.available ? r.ok : r.unknown)}`,
+      `${r.webgpu}: ${s?.available ? r.usable : r.unusable}`,
     ];
-    if (s?.adapter) lines.push(`Adapter: ${adapterLabel(s.adapter)}`);
-    if (s?.renderer) lines.push(`WebGL: ${s.renderer}`);
-    if (s?.reason) lines.push(`Grund: ${s.reason}`);
-    if (this.runtimeVersion()) lines.push(`Runtime: ${this.runtimeVersion()}`);
-    lines.push(`Browser: ${nav?.userAgent ?? 'unbekannt'}`);
+    if (s?.adapter) lines.push(`${r.adapter}: ${adapterLabel(s.adapter)}`);
+    if (s?.renderer) lines.push(`${r.webgl}: ${s.renderer}`);
+    const grund = this.i18n.gpuReason(s?.reason ?? null);
+    if (grund) lines.push(`${r.reason}: ${grund}`);
+    if (this.runtimeVersion()) lines.push(`${r.runtime}: ${this.runtimeVersion()}`);
+    lines.push(`${r.browser}: ${nav?.userAgent ?? r.unknown}`);
     lines.push(
-      `Kerne: ${nav?.hardwareConcurrency ?? '?'} · isoliert: ` +
-        (globalThis.crossOriginIsolated ? 'ja' : 'nein'),
+      `${r.cores}: ${nav?.hardwareConcurrency ?? '?'} · ${r.isolated}: ` +
+        (globalThis.crossOriginIsolated ? r.yes : r.no),
     );
     return lines.join('\n');
   }

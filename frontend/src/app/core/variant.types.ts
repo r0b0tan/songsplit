@@ -16,6 +16,15 @@ export interface Variant {
    * die hier niemand herstellen könnte.
    */
   backend: boolean;
-  /** Was in der Kopfzeile der Importkarte steht. */
-  label: string;
+  /**
+   * Was in der Kopfzeile der Importkarte steht — als **Schlüssel** in
+   * `t().variant`, nicht als Satz.
+   *
+   * Ein Satz stünde hier in genau einer Sprache. Welche Datei gilt,
+   * entscheidet der Build (`fileReplacements`), die Sprache aber erst der
+   * Mensch zur Laufzeit; beides an derselben Stelle zu entscheiden ginge
+   * nicht auf. Der Typ ist der Schlüsselvorrat: ein Tippfehler darin ist
+   * ein Build-Fehler, kein leeres Feld in der Kopfzeile.
+   */
+  labelKey: 'local' | 'device';
 }

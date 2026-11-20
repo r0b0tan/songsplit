@@ -339,7 +339,8 @@ async function main() {
     }
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  const base = `http://127.0.0.1:${server.address().port}/`;
+  // Deutsche Texte, siehe tests/public/run.mjs.
+  const base = `http://127.0.0.1:${server.address().port}/?lang=de`;
 
   const browser = await chromium.launch();
 

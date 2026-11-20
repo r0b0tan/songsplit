@@ -10,5 +10,5 @@ import type { Variant } from './variant.types';
 export const VARIANT: Variant = {
   kind: 'öffentlich',
   backend: false,
-  label: 'Alles auf diesem Gerät',
+  labelKey: 'device',
 };

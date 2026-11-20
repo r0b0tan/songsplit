@@ -11,11 +11,15 @@ import {
 
 import { ApiService, describeHttp } from '../core/api.service';
 import { IconComponent } from '../core/icon';
+import type { Texte } from '../i18n/de';
+import { I18n } from '../i18n/i18n';
+import { LangSwitchComponent } from '../i18n/lang-switch';
 import { DeviceFacts } from '../core/device-facts';
 import { CloudSeparator } from '../separate/cloud-separator';
 import { JobsService, type Site } from '../core/jobs.service';
 import type { Job, ModelInfo } from '../core/models';
 import { stemColor } from '../core/stem-colors';
+import { stemSlug } from '../core/stem-labels';
 import { VARIANT } from '../core/variant';
 import { DeviceSeparator } from '../separate/device-separator';
 import { probeDuration } from '../separate/decode';
@@ -91,7 +95,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
 @Component({
   selector: 'app-import-panel',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, LangSwitchComponent],
   // Ein Zeigen irgendwo auf der Seite klappt die Ortsliste zu. Der Fokus
   // allein reicht dafuer nicht, siehe `onDocumentPointerDown`.
   host: { '(document:pointerdown)': 'onDocumentPointerDown($event)' },
@@ -169,6 +173,11 @@ const ACCEPTED = /\.(mp3|wav)$/i;
       .what-wrap {
         position: relative;
         display: inline-flex;
+      }
+      /* Der Strich zwischen Trennort und Sprache. Schwaecher als der Text
+         links und rechts davon: er trennt, er sagt nichts. */
+      .sep {
+        opacity: 0.45;
       }
       .local .what {
         display: inline-flex;
@@ -809,7 +818,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                kommen damit ohne eigenen Code zurecht. -->
           @if (sites().length > 1) {
             <span class="mode-group">
-            <span class="mode-label" id="site-label">Modus:</span>
+            <span class="mode-label" id="site-label">{{ t().header.mode }}</span>
             <div class="pick" (focusout)="onPickBlur($event)">
               <button
                 #pickButton
@@ -834,7 +843,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                 <div
                   class="pick-panel"
                   role="radiogroup"
-                  aria-label="Wo getrennt wird"
+                  [attr.aria-label]="t().header.pickGroup"
                   data-testid="site-panel"
                   (keydown.escape)="closePick()"
                 >
@@ -844,7 +853,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                       [class.on]="site() === s.key"
                       data-testid="site-option"
                       [attr.data-site]="s.key"
-                      [title]="s.hint"
+                      [title]="t().sites[s.key].hint"
                     >
                       <input
                         type="radio"
@@ -880,7 +889,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
                 type="button"
                 class="what"
                 data-testid="device-info"
-                aria-label="Worauf gerechnet wird"
+                [attr.aria-label]="t().header.facts"
                 aria-describedby="device-tip"
                 [attr.aria-expanded]="infoOpen()"
                 (click)="infoOpen.set(!infoOpen())"
@@ -904,12 +913,20 @@ const ACCEPTED = /\.(mp3|wav)$/i;
               </span>
             </span>
           }
+
+          <!-- Der Strich trennt zwei Angaben derselben Leiste: links, wo
+               getrennt wird, rechts, in welcher Sprache die Oberflaeche
+               davon erzaehlt. Er gehoert dem Auge und nicht der
+               Vorlesestimme, die liest zwei Gruppen ohne Satzzeichen
+               dazwischen. -->
+          <span class="sep" aria-hidden="true">|</span>
+          <app-lang-switch />
         </span>
       </header>
 
       <div class="inner">
-      <div class="eyebrow">Import</div>
-      <h2 class="lede">Song trennen</h2>
+      <div class="eyebrow">{{ t().card.eyebrow }}</div>
+      <h2 class="lede">{{ t().card.lede }}</h2>
 
       <!-- ------------------------------------------------------- Datei -->
       <label
@@ -944,7 +961,7 @@ const ACCEPTED = /\.(mp3|wav)$/i;
           type="file"
           [attr.accept]="isMobile ? null : '.mp3,.wav,audio/mpeg,audio/wav'"
           [disabled]="busy()"
-          aria-label="MP3- oder WAV-Datei auswählen"
+          [attr.aria-label]="t().card.file.pick"
           (change)="pick($event)"
         />
         <span>
@@ -954,16 +971,16 @@ const ACCEPTED = /\.(mp3|wav)$/i;
             }
           </span>
           <span class="file-label">
-            {{ file()?.name ?? 'MP3 oder WAV hierher ziehen' }}
+            {{ file()?.name ?? t().card.file.drop }}
           </span>
           <span class="sub">
-            {{ file() ? 'Andere Datei auswählen' : 'oder Datei auswählen' }}
+            {{ file() ? t().card.file.another : t().card.file.orPick }}
           </span>
         </span>
       </label>
 
       <!-- -------------------------------------------------- Trennmodus -->
-      <p class="model-head" id="mode-label">Trennmodus</p>
+      <p class="model-head" id="mode-label">{{ t().card.modes.head }}</p>
       <div class="modes" role="radiogroup" aria-labelledby="mode-label">
         @for (m of models(); track m.name) {
           <label
@@ -979,8 +996,8 @@ const ACCEPTED = /\.(mp3|wav)$/i;
               [disabled]="busy()"
               (change)="model.set(m.name)"
             />
-            {{ m.mode }}
-            <span>{{ m.stems.length }} Spuren</span>
+            {{ i18n.mode(m.mode) }}
+            <span>{{ t().card.modes.stems(m.stems.length) }}</span>
           </label>
         }
       </div>
@@ -991,14 +1008,20 @@ const ACCEPTED = /\.(mp3|wav)$/i;
            woran das zu erkennen war. -->
       @if (site() === 'device' && device.modelProblem(); as why) {
         <div class="notice" style="margin-top: 12px" data-testid="no-model">
-          <span><strong>Kein Trennmodus:</strong> {{ why }}</span>
+          <span><strong>{{ t().card.modes.none }}</strong> {{ why }}</span>
         </div>
       }
 
-      <div class="outputs" aria-live="polite" aria-label="Spuren im gewählten Modus">
+      <div
+        class="outputs"
+        aria-live="polite"
+        [attr.aria-label]="t().card.modes.outputs"
+      >
         @if (selectedModel(); as m) {
           @for (stem of m.stems; track stem; let i = $index) {
-            <span class="stem" [style.--sig]="color(stem, i)">{{ stem }}</span>
+            <span class="stem" [style.--sig]="color(stem, i)">{{
+              i18n.stem(stem)
+            }}</span>
           }
         }
       </div>
@@ -1018,13 +1041,10 @@ const ACCEPTED = /\.(mp3|wav)$/i;
         @if (m.site === 'backend' && !m.downloaded) {
           <div class="notice" style="margin-top: 12px">
             <span>
-              <strong>{{ m.mode }}</strong> ({{ m.name }}) wird beim ersten Lauf
-              erst heruntergeladen ({{ m.missing_files.length }}
-              {{ m.missing_files.length === 1 ? 'Datei' : 'Dateien' }}). Der Job
-              bleibt so lange auf „Wird verarbeitet“. Schlägt der Download fehl,
-              hilft
-              <span class="mono">python tools/fetch_model_configs.py {{ m.name }}</span>:
-              das Skript probiert mehrere Quellen und sagt, woran es scheitert.
+              <strong>{{ i18n.mode(m.mode) }}</strong>
+              {{ t().card.modes.willDownload(m.name, m.missing_files.length) }}
+              <span class="mono">python tools/fetch_model_configs.py {{ m.name }}</span
+              >{{ t().card.modes.willDownloadAfter }}
             </span>
           </div>
         }
@@ -1050,8 +1070,12 @@ const ACCEPTED = /\.(mp3|wav)$/i;
           <p class="ask-q">{{ ask.question }}</p>
           <p class="ask-why">{{ ask.why }}</p>
           <div class="ask-go">
-            <button type="button" class="demo" (click)="answer(false)">Nein</button>
-            <button type="button" class="start" (click)="answer(true)">Ja</button>
+            <button type="button" class="demo" (click)="answer(false)">
+              {{ t().card.ask.no }}
+            </button>
+            <button type="button" class="start" (click)="answer(true)">
+              {{ t().card.ask.yes }}
+            </button>
           </div>
         }
       </dialog>
@@ -1065,10 +1089,10 @@ const ACCEPTED = /\.(mp3|wav)$/i;
           type="button"
           class="demo"
           [disabled]="busy()"
-          title="Legt drei synthetische Spuren an, ohne zu trennen: zwei Klickspuren mit Klicks auf genau denselben Zeitpunkten und einen 440-Hz-Dauerton. Laufen die Klickspuren synchron, hört man einen einzigen Klick."
+          [title]="t().card.foot.testWhy"
           (click)="startTest()"
         >
-          <app-icon name="plus" />Testspuren anlegen
+          <app-icon name="plus" />{{ t().card.foot.test }}
         </button>
         <button
           type="button"
@@ -1093,6 +1117,15 @@ export class ImportPanelComponent {
   readonly facts = inject(DeviceFacts);
   readonly cloud = inject(CloudSeparator);
   private readonly jobs = inject(JobsService);
+  protected readonly i18n = inject(I18n);
+
+  /**
+   * Die Texte der gewaehlten Sprache.
+   *
+   * Im Template als `t()`. Ein Signal-Lesen je Ausdruck, und die Kopfzeile
+   * wechselt beim Umschalten mit — siehe `i18n.ts`.
+   */
+  protected readonly t = this.i18n.t;
 
   readonly VARIANT = VARIANT;
 
@@ -1214,45 +1247,20 @@ export class ImportPanelComponent {
     ];
   });
 
-  readonly ALL_SITES: readonly {
-    key: Site;
-    /**
-     * Das eine Wort auf dem zugeklappten Knopf.
-     *
-     * Der Rechenweg, wo er den Unterschied macht — WebGPU gegen CUDA sind
-     * Faktor zwei auf derselben Karte (18,3 s gegen 9,1 s auf 4:33). Beim
-     * Serverweg steht der Ort, denn dort laeuft auch CUDA; das
-     * Unterscheidende ist, dass die Datei den Rechner verlaesst.
-     */
-    short: string;
-    /** Steht als Titel am Eintrag — ein Satz zum Nachlesen. */
-    hint: string;
-  }[] = [
-    {
-      key: 'device',
-      short: 'WebGPU',
-      hint:
-        'Rechnet im Browser auf der Grafikkarte dieses Rechners. Die Datei ' +
-        'bleibt hier. Braucht kein laufendes Backend; beim ersten Lauf ' +
-        'werden einmalig 174 MB Modellgewichte geladen. Rund 18 s für ' +
-        'viereinhalb Minuten.',
-    },
-    {
-      key: 'backend',
-      short: 'CUDA',
-      hint:
-        'Rechnet auf derselben Grafikkarte, aber über CUDA statt WebGPU — ' +
-        'rund doppelt so schnell (9 s statt 18 s). Die Datei bleibt hier. ' +
-        'Braucht den laufenden Python-Dienst und kennt mehr Modelle.',
-    },
-    {
-      key: 'cloud',
-      short: 'Fremdserver',
-      hint:
-        'Für Geräte, die ihre Grafikeinheit nicht freigeben. Als einziger ' +
-        'der drei Wege verlässt die Datei dabei diesen Rechner: sie wird an ' +
-        'unseren Server geschickt und in den USA verarbeitet.',
-    },
+  /**
+   * Die Orte, in der Reihenfolge, in der sie zur Wahl stehen.
+   *
+   * Nur noch die Schluessel. Das eine Wort auf dem Knopf und der Satz zum
+   * Nachlesen stehen in `t().sites` — sie sind Text, und Text steht in
+   * dieser Anwendung an einer Stelle. Die Reihenfolge bleibt hier, denn sie
+   * ist keine Uebersetzung: „auf diesem Geraet" steht zuerst, weil es die
+   * Vorgabe ist, und der Fremdserver zuletzt, weil er der einzige Weg ist,
+   * auf dem die Datei den Rechner verlaesst.
+   */
+  readonly ALL_SITES: readonly { key: Site }[] = [
+    { key: 'device' },
+    { key: 'backend' },
+    { key: 'cloud' },
   ];
 
   readonly file = signal<File | null>(null);
@@ -1260,9 +1268,24 @@ export class ImportPanelComponent {
   readonly site = signal<Site>('device');
   readonly model = signal('htdemucs');
   readonly busy = signal(false);
-  readonly error = signal<string | null>(null);
+
+  /**
+   * Fehler und Hinweis als **Bauanweisung**, nicht als fertiger Satz.
+   *
+   * Ein fertiger Satz waere in der Sprache geschrieben, die beim Entstehen
+   * galt — und stuende danach auf Deutsch in einer englischen Oberflaeche,
+   * denn der Umschalter liegt in derselben Karte und ist waehrend einer
+   * Fehlermeldung anklickbar. Gespeichert wird deshalb, wie der Satz zu
+   * bauen ist; gebaut wird er beim Lesen, mit dem Woerterbuch, das dann
+   * gilt. Die Zahlen darin sind zur Zeit des Fehlers festgehalten, der Text
+   * drumherum nicht.
+   */
+  private readonly errorText = signal<((t: Texte) => string) | null>(null);
+  private readonly hintText = signal<((t: Texte) => string) | null>(null);
+
+  readonly error = computed(() => this.errorText()?.(this.t()) ?? null);
   /** Kurze Rueckmeldung unter der Fusszeile, etwa zum Dateityp. */
-  readonly hint = signal<string | null>(null);
+  readonly hint = computed(() => this.hintText()?.(this.t()) ?? null);
   /** Haengt eine Datei gerade ueber der Ablegeflaeche? */
   readonly over = signal(false);
 
@@ -1290,7 +1313,7 @@ export class ImportPanelComponent {
    */
   setSite(site: Site): void {
     this.site.set(site);
-    this.error.set(null);
+    this.errorText.set(null);
     const available = this.jobs.modelsFor(site);
     if (available.some((m) => m.name === this.model())) return;
     const fallback = available.find((m) => m.is_default) ?? available[0];
@@ -1313,7 +1336,7 @@ export class ImportPanelComponent {
   /**
    * Der Satz, wenn nur ein Ort uebrig ist.
    *
-   * `VARIANT.label` waere hier eine falsche Auskunft, sobald der letzte
+   * Der Satz der Variante waere hier eine falsche Auskunft, sobald der letzte
    * verbliebene Ort der Serverweg ist: „Alles auf diesem Geraet" stuende
    * dann ueber einer Karte, die die Datei hochlaedt. Auf dem Handy ohne
    * Grafikfreigabe ist das der Regelfall, nicht die Ausnahme.
@@ -1330,9 +1353,9 @@ export class ImportPanelComponent {
    */
   readonly soleLabel = computed(() => {
     const nur = this.sites()[0]?.key ?? 'device';
-    const ort = this.ALL_SITES.find((s) => s.key === nur);
-    if (ort && nur !== 'device') return `Modus: ${ort.short}`;
-    return VARIANT.label;
+    const t = this.t();
+    if (nur !== 'device') return t.header.modeIs(t.sites[nur].short);
+    return t.variant[VARIANT.labelKey];
   });
 
   readonly currentSite = computed(
@@ -1364,10 +1387,12 @@ export class ImportPanelComponent {
    * und ein Platzhalter liesse die Kopfzeile springen.
    */
   shortFor(key: Site): string {
-    const ort = this.ALL_SITES.find((s) => s.key === key) ?? this.ALL_SITES[0];
-    if (key !== 'device') return ort.short;
+    const hinterlegt = this.t().sites[key].short;
+    if (key !== 'device') return hinterlegt;
     const support = this.device.support();
-    if (!support) return ort.short;
+    if (!support) return hinterlegt;
+    // Rechenwege, keine Worte: in jeder Sprache dasselbe, und deshalb
+    // nicht im Woerterbuch.
     return support.available ? 'WebGPU' : 'WASM';
   }
 
@@ -1452,6 +1477,11 @@ export class ImportPanelComponent {
    * Zwei Arten teilen sich denselben Dialog: der Modelldownload und der
    * Speicher. `kind` entscheidet, was ein „Ja" auslöst — ohne das wäre
    * `answer()` nicht zu sagen, welche Frage gerade beantwortet wurde.
+   *
+   * Hier stehen fertige Sätze und keine Bauanweisung wie bei `errorText`:
+   * der Dialog ist modal, der Umschalter liegt hinter seinem Schleier und
+   * ist so lange nicht zu erreichen. Eine Frage, die ihre Sprache mitten im
+   * Lesen wechselt, kann es also nicht geben.
    */
   readonly pending = signal<{
     kind: 'speicher' | 'download';
@@ -1502,13 +1532,12 @@ export class ImportPanelComponent {
 
 
   readonly startLabel = computed(() => {
+    const foot = this.t().card.foot;
     if (this.busy()) {
-      return this.site() === 'device'
-        ? 'wird vorbereitet …'
-        : 'wird an den Server geschickt …';
+      return this.site() === 'device' ? foot.preparing : foot.sending;
     }
     const stems = this.selectedModel()?.stems.length;
-    return stems ? `${stems} Spuren trennen` : 'Trennen';
+    return stems ? foot.startStems(stems) : foot.start;
   });
 
   /**
@@ -1533,8 +1562,18 @@ export class ImportPanelComponent {
     return true;
   });
 
+  /**
+   * Die Farbe einer Spur.
+   *
+   * Am Slug und nicht am Anzeigenamen: sonst haenge die Farbe an der
+   * Sprache, und „Rest" und „Other" waeren zwei verschiedene Spuren.
+   * `stemColor` kaeme zwar auch mit dem Namen zurecht — es kennt die
+   * gelaeufigen Woerter —, aber auf einem Umweg, den es hier nicht
+   * braucht. Der Name geht trotzdem mit: fuer Spuren ohne festen Platz
+   * ist er alles, was es gibt.
+   */
   color(stem: string, index: number): string {
-    return stemColor(stem.toLowerCase(), index, stem);
+    return stemColor(stemSlug(stem) ?? stem.toLowerCase(), index, stem);
   }
 
   /**
@@ -1545,13 +1584,13 @@ export class ImportPanelComponent {
   pick(event: Event): void {
     const input = event.target as HTMLInputElement;
     const chosen = input.files?.[0] ?? null;
-    this.error.set(null);
+    this.errorText.set(null);
     if (chosen && !ACCEPTED.test(chosen.name)) {
-      this.hint.set('Bitte eine MP3- oder WAV-Datei auswählen.');
+      this.hintText.set((t) => t.card.file.wrongType);
       input.value = '';
       return;
     }
-    this.hint.set(null);
+    this.hintText.set(null);
     this.file.set(chosen);
     // Die Zusage galt der vorigen Datei und ihrer Länge, nicht dieser.
     this.memoryAgreed = null;
@@ -1625,43 +1664,51 @@ export class ImportPanelComponent {
     const urteil = assess(seconds, stems);
     if (urteil.verdict === 'reicht') return 'weiter';
 
-    const mb = (n: number) => Math.round(n).toLocaleString('de-DE');
-    const geraet = urteil.measured
-      ? `Dieses Gerät meldet ${deviceMemoryGb().gb} GB.`
-      : 'Dieser Browser nennt den Speicher des Geräts nicht; angenommen sind 4 GB.';
+    // Zahlen jetzt, Worte spaeter: `mb` und `geraet`/`waehrend` haengen am
+    // Woerterbuch und werden deshalb erst beim Bauen des Satzes gerufen.
+    // Die Messwerte stehen hier schon fest.
+    const gb = deviceMemoryGb().gb;
+    const mb = (t: Texte, n: number) => Math.round(n).toLocaleString(t.locale);
+    const geraet = (t: Texte) =>
+      urteil.measured
+        ? t.card.memory.deviceSays(gb)
+        : t.card.memory.deviceUnknown;
     // Die Spitze, nicht das Ergebnis: bei „Minimum" stehen am Ende zwei
     // Spuren, während des Laufs sind es vier.
-    const waehrend =
-      `„${model.mode}" hält während des Laufs ${stems} Spuren und die ` +
-      `Eingabe gleichzeitig im Arbeitsspeicher`;
+    // Der Anzeigename des Modus, nicht seine Kennung. Ueber den Dienst,
+    // damit die Tabelle an einer Stelle nachgeschlagen wird.
+    const modus = () => this.i18n.mode(model.mode);
+    const waehrend = (t: Texte) => t.card.memory.during(modus(), stems);
 
     if (urteil.verdict === 'aussichtslos') {
       // Zwei verschiedene Absagen. Liegt die machbare Länge unter einer
       // halben Minute, ist nicht der Song zu lang, sondern das Gerät zu
       // klein — dann wäre „nimm einen kürzeren Ausschnitt" ein Rat, der
       // ins Leere geht.
-      this.error.set(
+      this.errorText.set((t) =>
         urteil.fitsSeconds < SHORTEST_WORTH_SUGGESTING_S
-          ? `Für „${model.mode}" reicht der Arbeitsspeicher dieses Geräts nicht: ` +
-              `gebraucht werden rund ${mb(urteil.neededMib)} MB, und allein die ` +
-              `Modellgewichte belegen davon etwa 400 MB. ${geraet} Ein kürzerer ` +
-              'Ausschnitt hilft hier nicht.'
-          : `${asMinutes(seconds)} ist zu lang für dieses Gerät. ${waehrend} — ` +
-              `zusammen mit dem Modell rund ${mb(urteil.neededMib)} MB. ${geraet} ` +
-              `Bis etwa ${asMinutes(urteil.fitsSeconds)} geht es hier; ein kürzerer ` +
-              'Ausschnitt lässt sich trennen.',
+          ? t.card.memory.tooSmall(modus(), mb(t, urteil.neededMib), geraet(t))
+          : t.card.memory.tooLong(
+              asMinutes(seconds),
+              waehrend(t),
+              mb(t, urteil.neededMib),
+              geraet(t),
+              asMinutes(urteil.fitsSeconds),
+            ),
       );
       return 'halt';
     }
 
+    const t = this.t();
     this.pending.set({
       kind: 'speicher',
-      question: `Knapp: rund ${mb(urteil.neededMib)} MB Arbeitsspeicher nötig.`,
-      why:
-        `${waehrend} — bei ${asMinutes(seconds)} sind das ${mb(urteil.audioMib)} MB, ` +
-        `dazu etwa 400 MB für das Modell. ${geraet} Es kann gutgehen. Geht es ` +
-        'nicht gut, beendet der Browser den Tab, und die Trennung ist weg — ' +
-        'gespeichert wird unterwegs nichts.',
+      question: t.card.memory.tight(mb(t, urteil.neededMib)),
+      why: t.card.memory.tightWhy(
+        waehrend(t),
+        asMinutes(seconds),
+        mb(t, urteil.audioMib),
+        geraet(t),
+      ),
     });
     this.askDialog().nativeElement.showModal();
     return 'gefragt';
@@ -1669,15 +1716,11 @@ export class ImportPanelComponent {
 
   private ask(model: ModelInfo): void {
     const mb = this.megabytes(model.download_bytes ?? 0);
+    const t = this.t();
     this.pending.set({
       kind: 'download',
-      question: `${mb} MB Modellgewichte laden?`,
-      why:
-        `„${model.mode}" (${model.name}) rechnet im Browser und holt die ` +
-        'Gewichte dafür einmalig. Sie bleiben danach im Browser-Cache: ' +
-        'jeder weitere Song beginnt sofort, auch ohne Netz. Über Mobilfunk ' +
-        'zählen die ' +
-        `${mb} MB auf das Datenvolumen.`,
+      question: t.card.ask.download(mb),
+      why: t.card.ask.downloadWhy(this.i18n.mode(model.mode), model.name, mb),
     });
     this.askDialog().nativeElement.showModal();
   }
@@ -1732,8 +1775,8 @@ export class ImportPanelComponent {
     const file = this.file();
     if (!file) return;
     this.busy.set(true);
-    this.error.set(null);
-    this.hint.set(null);
+    this.errorText.set(null);
+    this.hintText.set(null);
     try {
       const job =
         this.site() === 'device'
@@ -1748,7 +1791,7 @@ export class ImportPanelComponent {
       this.fileInput().nativeElement.value = '';
       this.started.emit(job);
     } catch (err) {
-      this.error.set(describeHttp(err));
+      this.errorText.set(() => describeHttp(err));
     } finally {
       this.busy.set(false);
     }
@@ -1756,15 +1799,15 @@ export class ImportPanelComponent {
 
   async startTest(): Promise<void> {
     this.busy.set(true);
-    this.error.set(null);
-    this.hint.set(null);
+    this.errorText.set(null);
+    this.hintText.set(null);
     try {
       // Ohne Backend legt der Browser die Testspuren selbst an — dieselben
       // drei Spuren, aus derselben Vorschrift.
       if (this.api.enabled) await this.api.createTestJob();
       else this.device.createTestJob();
     } catch (err) {
-      this.error.set(describeHttp(err));
+      this.errorText.set(() => describeHttp(err));
     } finally {
       this.busy.set(false);
     }

@@ -38,7 +38,9 @@ function chromiumRssMb() {
   }
 }
 
-const UI = process.env.MIXAPART_UI ?? 'http://127.0.0.1:4200';
+// `?lang=de`: geprueft werden deutsche Beschriftungen, und die Oberflaeche
+// startet von sich aus englisch.
+const UI = process.env.MIXAPART_UI ?? 'http://127.0.0.1:4200/?lang=de';
 const API = process.env.MIXAPART_API ?? 'http://127.0.0.1:8000';
 const AUDIO = process.argv[2] ?? null;
 

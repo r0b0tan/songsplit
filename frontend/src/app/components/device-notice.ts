@@ -35,6 +35,7 @@ import {
 
 import { DeviceSeparator } from '../separate/device-separator';
 import { JobsService } from '../core/jobs.service';
+import { I18n } from '../i18n/i18n';
 import { isMobileDevice } from '../separate/platform';
 
 @Component({
@@ -64,13 +65,7 @@ import { isMobileDevice } from '../separate/platform';
              wer hier liest, sucht einen Ausweg, keine Systemvoraussetzungen
              — und eine Angabe wie „ab Chrome 121" waere in einem Jahr
              falsch, ohne dass es jemandem auffiele. -->
-        <p class="where">
-          Gut läuft MixApart auf einem Rechner mit Windows, macOS oder Linux
-          und einem aktuellen Chrome oder Edge. Auf Smartphones und Tablets
-          geben die Browser die Grafikeinheit bisher nur selten frei; die
-          Hersteller erweitern das schrittweise, es lohnt sich also, später
-          noch einmal vorbeizuschauen.
-        </p>
+        <p class="where">{{ t().notice.where }}</p>
 
         <!-- Der Code steht fuer sich, gross genug zum Vorlesen. Er ist der
              Grund, warum niemand einen Treiberstring abtippen muss. -->
@@ -78,7 +73,7 @@ import { isMobileDevice } from '../separate/platform';
           <div class="code-row">
             <span class="code">{{ code }}</span>
             <button type="button" (click)="copy()">
-              {{ copied() ? 'Kopiert' : 'Bericht kopieren' }}
+              {{ copied() ? t().notice.copied : t().notice.copy }}
             </button>
           </div>
         }
@@ -86,7 +81,9 @@ import { isMobileDevice } from '../separate/platform';
         <p class="foot">{{ foot() }}</p>
 
         <div class="actions">
-          <button type="button" class="key" (click)="close(dlg)">Verstanden</button>
+          <button type="button" class="key" (click)="close(dlg)">
+            {{ t().notice.ok }}
+          </button>
         </div>
       </div>
     </dialog>
@@ -192,6 +189,8 @@ import { isMobileDevice } from '../separate/platform';
 export class DeviceNoticeComponent {
   protected readonly device = inject(DeviceSeparator);
   protected readonly jobs = inject(JobsService);
+  private readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
 
   private readonly dlg = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
   private readonly sheet = viewChild.required<ElementRef<HTMLElement>>('sheet');
@@ -250,18 +249,11 @@ export class DeviceNoticeComponent {
    * haette aufgehen duerfen.
    */
   protected title(): string {
-    return 'Leider wird Ihr Gerät momentan nicht unterstützt';
+    return this.t().notice.title;
   }
 
   protected lead(): string {
-    return this.mobile
-      ? 'MixApart trennt die Spuren direkt hier im Browser und braucht dafür ' +
-          'die Grafikeinheit Ihres Geräts. Dieser Browser gibt sie nicht frei — ' +
-          'die Musik würde Ihr Gerät nicht verlassen, nur rechnen lässt sich ' +
-          'hier nichts.'
-      : 'MixApart trennt die Spuren direkt hier im Browser und braucht dafür ' +
-          'eine Grafikkarte, auf die der Browser zugreifen darf. Die steht auf ' +
-          'diesem Gerät nicht zur Verfügung.';
+    return this.t().notice.lead(this.mobile);
   }
 
   /**
@@ -273,13 +265,7 @@ export class DeviceNoticeComponent {
    * endet — und niemand haette es vorher gesagt.
    */
   protected foot(): string {
-    return this.mobile
-      ? 'Weiterklicken können Sie trotzdem: dann rechnet der Prozessor. Das ' +
-          'dauert bei einem ganzen Lied eher eine Stunde als zehn Minuten, und ' +
-          'der Browser kann den Tab vorher wegen Speichermangels beenden.'
-      : 'Weiterklicken können Sie trotzdem: dann rechnet der Prozessor. Das ' +
-          'dauert bei einem ganzen Lied ein Vielfaches — eher zehn Minuten als ' +
-          'eine.';
+    return this.t().notice.foot(this.mobile);
   }
 
   protected async copy(): Promise<void> {

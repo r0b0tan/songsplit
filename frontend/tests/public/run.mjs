@@ -106,7 +106,12 @@ async function main() {
     }
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  const base = `http://127.0.0.1:${server.address().port}/`;
+  // `?lang=de`, weil hier deutsche Texte geprueft werden und die
+  // Oberflaeche von sich aus englisch startet. Die Sprache in der Adresse
+  // festzulegen ist der Weg, den auch ein Mensch nimmt, der einen Link
+  // verschickt — und er laesst den Speicher des Browsers in Ruhe, den
+  // Pruefung 6 gleich darauf durchsieht.
+  const base = `http://127.0.0.1:${server.address().port}/?lang=de`;
 
   const browser = await chromium.launch({
     args: [
@@ -513,6 +518,23 @@ async function main() {
     const everything = JSON.stringify(storage.local) + JSON.stringify(storage.session);
     const noName = !everything.includes(fileName) && !everything.includes('Testlauf');
     const noDatabase = storage.databases.filter(Boolean).length === 0;
+    // Was dauerhaft liegen darf, einzeln benannt.
+    //
+    // Vorher stand hier `length === 0`. Das war dasselbe wie die
+    // Zusicherung, solange die Seite gar nichts merkte; seit der
+    // Sprachwahl ist es strenger als die Zusicherung und haette eine
+    // Einstellung verboten, die niemanden verraet. Die Zusicherung
+    // lautet: nichts aus der Datei und nichts ueber den Menschen. Eine
+    // Sprache ist weder das eine noch das andere — ein Wort, das er
+    // selbst angeklickt hat.
+    //
+    // Benannt und nicht gemustert: `mixapart.*` durchzulassen wuerde auch
+    // erlauben, was morgen unter diesem Namen dazukommt, und genau das
+    // soll hier auffallen.
+    const ALLOWED_LOCAL = ['mixapart.lang'];
+    const unexpectedLocal = Object.keys(storage.local).filter(
+      (k) => !ALLOWED_LOCAL.includes(k),
+    );
     // Gecacht gehoeren Modellgewichte und die Laufzeit — beide liegen in
     // Stuecken und werden im Arbeitsspeicher zusammengesetzt. Alles andere
     // waere ein Fund: Audiodaten oder Dateinamen haben hier nichts zu
@@ -522,9 +544,10 @@ async function main() {
     );
     check(
       'Keine Audiodaten und keine Dateinamen im dauerhaften Speicher',
-      noName && noDatabase && Object.keys(storage.local).length === 0,
-      `localStorage ${Object.keys(storage.local).length} Einträge, ` +
-        `sessionStorage ${Object.keys(storage.session).length}, ` +
+      noName && noDatabase && unexpectedLocal.length === 0,
+      `localStorage ${Object.keys(storage.local).join(', ') || '(leer)'}` +
+        (unexpectedLocal.length ? ` — unerwartet: ${unexpectedLocal.join(', ')}` : '') +
+        `, sessionStorage ${Object.keys(storage.session).length}, ` +
         `IndexedDB ${storage.databases.filter(Boolean).length} Datenbanken`,
     );
     check(

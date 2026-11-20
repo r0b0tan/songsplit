@@ -126,11 +126,51 @@ export type GpuCode =
   /** Der Worker antwortete nicht — die Runtime laedt nicht. */
   | 'GPU-06';
 
+/**
+ * Warum es nicht geht — als Befund, nicht als Satz.
+ *
+ * Diese Pruefung laeuft im Worker. Dort gibt es keinen Angular-Dienst,
+ * keine gewaehlte Sprache und also auch kein Woerterbuch; ein Satz, der
+ * hier entstuende, waere in der Sprache geschrieben, die beim Bauen der
+ * Anwendung galt. Gemeldet wird deshalb, **was** gefunden wurde, mitsamt
+ * den Angaben, die in den Satz gehoeren. Den Satz schreibt
+ * `I18n.gpuReason`.
+ *
+ * Strukturklonbar bleibt das: einfache Objekte aus Zeichenketten,
+ * Wahrheitswerten und `null` — dieselbe Vorsicht wie beim Adapter weiter
+ * oben, aus demselben Grund.
+ *
+ * Die Schluessel sind die Zustaende aus `GpuCode`, nur ausgeschrieben.
+ * Zwei Namen fuer dieselbe Sache waeren einer zu viel — aber der Code ist
+ * eine Zusage nach aussen und soll sich nicht aendern, wenn hier ein Fall
+ * dazukommt oder anders heisst.
+ */
+export type GpuReason =
+  /** GPU-01: `navigator.gpu` fehlt. */
+  | { key: 'kein-webgpu'; mobile: boolean }
+  /** GPU-02: `requestAdapter()` hat geworfen. */
+  | { key: 'nicht-zu-oeffnen'; detail: string }
+  /** GPU-03: kein Adapter, auch nicht im Compatibility-Modus. */
+  | {
+      key: 'kein-adapter';
+      mobile: boolean;
+      /** Was WebGL ueber die Grafikeinheit sagt, oder `null`. */
+      renderer: string | null;
+      /** Ist dieser Renderer selbst eine Software-Umsetzung? */
+      rendererSoftware: boolean;
+    }
+  /** GPU-04: Adapter da, aber Software-Umsetzung oder Rueckfallweg. */
+  | { key: 'software'; adapter: string }
+  /** GPU-05: die Pruefung selbst brach ab. */
+  | { key: 'pruefung-abgebrochen'; detail: string }
+  /** GPU-06: der Worker antwortete nicht. */
+  | { key: 'runtime-schweigt' };
+
 export interface WebGpuSupport {
   available: boolean;
   adapter: AdapterReport | null;
-  /** Grund, falls nicht nutzbar — im Klartext fuer die Oberflaeche. */
-  reason: string | null;
+  /** Befund, falls nicht nutzbar. Zum Satz wird er in der Oberflaeche. */
+  reason: GpuReason | null;
   /** Kurzname des Zustands, oder `null`, wenn alles in Ordnung ist. */
   code: GpuCode | null;
   /**
@@ -295,8 +335,8 @@ interface AdapterAttempt {
   report: AdapterReport | null;
   /** Kurzname des Zustands, oder `null`, wenn alles in Ordnung ist. */
   code: GpuCode | null;
-  /** Grund, falls nicht nutzbar — im Klartext fuer die Oberflaeche. */
-  reason: string | null;
+  /** Befund, falls nicht nutzbar. Siehe `GpuReason`. */
+  reason: GpuReason | null;
 }
 
 /**
@@ -325,12 +365,7 @@ async function requestUsableAdapter(): Promise<AdapterAttempt> {
       adapter: null,
       report: null,
       code: 'GPU-01',
-      reason: isMobileDevice()
-        ? 'Dieser Browser bietet kein WebGPU. Auf Android kann es Chrome ab ' +
-          'Fassung 121; Firefox und ältere Fassungen von Samsung Internet ' +
-          'liefern es nicht.'
-        : 'Dieser Browser bietet kein WebGPU. Auf dem Gerät trennen geht damit ' +
-          'nicht — es braucht Chrome oder Edge in einer aktuellen Fassung.',
+      reason: { key: 'kein-webgpu', mobile: isMobileDevice() },
     };
   }
 
@@ -361,7 +396,7 @@ async function requestUsableAdapter(): Promise<AdapterAttempt> {
       code: openError !== null ? 'GPU-02' : 'GPU-03',
       reason:
         openError !== null
-          ? `WebGPU ließ sich nicht öffnen: ${openError}`
+          ? { key: 'nicht-zu-oeffnen', detail: openError }
           : noAdapterReason(),
     };
   }
@@ -382,24 +417,29 @@ async function requestUsableAdapter(): Promise<AdapterAttempt> {
       adapter,
       report,
       code: 'GPU-04',
-      reason:
-        `WebGPU läuft hier über eine Software-Umsetzung (${adapterLabel(report)}). ` +
-        'Das rechnet auf der CPU und ist für eine Trennung zu langsam.',
+      reason: { key: 'software', adapter: adapterLabel(report) },
     };
   }
   return { adapter, report, code: null, reason: null };
 }
 
 /**
- * Warum es keinen Adapter gibt — und was der Mensch dagegen tun kann.
+ * Warum es keinen Adapter gibt — gemessen, nicht formuliert.
  *
- * Auf dem Handy: nichts, und das steht da auch. Der vorige Text riet hier
- * zu einem neueren Grafiktreiber und erwaehnte virtuelle Maschinen — auf
- * einem Android-Telefon ist das erste unmoeglich und das zweite sinnlos.
- * Ein Rat, den niemand befolgen kann, ist schlechter als keiner: er laesst
- * den Fehler beim Menschen suchen, wo keiner ist.
+ * Hier stand frueher der fertige Satz, und er hing an zwei Entscheidungen:
+ * Handy oder Rechner, und was WebGL ueber die Grafikeinheit sagt. Beides
+ * laesst sich nur hier feststellen, der Satz daraus aber ueberall — und
+ * ueberall heisst: dort, wo bekannt ist, welche Sprache gilt. Also bleibt
+ * das Messen hier und das Formulieren geht ins Woerterbuch
+ * (`gpu.noAdapter`).
+ *
+ * Die Unterscheidung, um die es dabei geht, ist keine sprachliche: auf dem
+ * Handy kann niemand einen Treiber nachziehen, und ein Rat, den niemand
+ * befolgen kann, ist schlechter als keiner — er laesst den Fehler beim
+ * Menschen suchen, wo keiner ist. Sie steht deshalb im Befund und nicht
+ * im Text.
  */
-function noAdapterReason(): string {
+function noAdapterReason(): GpuReason {
   // WebGL laeuft auch dort, wo WebGPU nichts hergibt, und nennt den
   // Treiberstring. Steht der in der Meldung, erledigt sich die naechste
   // Frage von selbst: die Grafikeinheit ist erkannt, sie wird nur nicht
@@ -413,37 +453,10 @@ function noAdapterReason(): string {
   // zwar die bequeme Richtung: es klaenge, als fehle nur eine Freigabe, wo
   // in Wirklichkeit nichts zu rechnen ist. Also wird derselbe Massstab
   // angelegt wie beim WebGPU-Adapter.
-  const rendererIsSoftware =
+  const rendererSoftware =
     renderer !== null && SOFTWARE_HINTS.some((hint) => renderer.toLowerCase().includes(hint));
 
-  let named = '';
-  if (renderer !== null && rendererIsSoftware) {
-    named =
-      ` Auch WebGL rechnet hier auf dem Prozessor (meldet „${renderer}“) — ` +
-      'eine nutzbare Grafikeinheit ist also nicht vorhanden.';
-  } else if (renderer !== null) {
-    named =
-      ` Erkannt wird sie durchaus — WebGL meldet „${renderer}“ —, für WebGPU ` +
-      'gibt der Browser sie nur nicht frei.';
-  }
-
-  if (isMobileDevice()) {
-    return (
-      'WebGPU ist vorhanden, der Browser gibt die Grafikeinheit dieses ' +
-      'Geräts aber nicht frei — auch nicht im Compatibility-Modus.' +
-      named +
-      ' Das liegt am Gerät: Chrome schaltet WebGPU auf Android bisher nur ' +
-      'für einen Teil der verbauten Grafikeinheiten frei. Daran lässt sich ' +
-      'hier nichts ändern.'
-    );
-  }
-  return (
-    'WebGPU ist vorhanden, liefert aber keinen Grafikadapter — auch nicht ' +
-    'im Compatibility-Modus.' +
-    named +
-    ' Oft hilft ein aktueller Grafiktreiber; in einer virtuellen Maschine ' +
-    'ist WebGPU häufig abgeschaltet.'
-  );
+  return { key: 'kein-adapter', mobile: isMobileDevice(), renderer, rendererSoftware };
 }
 
 /** Die Runtime, so wie sie aus der vendorierten Datei kommt. */
@@ -555,7 +568,9 @@ export async function createSession(
       // schluge fehl, obwohl die Pruefung eben noch einen Adapter hatte.
       ort.env.webgpu.adapter = attempt.adapter;
     } else {
-      evidence.push(`Kein nutzbarer Adapter: ${attempt.reason}`);
+      // Der Code statt des Satzes: die Beweiskette ist eine technische
+      // Spur, und der Befund steht ausgeschrieben im Geraetebericht.
+      evidence.push(`Kein nutzbarer Adapter (${attempt.code ?? 'ohne Code'})`);
     }
   } else {
     evidence.push('WASM ausdrücklich verlangt');

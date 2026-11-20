@@ -20,12 +20,13 @@
  * Kalt gegen warm: „Modell-Cache leeren" wirft die Gewichte aus der
  * Cache-API, danach ist der nächste Lauf wieder ein kalter.
  */
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 
 import { BROWSER_MODELS } from '../separate/catalog';
 import { decodeForModel } from '../separate/decode';
 import { clearCache } from '../separate/model-cache';
 import { makeReferenceSignal } from '../separate/reference-signal';
+import { I18n } from '../i18n/i18n';
 import { adapterLabel, probeWebGpu, type ExecutionProof } from '../separate/runtime';
 import type { FromWorker } from '../separate/separate.worker';
 
@@ -212,9 +213,12 @@ interface Fixtures {
               <dt>Code</dt>
               <dd>{{ s.code }}</dd>
             }
-            @if (s.reason) {
+            <!-- Der Befund wird hier zum Satz wie ueberall sonst. Die
+                 Messseite selbst bleibt deutsch — sie ist Werkzeug, kein
+                 Teil der Anwendung. -->
+            @if (i18n.gpuReason(s.reason); as grund) {
               <dt>Grund</dt>
-              <dd>{{ s.reason }}</dd>
+              <dd>{{ grund }}</dd>
             }
           </dl>
         } @else {
@@ -332,6 +336,8 @@ interface Fixtures {
   `,
 })
 export class BenchPageComponent {
+  protected readonly i18n = inject(I18n);
+
   readonly MODELS = BROWSER_MODELS;
   readonly adapterLabel = adapterLabel;
 

@@ -14,6 +14,7 @@ import { IconComponent } from '../core/icon';
 import { JobsService } from '../core/jobs.service';
 import { STATUS_LABELS, type Job } from '../core/models';
 import { songName } from '../core/song-name';
+import { I18n } from '../i18n/i18n';
 
 /** Jobs je Seite. Zehn Zeilen fuellen das Blatt, ohne dass man scrollt. */
 const PAGE_SIZE = 10;
@@ -739,6 +740,7 @@ type Tab = 'alle' | 'songs' | 'tests';
 })
 export class JobListComponent {
   readonly jobs = inject(JobsService);
+  private readonly i18n = inject(I18n);
   readonly selectedId = input<string | null>(null);
   readonly open = output<Job>();
   readonly closed = output<string>();
@@ -836,7 +838,11 @@ export class JobListComponent {
    * laenger, aber nie falsch.
    */
   mode(job: Job): string {
-    return this.jobs.models().find((m) => m.name === job.model)?.mode ?? job.model_label;
+    const kurz = this.jobs.models().find((m) => m.name === job.model)?.mode;
+    // Ohne passenden Modus bleibt der technische Name des Modells stehen.
+    // Der ist keine Uebersetzung wert: er benennt die Datei, nicht das,
+    // was sie leistet.
+    return kurz ? this.i18n.mode(kurz) : job.model_label;
   }
 
   turn(step: number): void {
