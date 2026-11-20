@@ -484,6 +484,9 @@ export const DE = {
     songPosition: 'Songposition',
     /** Das Backend antwortet nicht. */
     noBackend: 'Keine Verbindung zum Backend. Läuft es auf 127.0.0.1:8000?',
+    /** Die Fusszeile. Impressum und Datenschutz bleiben deutsch. */
+    imprint: 'Impressum',
+    privacy: 'Datenschutz',
   },
 
   /** Das Deck: abspielen, ueben, speichern. */

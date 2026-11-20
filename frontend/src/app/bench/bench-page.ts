@@ -359,7 +359,7 @@ export class BenchPageComponent {
 
   constructor() {
     void probeWebGpu().then((s) => this.support.set(s));
-    void fetch('reference/index.json')
+    void fetch('/reference/index.json')
       .then((r) => (r.ok ? r.json() : null))
       .then((f) => (this.fixtures = f as Fixtures | null))
       .catch(() => (this.fixtures = null));

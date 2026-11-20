@@ -63,7 +63,8 @@ export interface CloudHealth {
 
 export async function loadCloudConfig(): Promise<CloudConfig | null> {
   try {
-    const response = await fetch('cloud.json', { cache: 'no-cache' });
+    // Absolut: die Seite liegt unter /de/ oder /en/, die Datei im Wurzelverzeichnis.
+    const response = await fetch('/cloud.json', { cache: 'no-cache' });
     if (!response.ok) return null;
     const raw: unknown = await response.json();
     if (typeof raw !== 'object' || raw === null) return null;

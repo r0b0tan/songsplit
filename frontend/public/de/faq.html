@@ -9,7 +9,12 @@
       content="Antworten zu MixApart: was die KI-Trennung kann, wie sie funktioniert, und wann Ihre Musik Ihr Gerät verlässt."
     />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://mixapart.de/faq.html" />
+    <link rel="canonical" href="https://mixapart.de/de/faq.html" />
+    <!-- Kein x-default: das meint die Adresse fuer alle, fuer die keine
+         der benannten Sprachen passt — ein Wegweiser also, und den gibt
+         es fuer die FAQ nicht. Fuer "/" steht er in der index.html. -->
+    <link rel="alternate" hreflang="de" href="https://mixapart.de/de/faq.html" />
+    <link rel="alternate" hreflang="en" href="https://mixapart.de/en/faq.html" />
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -25,7 +30,7 @@
             <img src="/app-icon.svg" alt="" aria-hidden="true" width="26" height="26" />
             <span>MixApart</span>
           </div>
-          <a class="back" href="/">Zurück <span class="arrow" aria-hidden="true">&rarr;</span></a>
+          <a class="back" href="/de/">Zurück <span class="arrow" aria-hidden="true">&rarr;</span></a>
         </header>
 
         <div class="head">
@@ -397,7 +402,7 @@
           <span>MixApart <span id="jahr">2026</span></span>
         </span>
         <span class="legal-links">
-          <a href="/faq.html" aria-current="page">FAQ</a>
+          <a href="/de/faq.html" aria-current="page">FAQ</a>
           <!-- Der Punkt trennt fuers Auge, nicht fuer die Vorlesestimme. -->
           <span class="legal-dot" aria-hidden="true">&middot;</span>
           <a href="/impressum.html">Impressum</a>

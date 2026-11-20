@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Fuenf Adressen, und mehr gibt es nicht.
+  Sechs Adressen, und mehr gibt es nicht.
 
   MixApart ist eine einzige Anwendung: alles, was sie kann — Trennen, Deck,
   Verlauf —, passiert unter "/de/" beziehungsweise "/en/" und hinterlaesst
@@ -21,7 +21,8 @@
   jeweils letzten Commit, der die Seite beruehrt hat:
 
     /de/ und /en/      frontend/src/          (die Oberflaeche)
-    /faq.html          frontend/public/faq.html
+    /de/faq.html       frontend/public/de/faq.html
+    /en/faq.html       frontend/public/en/faq.html
     /datenschutz.html  frontend/public/datenschutz.html
     /impressum.html    frontend/public/impressum.html
 
@@ -58,8 +59,16 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://mixapart.de/" />
   </url>
   <url>
-    <loc>https://mixapart.de/faq.html</loc>
-    <lastmod>2026-11-17</lastmod>
+    <loc>https://mixapart.de/de/faq.html</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/faq.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/faq.html" />
+  </url>
+  <url>
+    <loc>https://mixapart.de/en/faq.html</loc>
+    <lastmod>2026-11-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://mixapart.de/de/faq.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://mixapart.de/en/faq.html" />
   </url>
   <url>
     <loc>https://mixapart.de/datenschutz.html</loc>

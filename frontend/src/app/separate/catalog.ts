@@ -129,13 +129,22 @@ export function shapeOf(m: ModelManifest): ModelShape {
   };
 }
 
+/**
+ * Alle Adressen hier stehen **absolut**, mit fuehrendem Schraegstrich.
+ *
+ * Die Anwendung wird unter `/de/` und `/en/` ausgeliefert (siehe
+ * `tools/locales.mjs`), die Modelle liegen aber einmal unter `/models/`.
+ * Relativ geschrieben suchte der Browser sie unter `/de/models/` — und
+ * schlimmer noch: der Cache-Schluessel loeste genauso auf, also legte jede
+ * Sprache ihre eigene Kopie der 174 MB an.
+ */
 export function manifestUrl(id: string): string {
-  return `models/${id}/manifest.json`;
+  return `/models/${id}/manifest.json`;
 }
 
 /** Die Adressen der Stuecke, in der Reihenfolge, in der sie gehoeren. */
 export function weightPartUrls(id: string, manifest: ModelManifest): string[] {
-  return manifest.weights.parts.map((part) => `models/${id}/${part.name}`);
+  return manifest.weights.parts.map((part) => `/models/${id}/${part.name}`);
 }
 
 export function weightsBytes(manifest: ModelManifest): number {
@@ -150,7 +159,7 @@ export function weightsBytes(manifest: ModelManifest): number {
  * kennt die 25-MiB-Grenze nicht — die ist eine Regel des Hosters.
  */
 export function weightsCacheKey(id: string, manifest: ModelManifest): string {
-  return `models/${id}/${manifest.weights.file}`;
+  return `/models/${id}/${manifest.weights.file}`;
 }
 
 /**

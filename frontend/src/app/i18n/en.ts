@@ -350,6 +350,8 @@ export const EN: Texte = {
     loopEnd: 'Loop end B',
     songPosition: 'Song position',
     noBackend: 'No connection to the backend. Is it running on 127.0.0.1:8000?',
+    imprint: 'Legal notice',
+    privacy: 'Privacy',
   },
 
   deck: {

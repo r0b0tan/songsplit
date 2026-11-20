@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Frequently asked questions — MixApart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Answers about MixApart: what the AI separation can do, how it works, and when your music leaves your device."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://mixapart.de/en/faq.html" />
+    <!-- Kein x-default, siehe de/faq.html. -->
+    <link rel="alternate" hreflang="de" href="https://mixapart.de/de/faq.html" />
+    <link rel="alternate" hreflang="en" href="https://mixapart.de/en/faq.html" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#121216" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <div class="sheet">
+        <header class="bar">
+          <div class="brand">
+            <img src="/app-icon.svg" alt="" aria-hidden="true" width="26" height="26" />
+            <span>MixApart</span>
+          </div>
+          <a class="back" href="/en/">Back <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        </header>
+
+        <div class="head">
+          <h1>Frequently asked questions</h1>
+          <p class="stand">As of November 2026</p>
+        </div>
+
+        <section class="row">
+          <h2>1. What does MixApart do?</h2>
+          <div class="body">
+            <p>
+              MixApart takes a song apart into separate stems, using AI. You
+              choose an MP3 or WAV, wait a moment, and end up with several
+              faders instead of one. How finely it is taken apart is up to
+              you, through the separation mode:
+            </p>
+            <ul>
+              <li>
+                <strong>Minimal</strong> makes two stems out of it, vocals and
+                everything else together.
+              </li>
+              <li>
+                <strong>Fast</strong> makes four: vocals, drums, bass and the
+                rest.
+              </li>
+              <li>
+                <strong>Instruments</strong> makes six and pulls out guitar and
+                piano as well.
+              </li>
+            </ul>
+            <p>
+              That is useful when you are learning an instrument. Drums out,
+              play along yourself. Or listen to the vocals alone because you
+              cannot make out the words. A difficult passage can be pulled down
+              to half speed without sounding any lower. Every stem can be saved
+              on its own.
+            </p>
+            <p>
+              All of it runs in your browser. No account, no sign-up, no queue.
+              And your music stays on your device while it happens.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>2. How does it work?</h2>
+          <div class="body">
+            <p>
+              Behind it sits an AI model called htdemucs. A neural network that
+              has learned from many thousands of songs what a singing voice
+              sounds like, what drums sound like and what a bass sounds like.
+              Not from fixed rules, but from examples — roughly the way image
+              and speech AI is trained as well.
+            </p>
+            <p>
+              While separating, the model listens through your song in short
+              sections and decides for every sound which stem it belongs to.
+              Then it puts the sections back together.
+            </p>
+            <p>
+              htdemucs comes out of Meta's AI research and is freely available.
+              It is among the best there is for this task, and it sits inside
+              programs people pay for, too. So you are not getting a stripped
+              down version here.
+            </p>
+            <p>
+              What is more interesting is where it runs. Models like this used
+              to need a server with a powerful graphics card. MixApart runs
+              them through a new browser interface called WebGPU, directly on
+              the graphics card in your own device. That is why your music does
+              not have to go anywhere for the separation.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>3. When is my data where?</h2>
+          <div class="body">
+            <p>
+              Normally your music stays on your device. The field on the start
+              page looks like an upload, but it is not one. Your browser only
+              opens the file, the way a music player would open it, and
+              computes with it on your device. Nothing is sent anywhere,
+              neither the file nor the finished stems.
+            </p>
+            <p>
+              So there is nothing of your music for MixApart to see or to
+              store. After the first song this even works without an internet
+              connection. You can switch on airplane mode and carry on
+              separating.
+            </p>
+            <p>
+              There is one exception. Some devices cannot do the computing
+              themselves, phones above all — more on that in question 9. For
+              those, MixApart offers separation on a server, and then the file
+              does leave your device. It goes to Modal Labs in the USA, a
+              provider of computing time on graphics cards. The same model
+              separates it there, and the stems come back. That is the
+              difference from the field on the start page: there the file is
+              only opened, here it is sent to a server.
+            </p>
+            <p>
+              This does not happen by itself. It happens when the header says
+              "Server" and you tap "Separate stems". The finished stems are
+              deleted there after a few hours; at the provider, the file and
+              the result may sit for a few days. The exact periods and the
+              legal details are in the
+              <a href="/datenschutz.html">privacy policy</a> under section 3
+              (German).
+            </p>
+            <p>
+              Nothing is left behind once you close the page. The stems live
+              only in the browser's memory. Tab closed, gone. Whatever you want
+              to keep, save it beforehand with the arrow symbol on the
+              respective stem.
+            </p>
+            <p>
+              The only thing that stays for good is the model itself, around
+              174 MB in the browser cache. That has nothing to do with your
+              music; it only makes sure the second song starts right away.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>4. May I do this with music I bought?</h2>
+          <div class="body">
+            <p>
+              For your own use, yes. German copyright law allows private
+              copies, and a stem you pull out of a song you bought in order to
+              practise with it falls under that. Playing along, singing along,
+              using it in the rehearsal room — all unproblematic. Rules differ
+              from country to country, so if you are not in Germany, the
+              details where you live may not be the same.
+            </p>
+            <p>
+              What you may not do is publish the stems. Putting them on
+              YouTube, selling them as a karaoke version or building them into
+              a recording of your own needs permission from the rights holders.
+              The separation changes nothing about that; the material stays
+              someone else's.
+            </p>
+            <p>
+              So the same applies as to any other music that is not yours.
+              MixApart does not check this and cannot check it. If you need to
+              know precisely, ask somebody qualified to advise you.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>5. How do I get a backing track without vocals?</h2>
+          <div class="body">
+            <p>
+              With the Minimal separation mode. It makes exactly two stems, the
+              vocals and everything else. Mute the vocals and the backing track
+              is done.
+            </p>
+            <p>
+              It works the other way round just as well. Mute everything except
+              the vocals and you have the voice on its own, for instance to
+              make out the words. Minimal is no slower than Fast, by the way,
+              and it loads nothing extra — it only merges the stems afterwards.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>6. Can I get guitar and piano separately too?</h2>
+          <div class="body">
+            <p>
+              Yes, with the Instruments separation mode. It works with a larger
+              model and delivers six stems instead of four, adding guitar and
+              piano.
+            </p>
+            <p>
+              Two things are different about it. The model is larger, so the
+              separation takes longer, and it is downloaded once the first time
+              you use it. Also, this mode only exists when your device does the
+              computing itself. Over the server it is always four stems.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>7. What can the player do?</h2>
+          <div class="body">
+            <p>
+              More than is visible at first glance. Every stem has its own
+              volume fader and can be muted or heard on its own.
+            </p>
+            <p>
+              You can set the tempo between 50 and 125 percent without the
+              music sounding any lower or higher. Pitch you shift separately
+              from that, by up to twelve semitones, in case a song does not sit
+              in your range or your guitar is tuned a semitone down.
+            </p>
+            <p>
+              For difficult passages there is a loop. You mark the start and
+              the end, and the excerpt runs round and round. And when you
+              listen to one stem on its own, that stem gets its own tempo while
+              the rest carries on as normal.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>8. Which devices and browsers work?</h2>
+          <div class="body">
+            <p>
+              On a computer, Chrome and Edge; on a Mac, Safari as well. Firefox
+              manages it on Windows and on newer Macs, on Linux not yet.
+            </p>
+            <p>
+              On iPhone and iPad it works from iOS 26 onwards, since autumn
+              2025. Because every browser there uses the same underpinnings,
+              that applies to Safari, Chrome and Firefox alike. On Android
+              phones it depends on the model — more on that in the next
+              question.
+            </p>
+            <p>
+              Trying it is easier than looking it up. The page checks what your
+              device can do when it opens, and tells you.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>9. Why does the page say my device cannot do the computing?</h2>
+          <div class="body">
+            <p>
+              An AI model of this size needs a graphics card, a GPU. The same
+              one that otherwise draws games and videos. The main processor,
+              the CPU, can do the same arithmetic in theory, only many times
+              slower.
+            </p>
+            <p>
+              Browsers release the GPU for computations like this through
+              WebGPU, but not everywhere yet. On Android phones only some of
+              the chips in use have been enabled so far, and in some corporate
+              environments the release is switched off altogether.
+            </p>
+            <p>
+              Nothing can be done about that from outside; the browser maker
+              decides it for your device model. On a computer, a current
+              graphics driver sometimes helps, or switching to a recent version
+              of Chrome or Edge.
+            </p>
+            <p>
+              The server exists for exactly this case. It takes over the
+              separation and sends the four stems back. You do not have to
+              change anything for it: the page adjusts by itself, and in the
+              player everything is as usual afterwards.
+            </p>
+            <p>
+              If you get in touch, please quote the short code from the
+              message, GPU-03 for example. That makes it possible to tell
+              immediately what the problem was.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>10. How long does a separation take?</h2>
+          <div class="body">
+            <p>
+              On a computer with a graphics card you are usually finished
+              sooner than the song you are separating lasts. How much sooner
+              depends on your hardware. That is why there is no number here.
+              MixApart shows you one itself instead: while it separates, a
+              remaining time runs along, and it comes from your own run.
+            </p>
+            <p>
+              Over the server, a whole song takes about a minute. On top of
+              that comes the wait until a machine is free there.
+            </p>
+            <p>
+              The very first time takes longer, because the model is downloaded
+              once. Every further song starts right away.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>11. Which files can I use?</h2>
+          <div class="body">
+            <p>
+              MP3 and WAV. Over the server it is at most 25 MB per file, which
+              is enough for a good ten minutes of music. On your own device the
+              memory decides how long a song may be, and the page asks before
+              it gets tight.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>12. Can I use the stems in my music software?</h2>
+          <div class="body">
+            <p>
+              Yes. The arrow symbol on each stem saves it as WAV, 44.1 kHz in
+              stereo, 16 bit. Every recording program copes with that, from
+              Audacity to Ableton.
+            </p>
+            <p>
+              All the stems are the same length and start at the same point. So
+              you can simply drag them into your project side by side, without
+              aligning anything.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>13. Does it cost anything? Do I need an account?</h2>
+          <div class="body">
+            <p>
+              MixApart is free and usable without signing up. No account, no
+              paywall, no limit on a certain number of songs. The app does not
+              set advertising or analytics cookies either.
+            </p>
+          </div>
+        </section>
+
+        <section class="row">
+          <h2>14. What do the words in the header mean?</h2>
+          <div class="body">
+            <p>
+              They say what the computing is running on right now. The names
+              are technical; what they mean is fairly simple:
+            </p>
+            <ul>
+              <li>
+                <strong>WebGPU</strong> means your graphics card is doing the
+                computing, in the browser. The usual route and the fastest one.
+                Your file stays on your device.
+              </li>
+              <li>
+                <strong>WASM</strong> means your main processor is doing it,
+                also in the browser. That works on any device but takes
+                considerably longer, because a CPU is not built for this kind
+                of arithmetic. Your music stays with you here as well.
+              </li>
+              <li>
+                <strong>Server</strong> means a graphics card in the USA is
+                doing it. The route for devices that cannot manage on their
+                own. For this, the file is transferred.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <footer class="legal">
+      <div class="legal-inner">
+        <span class="legal-mark">
+          <img
+            class="legal-logo"
+            src="/icon_no_bg.svg"
+            alt=""
+            aria-hidden="true"
+            width="27"
+            height="18"
+          />
+          <span>MixApart <span id="jahr">2026</span></span>
+        </span>
+        <span class="legal-links">
+          <a href="/en/faq.html" aria-current="page">FAQ</a>
+          <!-- Impressum und Datenschutz stehen auf Deutsch: sie richten sich
+               nach deutschem Recht, und die deutsche Fassung ist die
+               massgebliche. Die Beschriftung ist englisch, damit jemand
+               weiss, was ihn erwartet. -->
+          <span class="legal-dot" aria-hidden="true">&middot;</span>
+          <a href="/impressum.html" hreflang="de">Legal notice</a>
+          <span class="legal-dot" aria-hidden="true">&middot;</span>
+          <a href="/datenschutz.html" hreflang="de">Privacy</a>
+        </span>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById('jahr').textContent = String(new Date().getFullYear());
+    </script>
+  </body>
+</html>

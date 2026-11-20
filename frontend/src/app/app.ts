@@ -511,13 +511,18 @@ import { StemStore } from './separate/stem-store';
           <span>MixApart {{ jahr }}</span>
         </span>
         <span class="legal-links">
-          <a href="/faq.html">FAQ</a>
+          <!-- Die FAQ liegt je Sprache einmal, siehe public/de/ und
+               public/en/. Impressum und Datenschutz nicht: sie richten sich
+               nach deutschem Recht, und die deutsche Fassung ist die
+               massgebliche. Das hreflang-Attribut sagt der Vorlesestimme
+               und dem Browser, dass dahinter eine andere Sprache steht. -->
+          <a [href]="'/' + i18n.lang() + '/faq.html'">FAQ</a>
           <span class="legal-dot" aria-hidden="true">&middot;</span>
-          <a href="/impressum.html">Impressum</a>
+          <a href="/impressum.html" hreflang="de">{{ t().shell.imprint }}</a>
           <!-- Der Punkt trennt fuers Auge, nicht fuer die Vorlesestimme:
                sie liest zwei Verweise, kein Satzzeichen dazwischen. -->
           <span class="legal-dot" aria-hidden="true">&middot;</span>
-          <a href="/datenschutz.html">Datenschutz</a>
+          <a href="/datenschutz.html" hreflang="de">{{ t().shell.privacy }}</a>
         </span>
       </div>
     </footer>
@@ -613,7 +618,7 @@ export class AppComponent {
   private readonly engine = inject(MixEngine);
   protected readonly jobs = inject(JobsService);
   private readonly store = inject(StemStore);
-  private readonly i18n = inject(I18n);
+  protected readonly i18n = inject(I18n);
   protected readonly t = this.i18n.t;
   private readonly device = inject(DeviceSeparator);
 

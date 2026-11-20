@@ -67,7 +67,7 @@ type StretchFactory = (
   options?: AudioWorkletNodeOptions,
 ) => Promise<StretchNode>;
 
-const VENDOR_URL = 'vendor/SignalsmithStretch.js';
+const VENDOR_URL = '/vendor/SignalsmithStretch.js';
 
 let loader: Promise<StretchFactory> | null = null;
 
