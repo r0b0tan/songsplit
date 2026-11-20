@@ -27,7 +27,7 @@
  * deutschem Titel, die monatelang niemandem auffaellt, weil sie im Browser
  * richtig aussieht.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const WURZEL = process.argv[2];
@@ -44,6 +44,7 @@ const SEO = {
     lang: 'de',
     locale: 'de_DE',
     pfad: '/de/',
+    bild: '/mixapart-share-ger.webp',
     title: 'MixApart — Songs in Einzelspuren trennen',
     description:
       'MixApart trennt Songs in Gesang, Drums, Bass und Instrumente — im ' +
@@ -59,6 +60,7 @@ const SEO = {
     lang: 'en',
     locale: 'en_US',
     pfad: '/en/',
+    bild: '/mixapart-share-en.webp',
     title: 'MixApart — split songs into separate stems',
     description:
       'MixApart splits songs into vocals, drums, bass and instruments — in ' +
@@ -135,6 +137,25 @@ const REGELN = [
     (s) => `<meta property="og:description" content="${s.share}" />`,
   ],
   [
+    'og:image',
+    /<meta property="og:image" content="[^"]*"\s*\/?>/g,
+    1,
+    (s) => `<meta property="og:image" content="${BASIS}${s.bild}" />`,
+  ],
+  [
+    'twitter:image',
+    /<meta name="twitter:image" content="[^"]*"\s*\/?>/g,
+    1,
+    (s) => `<meta name="twitter:image" content="${BASIS}${s.bild}" />`,
+  ],
+  [
+    // Im JSON-LD steht dasselbe Bild noch einmal.
+    'ld:image',
+    /"image": "[^"]*"/g,
+    1,
+    (s) => `"image": "${BASIS}${s.bild}"`,
+  ],
+  [
     'og:image:alt',
     /<meta property="og:image:alt" content="[^"]*"\s*\/?>/g,
     1,
@@ -187,15 +208,58 @@ function absolut(html) {
       return `${attr}="/${pfad}"`;
     },
   );
-  if (!getroffen) {
-    console.error('locales: kein relativer Verweis gefunden — stimmt der Bau noch?');
+  // Geprueft wird das Ergebnis, nicht die Arbeit: ob das Bundle hinterher
+  // absolut dasteht. „Es wurde nichts umgeschrieben" waere kein Fehler,
+  // sondern hiesse nur, dass es schon absolut stand — und genau so war es,
+  // wenn dieser Schritt zweimal ueber dieselbe Ausgabe laeuft.
+  if (!/<script\b[^>]*\bsrc="\/[^"]/.test(out)) {
+    console.error(
+      'locales: in der index.html steht kein absoluter Verweis auf das ' +
+        'Bundle — stimmt der Bau noch?',
+    );
     process.exit(1);
   }
   return { html: out, getroffen };
 }
 
+/**
+ * Liegt das Bild, auf das der Kopf zeigt, auch wirklich da?
+ *
+ * Ein falscher Dateiname faellt im Betrieb nicht auf: die Seite sieht
+ * richtig aus, und die Vorschau bleibt nur dort leer, wo jemand den Link
+ * einfuegt — also genau da, wo man es selbst nie sieht. Deshalb hier,
+ * beim Bauen, wo es auffaellt.
+ */
+for (const [lang, seo] of Object.entries(SEO)) {
+  if (!existsSync(join(WURZEL, seo.bild))) {
+    console.error(
+      `locales: das Bild zum Teilen fehlt (${lang}): ${seo.bild}\n` +
+        '  Erwartet unter ' + join(WURZEL, seo.bild),
+    );
+    process.exit(1);
+  }
+}
+
 const quelle = join(WURZEL, 'index.html');
 const roh = readFileSync(quelle, 'utf8');
+
+/**
+ * Einmal je Bau, und das laesst sich nicht umgehen.
+ *
+ * Der letzte Schritt schreibt die Wurzel-`index.html` neu — sie ist danach
+ * die englische Seite und keine Vorlage mehr. Ein zweiter Lauf laese sie
+ * als Vorlage und scheiterte an einer Regel, die nichts mehr findet, mit
+ * einer Meldung ueber die `index.html`, die zwar stimmt, aber in die
+ * falsche Richtung zeigt. Also wird der Fall benannt, statt ihn zu
+ * erraten.
+ */
+if (roh.includes('rel="alternate" hreflang')) {
+  console.error(
+    'locales: diese index.html ist schon verarbeitet.\n' +
+      '  Der Schritt gehoert auf eine frische Ausgabe von `ng build`.',
+  );
+  process.exit(1);
+}
 const { html: vorlage, getroffen } = absolut(roh);
 
 for (const [lang, seo] of Object.entries(SEO)) {

@@ -222,10 +222,14 @@ Linien: sieben Balken sind bei 16 Pixeln ein Fleck. Beide SVG sind von Hand
 gezeichnet, das Skript rastert sie nur — `favicon.svg` zur `.ico`,
 `app-icon.svg` zum `apple-touch-icon.png`.
 
-Beim Teilen zeigt die Seite `frontend/public/mixapart-share.webp` (1734 ×
-907) — eingetragen als `og:image` und `twitter:image` in
-`frontend/src/index.html`. Die Pfade stehen dort relativ, weil die Seite
-örtlich läuft; unter einer Domain gehört die vollständige URL hinein.
+Beim Teilen zeigt die Seite ein Bild je Sprache, beide 1734 × 907:
+`frontend/public/mixapart-share-ger.webp` mit dem deutschen Claim und
+`mixapart-share-en.webp` mit dem englischen. In `frontend/src/index.html`
+steht die deutsche Fassung mit vollständiger URL; welche davon in den Kopf
+der ausgelieferten Seite kommt, entscheidet `frontend/tools/locales.mjs`
+zusammen mit Titel, Beschreibung und `hreflang` — siehe den Abschnitt zu
+den Sprachen. Fehlt eine der beiden Dateien, bricht der Bau ab: eine leere
+Vorschau sieht man sonst nur dort, wo jemand anderes den Link einfügt.
 
 ---
 
